@@ -1,0 +1,366 @@
+-- Table: master.customer
+
+-- DROP TABLE IF EXISTS master.customer;
+
+CREATE TABLE IF NOT EXISTS master.customer
+(
+    customer_type character varying(20) COLLATE pg_catalog."default",
+    name character varying(150) COLLATE pg_catalog."default",
+    guardian_name character varying(150) COLLATE pg_catalog."default",
+    primary_phone character varying(15) COLLATE pg_catalog."default",
+    email character varying(150) COLLATE pg_catalog."default",
+    address_line1 text COLLATE pg_catalog."default",
+    address_line2 text COLLATE pg_catalog."default",
+    city character varying(100) COLLATE pg_catalog."default",
+    state character varying(100) COLLATE pg_catalog."default",
+    pincode character varying(10) COLLATE pg_catalog."default",
+    aadhaar_no character(12) COLLATE pg_catalog."default",
+    pan_no character(10) COLLATE pg_catalog."default",
+    gstin character(15) COLLATE pg_catalog."default",
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    is_active boolean DEFAULT true,
+    customer_id bigint NOT NULL DEFAULT nextval('master.customer_customer_id_seq'::regclass),
+    CONSTRAINT customer_pkey PRIMARY KEY (customer_id),
+    CONSTRAINT uq_customer_aadhaar UNIQUE (aadhaar_no),
+    CONSTRAINT uq_customer_gstin UNIQUE (gstin),
+    CONSTRAINT uq_customer_pan UNIQUE (pan_no),
+    CONSTRAINT uq_customer_primary_phone UNIQUE (primary_phone),
+    CONSTRAINT chk_customer_type CHECK (customer_type::text = ANY (ARRAY['INDIVIDUAL'::character varying, 'BUSINESS'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.customer
+    OWNER to postgres;
+
+
+
+-- Table: master.customer_document
+
+-- DROP TABLE IF EXISTS master.customer_document;
+
+CREATE TABLE IF NOT EXISTS master.customer_document
+(
+    customer_document_id bigint NOT NULL DEFAULT nextval('master.customer_document_customer_document_id_seq'::regclass),
+    customer_id bigint NOT NULL,
+    document_type character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    document_number character varying(50) COLLATE pg_catalog."default",
+    file_path text COLLATE pg_catalog."default" NOT NULL,
+    file_name character varying(255) COLLATE pg_catalog."default",
+    mime_type character varying(100) COLLATE pg_catalog."default",
+    is_active boolean NOT NULL DEFAULT true,
+    uploaded_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT customer_document_pkey PRIMARY KEY (customer_document_id),
+    CONSTRAINT fk_customer_document_customer FOREIGN KEY (customer_id)
+        REFERENCES master.customer (customer_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.customer_document
+    OWNER to postgres;
+-- Index: idx_customer_document_customer
+
+-- DROP INDEX IF EXISTS master.idx_customer_document_customer;
+
+CREATE INDEX IF NOT EXISTS idx_customer_document_customer
+    ON master.customer_document USING btree
+    (customer_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_customer_document_type
+
+-- DROP INDEX IF EXISTS master.idx_customer_document_type;
+
+CREATE INDEX IF NOT EXISTS idx_customer_document_type
+    ON master.customer_document USING btree
+    (document_type COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
+
+-- Table: master.customer_phone
+
+-- DROP TABLE IF EXISTS master.customer_phone;
+
+CREATE TABLE IF NOT EXISTS master.customer_phone
+(
+    customer_phone_id bigint NOT NULL DEFAULT nextval('master.customer_phone_customer_phone_id_seq'::regclass),
+    customer_id bigint NOT NULL,
+    phone_number character varying(15) COLLATE pg_catalog."default" NOT NULL,
+    phone_type character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    contact_name character varying(100) COLLATE pg_catalog."default",
+    contact_relation character varying(100) COLLATE pg_catalog."default",
+    CONSTRAINT customer_phone_pkey PRIMARY KEY (customer_phone_id),
+    CONSTRAINT uq_customer_phone_number UNIQUE (phone_number),
+    CONSTRAINT fk_customer_phone_customer FOREIGN KEY (customer_id)
+        REFERENCES master.customer (customer_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT customer_phone_phone_type_check CHECK (phone_type::text = ANY (ARRAY['PRIMARY'::character varying, 'ALTERNATE'::character varying, 'OTHER'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.customer_phone
+    OWNER to postgres;
+
+
+
+-- Table: master.employee
+
+-- DROP TABLE IF EXISTS master.employee;
+
+CREATE TABLE IF NOT EXISTS master.employee
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.employee
+    OWNER to postgres;
+
+
+
+-- Table: master.expense_category
+
+-- DROP TABLE IF EXISTS master.expense_category;
+
+CREATE TABLE IF NOT EXISTS master.expense_category
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.expense_category
+    OWNER to postgres;
+
+
+
+-- Table: master.job_card_category
+
+-- DROP TABLE IF EXISTS master.job_card_category;
+
+CREATE TABLE IF NOT EXISTS master.job_card_category
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.job_card_category
+    OWNER to postgres;
+
+
+
+-- Table: master.payment_mode
+
+-- DROP TABLE IF EXISTS master.payment_mode;
+
+CREATE TABLE IF NOT EXISTS master.payment_mode
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.payment_mode
+    OWNER to postgres;
+
+
+
+-- Table: master.spare_part
+
+-- DROP TABLE IF EXISTS master.spare_part;
+
+CREATE TABLE IF NOT EXISTS master.spare_part
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.spare_part
+    OWNER to postgres;
+
+
+
+-- Table: master.staff
+
+-- DROP TABLE IF EXISTS master.staff;
+
+CREATE TABLE IF NOT EXISTS master.staff
+(
+    staff_id bigint NOT NULL DEFAULT nextval('master.staff_staff_id_seq'::regclass),
+    full_name character varying(150) COLLATE pg_catalog."default" NOT NULL,
+    mobile_no character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    email character varying(150) COLLATE pg_catalog."default",
+    designation character varying(100) COLLATE pg_catalog."default",
+    is_active boolean NOT NULL DEFAULT true,
+    joined_date date,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    aadhaar_no character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    pan_no character varying(20) COLLATE pg_catalog."default",
+    bank_account_no character varying(30) COLLATE pg_catalog."default",
+    bank_name character varying(100) COLLATE pg_catalog."default",
+    ifsc_code character varying(20) COLLATE pg_catalog."default",
+    CONSTRAINT staff_pkey PRIMARY KEY (staff_id),
+    CONSTRAINT uq_staff_aadhaar UNIQUE (aadhaar_no),
+    CONSTRAINT uq_staff_mobile UNIQUE (mobile_no),
+    CONSTRAINT uq_staff_pan UNIQUE (pan_no)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.staff
+    OWNER to postgres;
+
+
+
+-- Table: master.vehicle
+
+-- DROP TABLE IF EXISTS master.vehicle;
+
+CREATE TABLE IF NOT EXISTS master.vehicle
+(
+    chassis_no character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    vehicle_model_id bigint NOT NULL,
+    motor_serial_no character varying(100) COLLATE pg_catalog."default",
+    convertor_serial_no character varying(100) COLLATE pg_catalog."default",
+    charger_serial_no character varying(100) COLLATE pg_catalog."default",
+    controller_serial_no character varying(100) COLLATE pg_catalog."default",
+    battery_serial_no character varying(100) COLLATE pg_catalog."default",
+    date_of_manufacture date,
+    current_status character varying(30) COLLATE pg_catalog."default" NOT NULL DEFAULT 'IN_STOCK'::character varying,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vehicle_pkey PRIMARY KEY (chassis_no),
+    CONSTRAINT fk_vehicle_model FOREIGN KEY (vehicle_model_id)
+        REFERENCES master.vehicle_model (vehicle_model_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT vehicle_current_status_check CHECK (current_status::text = ANY (ARRAY['IN_STOCK'::character varying, 'SOLD'::character varying, 'SERVICE'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.vehicle
+    OWNER to postgres;
+
+
+
+-- Table: master.vehicle_model
+
+-- DROP TABLE IF EXISTS master.vehicle_model;
+
+CREATE TABLE IF NOT EXISTS master.vehicle_model
+(
+    vehicle_model_id bigint NOT NULL DEFAULT nextval('master.vehicle_model_vehicle_model_id_seq'::regclass),
+    brand character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    model_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    material_number character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    colour character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    battery_type character varying(50) COLLATE pg_catalog."default",
+    laden_weight numeric(10,2),
+    unladen_weight numeric(10,2),
+    hsn_code character varying(20) COLLATE pg_catalog."default",
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vehicle_model_pkey PRIMARY KEY (vehicle_model_id),
+    CONSTRAINT uq_vehicle_model_material UNIQUE (material_number)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.vehicle_model
+    OWNER to postgres;
+
+
+-- Table: master.vendor
+
+-- DROP TABLE IF EXISTS master.vendor;
+
+CREATE TABLE IF NOT EXISTS master.vendor
+(
+    vendor_id bigint NOT NULL DEFAULT nextval('master.vendor_vendor_id_seq'::regclass),
+    vendor_name character varying(150) COLLATE pg_catalog."default" NOT NULL,
+    vendor_type character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    gstin character(15) COLLATE pg_catalog."default",
+    pan_no character(10) COLLATE pg_catalog."default",
+    address_line1 text COLLATE pg_catalog."default",
+    address_line2 text COLLATE pg_catalog."default",
+    city character varying(100) COLLATE pg_catalog."default",
+    state character varying(100) COLLATE pg_catalog."default",
+    pincode character varying(10) COLLATE pg_catalog."default",
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vendor_pkey PRIMARY KEY (vendor_id),
+    CONSTRAINT uq_vendor_gstin UNIQUE (gstin),
+    CONSTRAINT uq_vendor_pan UNIQUE (pan_no),
+    CONSTRAINT vendor_vendor_type_check CHECK (vendor_type::text = ANY (ARRAY['OEM'::character varying, 'DEALER'::character varying, 'LOCAL'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.vendor
+    OWNER to postgres;
+
+
+
+-- Table: master.vendor_contact
+
+-- DROP TABLE IF EXISTS master.vendor_contact;
+
+CREATE TABLE IF NOT EXISTS master.vendor_contact
+(
+    vendor_contact_id bigint NOT NULL DEFAULT nextval('master.vendor_contact_vendor_contact_id_seq'::regclass),
+    vendor_id bigint NOT NULL,
+    contact_name character varying(150) COLLATE pg_catalog."default" NOT NULL,
+    designation character varying(100) COLLATE pg_catalog."default",
+    department character varying(100) COLLATE pg_catalog."default",
+    phone character varying(15) COLLATE pg_catalog."default",
+    email character varying(150) COLLATE pg_catalog."default",
+    is_primary boolean DEFAULT false,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vendor_contact_pkey PRIMARY KEY (vendor_contact_id),
+    CONSTRAINT fk_vendor_contact_vendor FOREIGN KEY (vendor_id)
+        REFERENCES master.vendor (vendor_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.vendor_contact
+    OWNER to postgres;
+
+
+-- Table: master.vendor_document
+
+-- DROP TABLE IF EXISTS master.vendor_document;
+
+CREATE TABLE IF NOT EXISTS master.vendor_document
+(
+    vendor_document_id bigint NOT NULL DEFAULT nextval('master.vendor_document_vendor_document_id_seq'::regclass),
+    vendor_id bigint NOT NULL,
+    document_type character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    document_number character varying(50) COLLATE pg_catalog."default",
+    file_path text COLLATE pg_catalog."default" NOT NULL,
+    file_name character varying(255) COLLATE pg_catalog."default",
+    mime_type character varying(100) COLLATE pg_catalog."default",
+    is_active boolean NOT NULL DEFAULT true,
+    uploaded_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vendor_document_pkey PRIMARY KEY (vendor_document_id),
+    CONSTRAINT fk_vendor_document_vendor FOREIGN KEY (vendor_id)
+        REFERENCES master.vendor (vendor_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.vendor_document
+    OWNER to postgres;
+

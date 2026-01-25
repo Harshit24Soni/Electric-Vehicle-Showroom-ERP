@@ -1,0 +1,26 @@
+-- Table: hr.attendance
+
+-- DROP TABLE IF EXISTS hr.attendance;
+
+CREATE TABLE IF NOT EXISTS hr.attendance
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS hr.attendance
+    OWNER to postgres;
+
+
+-- Table: hr.salary
+
+-- DROP TABLE IF EXISTS hr.salary;
+
+CREATE TABLE IF NOT EXISTS hr.salary
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS hr.salary
+    OWNER to postgres;

@@ -1,0 +1,197 @@
+-- Table: crm.followup_schedule
+
+-- DROP TABLE IF EXISTS crm.followup_schedule;
+
+CREATE TABLE IF NOT EXISTS crm.followup_schedule
+(
+    followup_id bigint NOT NULL DEFAULT nextval('crm.followup_schedule_followup_id_seq'::regclass),
+    lead_id bigint NOT NULL,
+    scheduled_date date NOT NULL,
+    assigned_staff_id bigint NOT NULL,
+    followup_status character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    completed_at timestamp without time zone,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT followup_schedule_pkey PRIMARY KEY (followup_id),
+    CONSTRAINT fk_followup_lead FOREIGN KEY (lead_id)
+        REFERENCES crm.lead (lead_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_followup_staff FOREIGN KEY (assigned_staff_id)
+        REFERENCES master.staff (staff_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT followup_schedule_followup_status_check CHECK (followup_status::text = ANY (ARRAY['PENDING'::character varying, 'COMPLETED'::character varying, 'MISSED'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS crm.followup_schedule
+    OWNER to postgres;
+
+
+-- Table: crm.lead
+
+-- DROP TABLE IF EXISTS crm.lead;
+
+CREATE TABLE IF NOT EXISTS crm.lead
+(
+    lead_id bigint NOT NULL DEFAULT nextval('crm.lead_lead_id_seq'::regclass),
+    customer_id bigint NOT NULL,
+    vehicle_model_id bigint NOT NULL,
+    lead_source character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    lead_status character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    owner_staff_id bigint NOT NULL,
+    expected_purchase_date date,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT lead_pkey PRIMARY KEY (lead_id),
+    CONSTRAINT fk_lead_customer FOREIGN KEY (customer_id)
+        REFERENCES master.customer (customer_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_lead_owner FOREIGN KEY (owner_staff_id)
+        REFERENCES master.staff (staff_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_lead_vehicle_model FOREIGN KEY (vehicle_model_id)
+        REFERENCES master.vehicle_model (vehicle_model_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT lead_lead_status_check CHECK (lead_status::text = ANY (ARRAY['NEW'::character varying, 'HOT'::character varying, 'WARM'::character varying, 'COLD'::character varying, 'CONVERTED'::character varying, 'LOST'::character varying, 'DROPPED'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS crm.lead
+    OWNER to postgres;
+
+
+-- Table: crm.lead_activity
+
+-- DROP TABLE IF EXISTS crm.lead_activity;
+
+CREATE TABLE IF NOT EXISTS crm.lead_activity
+(
+    activity_id bigint NOT NULL DEFAULT nextval('crm.lead_activity_activity_id_seq'::regclass),
+    lead_id bigint NOT NULL,
+    activity_type character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    activity_time timestamp without time zone NOT NULL,
+    performed_by_staff_id bigint NOT NULL,
+    outcome text COLLATE pg_catalog."default",
+    next_action_date date,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT lead_activity_pkey PRIMARY KEY (activity_id),
+    CONSTRAINT fk_activity_lead FOREIGN KEY (lead_id)
+        REFERENCES crm.lead (lead_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_activity_staff FOREIGN KEY (performed_by_staff_id)
+        REFERENCES master.staff (staff_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT lead_activity_activity_type_check CHECK (activity_type::text = ANY (ARRAY['CALL'::character varying, 'WHATSAPP'::character varying, 'VISIT'::character varying, 'TEST_RIDE'::character varying, 'NEGOTIATION'::character varying, 'FOLLOWUP_ATTEMPT'::character varying, 'OTHER'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS crm.lead_activity
+    OWNER to postgres;
+
+
+-- Table: crm.lead_assignment_history
+
+-- DROP TABLE IF EXISTS crm.lead_assignment_history;
+
+CREATE TABLE IF NOT EXISTS crm.lead_assignment_history
+(
+    assignment_id bigint NOT NULL DEFAULT nextval('crm.lead_assignment_history_assignment_id_seq'::regclass),
+    lead_id bigint NOT NULL,
+    old_staff_id bigint,
+    new_staff_id bigint NOT NULL,
+    changed_by_staff_id bigint NOT NULL,
+    changed_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    remarks text COLLATE pg_catalog."default",
+    CONSTRAINT lead_assignment_history_pkey PRIMARY KEY (assignment_id),
+    CONSTRAINT fk_assignment_lead FOREIGN KEY (lead_id)
+        REFERENCES crm.lead (lead_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_assignment_new FOREIGN KEY (new_staff_id)
+        REFERENCES master.staff (staff_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_assignment_old FOREIGN KEY (old_staff_id)
+        REFERENCES master.staff (staff_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS crm.lead_assignment_history
+    OWNER to postgres;
+
+
+-- Table: crm.lead_status_history
+
+-- DROP TABLE IF EXISTS crm.lead_status_history;
+
+CREATE TABLE IF NOT EXISTS crm.lead_status_history
+(
+    status_history_id bigint NOT NULL DEFAULT nextval('crm.lead_status_history_status_history_id_seq'::regclass),
+    lead_id bigint NOT NULL,
+    old_status character varying(30) COLLATE pg_catalog."default",
+    new_status character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    changed_by_staff_id bigint NOT NULL,
+    changed_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    remarks text COLLATE pg_catalog."default",
+    CONSTRAINT lead_status_history_pkey PRIMARY KEY (status_history_id),
+    CONSTRAINT fk_status_lead FOREIGN KEY (lead_id)
+        REFERENCES crm.lead (lead_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_status_staff FOREIGN KEY (changed_by_staff_id)
+        REFERENCES master.staff (staff_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS crm.lead_status_history
+    OWNER to postgres;
+
+
+-- Table: crm.test_ride
+
+-- DROP TABLE IF EXISTS crm.test_ride;
+
+CREATE TABLE IF NOT EXISTS crm.test_ride
+(
+    test_ride_id bigint NOT NULL DEFAULT nextval('crm.test_ride_test_ride_id_seq'::regclass),
+    lead_id bigint NOT NULL,
+    vehicle_model_id bigint NOT NULL,
+    test_ride_date date NOT NULL,
+    staff_id bigint NOT NULL,
+    customer_feedback text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT test_ride_pkey PRIMARY KEY (test_ride_id),
+    CONSTRAINT fk_test_ride_lead FOREIGN KEY (lead_id)
+        REFERENCES crm.lead (lead_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_test_ride_staff FOREIGN KEY (staff_id)
+        REFERENCES master.staff (staff_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_test_ride_vehicle FOREIGN KEY (vehicle_model_id)
+        REFERENCES master.vehicle_model (vehicle_model_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS crm.test_ride
+    OWNER to postgres;

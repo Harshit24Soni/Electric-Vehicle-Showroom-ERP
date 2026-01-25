@@ -1,0 +1,181 @@
+-- Table: inventory.spare_master
+
+-- DROP TABLE IF EXISTS inventory.spare_master;
+
+CREATE TABLE IF NOT EXISTS inventory.spare_master
+(
+    spare_id bigint NOT NULL DEFAULT nextval('inventory.spare_master_spare_id_seq'::regclass),
+    part_code character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default" NOT NULL,
+    dealer_landing_price numeric(12,2) NOT NULL,
+    dealer_margin_percent numeric(5,2) NOT NULL,
+    gst_percentage numeric(5,2) NOT NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT spare_master_pkey PRIMARY KEY (spare_id),
+    CONSTRAINT uq_spare_part_code UNIQUE (part_code),
+    CONSTRAINT spare_master_dealer_margin_percent_check CHECK (dealer_margin_percent >= 0::numeric)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS inventory.spare_master
+    OWNER to postgres;
+
+
+
+-- Table: inventory.spare_purchase
+
+-- DROP TABLE IF EXISTS inventory.spare_purchase;
+
+CREATE TABLE IF NOT EXISTS inventory.spare_purchase
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS inventory.spare_purchase
+    OWNER to postgres;
+
+
+
+-- Table: inventory.spare_purchase_detail
+
+-- DROP TABLE IF EXISTS inventory.spare_purchase_detail;
+
+CREATE TABLE IF NOT EXISTS inventory.spare_purchase_detail
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS inventory.spare_purchase_detail
+    OWNER to postgres;
+
+
+
+-- Table: inventory.spare_serial
+
+-- DROP TABLE IF EXISTS inventory.spare_serial;
+
+CREATE TABLE IF NOT EXISTS inventory.spare_serial
+(
+    spare_serial_id bigint NOT NULL DEFAULT nextval('inventory.spare_serial_spare_serial_id_seq'::regclass),
+    spare_id bigint NOT NULL,
+    serial_no character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    status character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    source_type character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    source_item_id bigint NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT spare_serial_pkey PRIMARY KEY (spare_serial_id),
+    CONSTRAINT uq_spare_serial UNIQUE (serial_no),
+    CONSTRAINT fk_spare_serial_spare FOREIGN KEY (spare_id)
+        REFERENCES inventory.spare_master (spare_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT spare_serial_status_check CHECK (status::text = ANY (ARRAY['IN_STOCK'::character varying, 'SOLD'::character varying, 'USED_IN_SERVICE'::character varying]::text[])),
+    CONSTRAINT spare_serial_source_type_check CHECK (source_type::text = ANY (ARRAY['PURCHASE'::character varying, 'WARRANTY_INWARD'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS inventory.spare_serial
+    OWNER to postgres;
+
+
+
+-- Table: inventory.spare_stock_movement
+
+-- DROP TABLE IF EXISTS inventory.spare_stock_movement;
+
+CREATE TABLE IF NOT EXISTS inventory.spare_stock_movement
+(
+    movement_id bigint NOT NULL DEFAULT nextval('inventory.spare_stock_movement_movement_id_seq'::regclass),
+    part_code character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    movement_type character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    quantity integer NOT NULL,
+    rate numeric(12,2),
+    reference_table character varying(50) COLLATE pg_catalog."default",
+    reference_id bigint,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT spare_stock_movement_pkey PRIMARY KEY (movement_id),
+    CONSTRAINT chk_spare_stock_movement_type CHECK (movement_type::text = ANY (ARRAY['PURCHASE'::character varying, 'SALE'::character varying, 'SERVICE_PAID'::character varying, 'SERVICE_INSURANCE'::character varying, 'ADJUSTMENT'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS inventory.spare_stock_movement
+    OWNER to postgres;
+
+
+
+-- Table: inventory.stock_movement
+
+-- DROP TABLE IF EXISTS inventory.stock_movement;
+
+CREATE TABLE IF NOT EXISTS inventory.stock_movement
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS inventory.stock_movement
+    OWNER to postgres;
+
+
+
+-- Table: inventory.vehicle_purchase
+
+-- DROP TABLE IF EXISTS inventory.vehicle_purchase;
+
+CREATE TABLE IF NOT EXISTS inventory.vehicle_purchase
+(
+    vehicle_purchase_id bigint NOT NULL DEFAULT nextval('inventory.vehicle_purchase_vehicle_purchase_id_seq'::regclass),
+    vendor_id bigint NOT NULL,
+    invoice_number character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    invoice_date date NOT NULL,
+    invoice_amount numeric(14,2),
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vehicle_purchase_pkey PRIMARY KEY (vehicle_purchase_id),
+    CONSTRAINT uq_vehicle_purchase_invoice UNIQUE (vendor_id, invoice_number),
+    CONSTRAINT fk_vehicle_purchase_vendor FOREIGN KEY (vendor_id)
+        REFERENCES master.vendor (vendor_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS inventory.vehicle_purchase
+    OWNER to postgres;
+
+
+
+-- Table: inventory.vehicle_purchase_detail
+
+-- DROP TABLE IF EXISTS inventory.vehicle_purchase_detail;
+
+CREATE TABLE IF NOT EXISTS inventory.vehicle_purchase_detail
+(
+    vehicle_purchase_detail_id bigint NOT NULL DEFAULT nextval('inventory.vehicle_purchase_detail_vehicle_purchase_detail_id_seq'::regclass),
+    vehicle_purchase_id bigint NOT NULL,
+    chassis_no character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    cost_price numeric(12,2),
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vehicle_purchase_detail_pkey PRIMARY KEY (vehicle_purchase_detail_id),
+    CONSTRAINT uq_vehicle_purchase_detail_chassis UNIQUE (chassis_no),
+    CONSTRAINT fk_vehicle_purchase_detail_purchase FOREIGN KEY (vehicle_purchase_id)
+        REFERENCES inventory.vehicle_purchase (vehicle_purchase_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_vehicle_purchase_detail_vehicle FOREIGN KEY (chassis_no)
+        REFERENCES master.vehicle (chassis_no) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS inventory.vehicle_purchase_detail
+    OWNER to postgres;

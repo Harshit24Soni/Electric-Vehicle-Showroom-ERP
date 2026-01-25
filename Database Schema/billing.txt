@@ -1,0 +1,88 @@
+-- Table: billing.insurance_estimate
+
+-- DROP TABLE IF EXISTS billing.insurance_estimate;
+
+CREATE TABLE IF NOT EXISTS billing.insurance_estimate
+(
+    estimate_id bigint NOT NULL DEFAULT nextval('billing.insurance_estimate_estimate_id_seq'::regclass),
+    job_card_id bigint NOT NULL,
+    estimate_amount numeric(14,2) NOT NULL,
+    approval_status character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    approved_amount numeric(14,2),
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT insurance_estimate_pkey PRIMARY KEY (estimate_id),
+    CONSTRAINT fk_estimate_job FOREIGN KEY (job_card_id)
+        REFERENCES service.job_card (job_card_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT insurance_estimate_approval_status_check CHECK (approval_status::text = ANY (ARRAY['PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS billing.insurance_estimate
+    OWNER to postgres;
+
+-- Table: billing.invoice
+
+-- DROP TABLE IF EXISTS billing.invoice;
+
+CREATE TABLE IF NOT EXISTS billing.invoice
+(
+    invoice_id bigint NOT NULL DEFAULT nextval('billing.invoice_invoice_id_seq'::regclass),
+    invoice_number character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    invoice_date date NOT NULL,
+    invoice_type character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    invoice_status character varying(30) COLLATE pg_catalog."default" NOT NULL DEFAULT 'DRAFT'::character varying,
+    customer_id bigint NOT NULL,
+    job_card_id bigint,
+    total_amount numeric(14,2) NOT NULL,
+    finalized_at timestamp without time zone,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT invoice_pkey PRIMARY KEY (invoice_id),
+    CONSTRAINT uq_billing_invoice_no UNIQUE (invoice_number),
+    CONSTRAINT fk_invoice_customer FOREIGN KEY (customer_id)
+        REFERENCES master.customer (customer_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_invoice_job FOREIGN KEY (job_card_id)
+        REFERENCES service.job_card (job_card_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE SET NULL,
+    CONSTRAINT invoice_invoice_type_check CHECK (invoice_type::text = ANY (ARRAY['SERVICE'::character varying, 'SPARE'::character varying, 'INSURANCE'::character varying]::text[])),
+    CONSTRAINT invoice_invoice_status_check CHECK (invoice_status::text = ANY (ARRAY['DRAFT'::character varying, 'FINALIZED'::character varying, 'CANCELLED'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS billing.invoice
+    OWNER to postgres;
+
+-- Table: billing.invoice_line
+
+-- DROP TABLE IF EXISTS billing.invoice_line;
+
+CREATE TABLE IF NOT EXISTS billing.invoice_line
+(
+    invoice_line_id bigint NOT NULL DEFAULT nextval('billing.invoice_line_invoice_line_id_seq'::regclass),
+    invoice_id bigint NOT NULL,
+    line_type character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default" NOT NULL,
+    quantity integer NOT NULL DEFAULT 1,
+    rate numeric(12,2) NOT NULL,
+    amount numeric(14,2) NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT invoice_line_pkey PRIMARY KEY (invoice_line_id),
+    CONSTRAINT fk_invoice_line_invoice FOREIGN KEY (invoice_id)
+        REFERENCES billing.invoice (invoice_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT invoice_line_line_type_check CHECK (line_type::text = ANY (ARRAY['LABOUR'::character varying, 'SPARE'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS billing.invoice_line
+    OWNER to postgres;

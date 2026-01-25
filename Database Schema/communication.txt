@@ -1,0 +1,26 @@
+-- Table: communication.message_log
+
+-- DROP TABLE IF EXISTS communication.message_log;
+
+CREATE TABLE IF NOT EXISTS communication.message_log
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS communication.message_log
+    OWNER to postgres;
+
+
+-- Table: communication.reminder
+
+-- DROP TABLE IF EXISTS communication.reminder;
+
+CREATE TABLE IF NOT EXISTS communication.reminder
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS communication.reminder
+    OWNER to postgres;

@@ -1,0 +1,177 @@
+-- Table: sales.invoice
+
+-- DROP TABLE IF EXISTS sales.invoice;
+
+CREATE TABLE IF NOT EXISTS sales.invoice
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS sales.invoice
+    OWNER to postgres;
+
+
+
+-- Table: sales.spare_sale
+
+-- DROP TABLE IF EXISTS sales.spare_sale;
+
+CREATE TABLE IF NOT EXISTS sales.spare_sale
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS sales.spare_sale
+    OWNER to postgres;
+
+
+
+-- Table: sales.spare_sale_detail
+
+-- DROP TABLE IF EXISTS sales.spare_sale_detail;
+
+CREATE TABLE IF NOT EXISTS sales.spare_sale_detail
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS sales.spare_sale_detail
+    OWNER to postgres;
+
+
+
+-- Table: sales.vehicle_payment
+
+-- DROP TABLE IF EXISTS sales.vehicle_payment;
+
+CREATE TABLE IF NOT EXISTS sales.vehicle_payment
+(
+    vehicle_payment_id bigint NOT NULL DEFAULT nextval('sales.vehicle_payment_vehicle_payment_id_seq'::regclass),
+    customer_id bigint NOT NULL,
+    chassis_no character varying(50) COLLATE pg_catalog."default",
+    payment_context character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    payment_mode character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    payment_amount numeric(14,2) NOT NULL,
+    payment_date date NOT NULL,
+    reference_no character varying(100) COLLATE pg_catalog."default",
+    remarks text COLLATE pg_catalog."default",
+    vehicle_sale_id bigint,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vehicle_payment_pkey PRIMARY KEY (vehicle_payment_id),
+    CONSTRAINT fk_payment_customer FOREIGN KEY (customer_id)
+        REFERENCES master.customer (customer_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_payment_sale FOREIGN KEY (vehicle_sale_id)
+        REFERENCES sales.vehicle_sale (vehicle_sale_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE SET NULL,
+    CONSTRAINT fk_payment_vehicle FOREIGN KEY (chassis_no)
+        REFERENCES master.vehicle (chassis_no) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE SET NULL,
+    CONSTRAINT vehicle_payment_payment_context_check CHECK (payment_context::text = ANY (ARRAY['BOOKING'::character varying, 'SALE'::character varying, 'ADJUSTMENT'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS sales.vehicle_payment
+    OWNER to postgres;
+
+
+
+-- Table: sales.vehicle_registration
+
+-- DROP TABLE IF EXISTS sales.vehicle_registration;
+
+CREATE TABLE IF NOT EXISTS sales.vehicle_registration
+(
+    vehicle_registration_id bigint NOT NULL DEFAULT nextval('sales.vehicle_registration_vehicle_registration_id_seq'::regclass),
+    vehicle_sale_id bigint NOT NULL,
+    registration_no character varying(50) COLLATE pg_catalog."default",
+    number_plate_status character varying(40) COLLATE pg_catalog."default" NOT NULL,
+    front_plate_image text COLLATE pg_catalog."default",
+    rear_plate_image text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    CONSTRAINT vehicle_registration_pkey PRIMARY KEY (vehicle_registration_id),
+    CONSTRAINT uq_vehicle_sale_registration UNIQUE (vehicle_sale_id),
+    CONSTRAINT fk_registration_vehicle_sale FOREIGN KEY (vehicle_sale_id)
+        REFERENCES sales.vehicle_sale (vehicle_sale_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT vehicle_registration_number_plate_status_check CHECK (number_plate_status::text = ANY (ARRAY['NOT_ORDERED'::character varying, 'ORDERED'::character varying, 'IN_TRANSIT'::character varying, 'AVAILABLE_AT_SHOWROOM'::character varying, 'ATTACHED_TO_VEHICLE'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS sales.vehicle_registration
+    OWNER to postgres;
+
+
+-- Table: sales.vehicle_sale
+
+-- DROP TABLE IF EXISTS sales.vehicle_sale;
+
+CREATE TABLE IF NOT EXISTS sales.vehicle_sale
+(
+    vehicle_sale_id bigint NOT NULL DEFAULT nextval('sales.vehicle_sale_vehicle_sale_id_seq'::regclass),
+    invoice_number character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    invoice_date date NOT NULL,
+    delivery_challan_no character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    delivery_challan_date date,
+    customer_id bigint NOT NULL,
+    chassis_no character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    sale_price numeric(14,2) NOT NULL,
+    discount_amount numeric(14,2) DEFAULT 0,
+    is_financed boolean NOT NULL DEFAULT false,
+    sale_channel character varying(50) COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vehicle_sale_pkey PRIMARY KEY (vehicle_sale_id),
+    CONSTRAINT uq_sale_challan UNIQUE (delivery_challan_no),
+    CONSTRAINT uq_sale_chassis UNIQUE (chassis_no),
+    CONSTRAINT uq_sale_invoice UNIQUE (invoice_number),
+    CONSTRAINT fk_sale_customer FOREIGN KEY (customer_id)
+        REFERENCES master.customer (customer_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_sale_vehicle FOREIGN KEY (chassis_no)
+        REFERENCES master.vehicle (chassis_no) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS sales.vehicle_sale
+    OWNER to postgres;
+
+
+
+-- Table: sales.vehicle_sale_finance
+
+-- DROP TABLE IF EXISTS sales.vehicle_sale_finance;
+
+CREATE TABLE IF NOT EXISTS sales.vehicle_sale_finance
+(
+    vehicle_sale_finance_id bigint NOT NULL DEFAULT nextval('sales.vehicle_sale_finance_vehicle_sale_finance_id_seq'::regclass),
+    vehicle_sale_id bigint NOT NULL,
+    financer_name character varying(150) COLLATE pg_catalog."default" NOT NULL,
+    loan_amount numeric(14,2),
+    down_payment numeric(14,2),
+    finance_reference_no character varying(100) COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vehicle_sale_finance_pkey PRIMARY KEY (vehicle_sale_finance_id),
+    CONSTRAINT fk_sale_finance_sale FOREIGN KEY (vehicle_sale_id)
+        REFERENCES sales.vehicle_sale (vehicle_sale_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS sales.vehicle_sale_finance
+    OWNER to postgres;

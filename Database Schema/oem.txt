@@ -1,0 +1,63 @@
+-- Table: oem.reimbursement_invoice
+
+-- DROP TABLE IF EXISTS oem.reimbursement_invoice;
+
+CREATE TABLE IF NOT EXISTS oem.reimbursement_invoice
+(
+    reimbursement_invoice_id bigint NOT NULL DEFAULT nextval('oem.reimbursement_invoice_reimbursement_invoice_id_seq'::regclass),
+    oem_invoice_no character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    invoice_date date NOT NULL,
+    period_start_date date NOT NULL,
+    period_end_date date NOT NULL,
+    total_claim_amount numeric(14,2) NOT NULL,
+    status character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT reimbursement_invoice_pkey PRIMARY KEY (reimbursement_invoice_id),
+    CONSTRAINT uq_oem_invoice_no UNIQUE (oem_invoice_no),
+    CONSTRAINT reimbursement_invoice_status_check CHECK (status::text = ANY (ARRAY['DRAFT'::character varying, 'SUBMITTED'::character varying, 'SETTLED'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS oem.reimbursement_invoice
+    OWNER to postgres;
+
+
+
+-- Table: oem.reimbursement_line
+
+-- DROP TABLE IF EXISTS oem.reimbursement_line;
+
+CREATE TABLE IF NOT EXISTS oem.reimbursement_line
+(
+    reimbursement_line_id bigint NOT NULL DEFAULT nextval('oem.reimbursement_line_reimbursement_line_id_seq'::regclass),
+    reimbursement_invoice_id bigint NOT NULL,
+    job_card_id bigint,
+    job_labour_id bigint,
+    claim_type character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    claim_amount numeric(12,2) NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    vehicle_count integer,
+    CONSTRAINT reimbursement_line_pkey PRIMARY KEY (reimbursement_line_id),
+    CONSTRAINT uq_labour_claimed_once UNIQUE (job_labour_id),
+    CONSTRAINT fk_reim_line_invoice FOREIGN KEY (reimbursement_invoice_id)
+        REFERENCES oem.reimbursement_invoice (reimbursement_invoice_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_reim_line_job FOREIGN KEY (job_card_id)
+        REFERENCES service.job_card (job_card_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_reim_line_labour FOREIGN KEY (job_labour_id)
+        REFERENCES service.job_labour (job_labour_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT reimbursement_line_claim_type_check CHECK (claim_type::text = ANY (ARRAY['FREE_SERVICE'::character varying, 'WARRANTY_LABOUR'::character varying]::text[])),
+    CONSTRAINT chk_oem_claim_logic CHECK (claim_type::text = 'FREE_SERVICE'::text AND vehicle_count IS NOT NULL AND job_card_id IS NULL AND job_labour_id IS NULL OR claim_type::text = 'WARRANTY_LABOUR'::text AND vehicle_count IS NULL AND job_labour_id IS NOT NULL)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS oem.reimbursement_line
+    OWNER to postgres;

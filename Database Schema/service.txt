@@ -1,0 +1,217 @@
+-- Table: service.job_card
+
+-- DROP TABLE IF EXISTS service.job_card;
+
+CREATE TABLE IF NOT EXISTS service.job_card
+(
+    job_card_id bigint NOT NULL DEFAULT nextval('service.job_card_job_card_id_seq'::regclass),
+    job_card_no character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    chassis_no character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    customer_id bigint NOT NULL,
+    in_datetime timestamp without time zone NOT NULL,
+    out_datetime timestamp without time zone,
+    opening_km integer NOT NULL,
+    next_service_date date,
+    next_service_km integer,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT job_card_pkey PRIMARY KEY (job_card_id),
+    CONSTRAINT uq_job_card_no UNIQUE (job_card_no),
+    CONSTRAINT fk_job_customer FOREIGN KEY (customer_id)
+        REFERENCES master.customer (customer_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_job_vehicle FOREIGN KEY (chassis_no)
+        REFERENCES master.vehicle (chassis_no) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS service.job_card
+    OWNER to postgres;
+
+
+
+-- Table: service.job_labour
+
+-- DROP TABLE IF EXISTS service.job_labour;
+
+CREATE TABLE IF NOT EXISTS service.job_labour
+(
+    job_labour_id bigint NOT NULL DEFAULT nextval('service.job_labour_job_labour_id_seq'::regclass),
+    work_item_id bigint NOT NULL,
+    description text COLLATE pg_catalog."default" NOT NULL,
+    labour_amount numeric(12,2) NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT job_labour_pkey PRIMARY KEY (job_labour_id),
+    CONSTRAINT fk_job_labour_work FOREIGN KEY (work_item_id)
+        REFERENCES service.job_work_item (work_item_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS service.job_labour
+    OWNER to postgres;
+
+
+
+-- Table: service.job_spare
+
+-- DROP TABLE IF EXISTS service.job_spare;
+
+CREATE TABLE IF NOT EXISTS service.job_spare
+(
+    job_spare_id bigint NOT NULL DEFAULT nextval('service.job_spare_job_spare_id_seq'::regclass),
+    work_item_id bigint NOT NULL,
+    part_code character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    quantity integer NOT NULL DEFAULT 1,
+    rate numeric(12,2),
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT job_spare_pkey PRIMARY KEY (job_spare_id),
+    CONSTRAINT fk_job_spare_work FOREIGN KEY (work_item_id)
+        REFERENCES service.job_work_item (work_item_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS service.job_spare
+    OWNER to postgres;
+
+
+
+-- Table: service.job_work_item
+
+-- DROP TABLE IF EXISTS service.job_work_item;
+
+CREATE TABLE IF NOT EXISTS service.job_work_item
+(
+    work_item_id bigint NOT NULL DEFAULT nextval('service.job_work_item_work_item_id_seq'::regclass),
+    job_card_id bigint NOT NULL,
+    work_type character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT job_work_item_pkey PRIMARY KEY (work_item_id),
+    CONSTRAINT fk_work_item_job FOREIGN KEY (job_card_id)
+        REFERENCES service.job_card (job_card_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT job_work_item_work_type_check CHECK (work_type::text = ANY (ARRAY['PAID'::character varying, 'WARRANTY'::character varying, 'INSURANCE'::character varying, 'FREE'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS service.job_work_item
+    OWNER to postgres;
+
+
+
+-- Table: service.service_schedule
+
+-- DROP TABLE IF EXISTS service.service_schedule;
+
+CREATE TABLE IF NOT EXISTS service.service_schedule
+(
+    service_schedule_id bigint NOT NULL DEFAULT nextval('service.service_schedule_service_schedule_id_seq'::regclass),
+    vehicle_model_id bigint NOT NULL,
+    service_number integer NOT NULL,
+    month_interval integer,
+    km_interval integer,
+    service_type character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT service_schedule_pkey PRIMARY KEY (service_schedule_id),
+    CONSTRAINT uq_variant_service UNIQUE (vehicle_model_id, service_number),
+    CONSTRAINT fk_schedule_variant FOREIGN KEY (vehicle_model_id)
+        REFERENCES master.vehicle_model (vehicle_model_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT service_schedule_service_type_check CHECK (service_type::text = ANY (ARRAY['FREE'::character varying, 'PAID'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS service.service_schedule
+    OWNER to postgres;
+
+
+
+-- Table: service.vehicle_component_change
+
+-- DROP TABLE IF EXISTS service.vehicle_component_change;
+
+CREATE TABLE IF NOT EXISTS service.vehicle_component_change
+(
+    component_change_id bigint NOT NULL DEFAULT nextval('service.vehicle_component_change_component_change_id_seq'::regclass),
+    job_card_id bigint NOT NULL,
+    chassis_no character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    component_type character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    old_serial_no character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    new_serial_no character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    replacement_reason character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    change_date date NOT NULL,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    new_spare_serial_id bigint,
+    CONSTRAINT vehicle_component_change_pkey PRIMARY KEY (component_change_id),
+    CONSTRAINT fk_component_job FOREIGN KEY (job_card_id)
+        REFERENCES service.job_card (job_card_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_component_new_serial FOREIGN KEY (new_spare_serial_id)
+        REFERENCES inventory.spare_serial (spare_serial_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_component_vehicle FOREIGN KEY (chassis_no)
+        REFERENCES master.vehicle (chassis_no) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT vehicle_component_change_component_type_check CHECK (component_type::text = ANY (ARRAY['MOTOR'::character varying, 'BATTERY'::character varying, 'CONTROLLER'::character varying, 'CHARGER'::character varying]::text[])),
+    CONSTRAINT vehicle_component_change_replacement_reason_check CHECK (replacement_reason::text = ANY (ARRAY['WARRANTY'::character varying, 'PAID'::character varying, 'INSURANCE'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS service.vehicle_component_change
+    OWNER to postgres;
+
+
+
+-- Table: service.vehicle_service_summary
+
+-- DROP TABLE IF EXISTS service.vehicle_service_summary;
+
+CREATE TABLE IF NOT EXISTS service.vehicle_service_summary
+(
+    vehicle_service_summary_id bigint NOT NULL DEFAULT nextval('service.vehicle_service_summary_vehicle_service_summary_id_seq'::regclass),
+    vehicle_sale_id bigint NOT NULL,
+    last_job_card_id bigint,
+    last_service_no integer,
+    last_service_date date,
+    last_service_km integer,
+    next_service_no integer NOT NULL,
+    next_due_date date,
+    next_due_km integer,
+    due_status character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    updated_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vehicle_service_summary_pkey PRIMARY KEY (vehicle_service_summary_id),
+    CONSTRAINT uq_vehicle_service UNIQUE (vehicle_sale_id),
+    CONSTRAINT fk_last_job_card FOREIGN KEY (last_job_card_id)
+        REFERENCES service.job_card (job_card_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE SET NULL,
+    CONSTRAINT fk_service_vehicle_sale FOREIGN KEY (vehicle_sale_id)
+        REFERENCES sales.vehicle_sale (vehicle_sale_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT vehicle_service_summary_due_status_check CHECK (due_status::text = ANY (ARRAY['UPCOMING'::character varying, 'DUE'::character varying, 'OVERDUE'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS service.vehicle_service_summary
+    OWNER to postgres;

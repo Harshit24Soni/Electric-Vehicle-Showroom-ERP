@@ -1,0 +1,57 @@
+-- Table: procurement.spare_purchase
+
+-- DROP TABLE IF EXISTS procurement.spare_purchase;
+
+CREATE TABLE IF NOT EXISTS procurement.spare_purchase
+(
+    spare_purchase_id bigint NOT NULL DEFAULT nextval('procurement.spare_purchase_spare_purchase_id_seq'::regclass),
+    vendor_id bigint NOT NULL,
+    vendor_invoice_no character varying(100) COLLATE pg_catalog."default",
+    vendor_invoice_date date,
+    purchase_date date NOT NULL,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT spare_purchase_pkey PRIMARY KEY (spare_purchase_id),
+    CONSTRAINT fk_spare_purchase_vendor FOREIGN KEY (vendor_id)
+        REFERENCES master.vendor (vendor_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS procurement.spare_purchase
+    OWNER to postgres;
+
+
+
+-- Table: procurement.spare_purchase_item
+
+-- DROP TABLE IF EXISTS procurement.spare_purchase_item;
+
+CREATE TABLE IF NOT EXISTS procurement.spare_purchase_item
+(
+    purchase_item_id bigint NOT NULL DEFAULT nextval('procurement.spare_purchase_item_purchase_item_id_seq'::regclass),
+    spare_purchase_id bigint NOT NULL,
+    spare_id bigint NOT NULL,
+    quantity integer NOT NULL,
+    unit_cost numeric(12,2) NOT NULL,
+    gst_percentage numeric(5,2),
+    total_cost numeric(14,2),
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT spare_purchase_item_pkey PRIMARY KEY (purchase_item_id),
+    CONSTRAINT fk_purchase_item_purchase FOREIGN KEY (spare_purchase_id)
+        REFERENCES procurement.spare_purchase (spare_purchase_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_purchase_item_spare FOREIGN KEY (spare_id)
+        REFERENCES inventory.spare_master (spare_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT spare_purchase_item_quantity_check CHECK (quantity > 0)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS procurement.spare_purchase_item
+    OWNER to postgres;

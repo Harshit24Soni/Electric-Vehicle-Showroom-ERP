@@ -1,0 +1,40 @@
+-- Table: finance.expense_summary_view
+
+-- DROP TABLE IF EXISTS finance.expense_summary_view;
+
+CREATE TABLE IF NOT EXISTS finance.expense_summary_view
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS finance.expense_summary_view
+    OWNER to postgres;
+
+
+-- Table: finance.expense_summary_view
+
+-- DROP TABLE IF EXISTS finance.expense_summary_view;
+
+CREATE TABLE IF NOT EXISTS finance.expense_summary_view
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS finance.expense_summary_view
+    OWNER to postgres;
+
+
+-- Table: finance.sales_summary_view
+
+-- DROP TABLE IF EXISTS finance.sales_summary_view;
+
+CREATE TABLE IF NOT EXISTS finance.sales_summary_view
+(
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS finance.sales_summary_view
+    OWNER to postgres;
