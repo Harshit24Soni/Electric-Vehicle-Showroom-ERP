@@ -9,8 +9,6 @@ app = FastAPI(title="EV Showroom ERP Backend")
 def health_check():
     return {"status": "ok"}
 
-@app.get("/db-check")
-def db_check():
-    with engine.connect() as connection:
-        result = connection.execute(text("SELECT 1"))
-        return {"db": "connected"}
+from app.api.v1.auth.login import router as auth_router
+
+app.include_router(auth_router)
