@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🚗 Electric Vehicle Showroom ERP
 ## Backend Architecture & System Design (DB‑First, ERP‑Grade)
 
@@ -302,3 +303,114 @@ It is a **deliberately designed ERP backend** meant to survive:
 - Long‑term maintenance
 
 Every decision prioritizes **correctness over convenience**.
+=======
+# 🚗 Electric Vehicle Showroom ERP  
+## Backend Architecture, Database Design & Development Guide
+
+---
+
+## 📌 Project Overview
+
+This project is a **full-scale Electric Vehicle Showroom ERP system** designed for **Indian EV dealerships** operating primarily on a **local network (LAN)** using desktop systems.
+
+The ERP is built with a **Database-First architecture**, meaning:
+
+- PostgreSQL is the **single source of truth**
+- All constraints, relationships, and business rules are enforced at the DB level
+- The backend **respects** database design instead of redefining it
+- The frontend never directly accesses the database
+
+This ERP mirrors **real showroom operations**, not a demo system.
+
+---
+
+## 🧠 Core Philosophy
+
+### Why DB-First?
+- Prevents data inconsistency
+- Matches real ERP systems
+- Enables audits and long-term maintenance
+- Supports multiple frontends
+
+---
+
+## 🧱 Technology Stack
+
+### Backend
+- Python
+- FastAPI
+- PostgreSQL
+- SQLAlchemy Core (DB-first)
+- JWT Authentication
+- Role-Based Access Control (RBAC)
+- Uvicorn
+
+### Frontend (Planned)
+- Desktop ERP using PySide6 / PyQt
+- LAN-based access
+
+---
+
+## 📁 Backend Folder Structure
+
+backend/
+├── app/
+│   ├── main.py
+│   ├── core/
+│   ├── db/
+│   ├── auth/
+│   ├── api/
+│   ├── schemas/
+│   └── utils/
+├── .env
+├── requirements.txt
+└── README.md
+
+---
+
+## 🔐 Authentication & Authorization
+
+- PIN-based login
+- JWT tokens
+- Role enforcement at backend
+
+---
+
+## 🗄️ Database Design
+
+- Multiple schemas (master, sales, service, inventory, etc.)
+- DB-first, manually designed tables
+- Backend strictly follows DB constraints
+
+---
+
+## 👤 master.staff Table
+
+- staff_id (PK)
+- pin_hash
+- designation
+- optional PAN, UPI, bank details
+- audit-friendly fields
+
+---
+
+## 🧪 Testing Philosophy
+
+- Database state is the truth
+- Swagger is documentation-only
+- Verify changes via DB queries
+
+---
+
+## 🚀 Development Roadmap
+
+- Stage 1–4: Auth & RBAC (completed)
+- Stage 5: Admin & Master modules (in progress)
+- Future: Sales, Service, Inventory, Finance
+
+---
+
+## 🧠 Final Notes
+
+Designed for **stability, security, and scalability**.
+>>>>>>> e55757d (Revise README for clarity and project details)
