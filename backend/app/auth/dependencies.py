@@ -1,8 +1,11 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
+from sqlalchemy import text
 import os
 from dotenv import load_dotenv
+
+from app.db.session import engine
 
 load_dotenv()
 
@@ -14,9 +17,18 @@ ALGORITHM = os.getenv("JWT_ALGORITHM")
 if not SECRET_KEY or not ALGORITHM:
     raise RuntimeError("JWT configuration missing")
 
+
 def get_current_staff(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> dict:
+    """
+    Extract and validate the currently authenticated staff member.
+
+    - Decodes JWT from Authorization header
+    - Validates payload
+    - Confirms staff exists and is active in DB
+    """
+
     token = credentials.credentials
 
     try:
@@ -30,13 +42,31 @@ def get_current_staff(
                 detail="Invalid token payload"
             )
 
-        return {
-            "staff_id": staff_id,
-            "designation": designation
-        }
-
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token"
         )
+
+    # 🔒 ERP-grade check: ensure staff still exists & is active
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                SELECT staff_id, designation, is_active
+                FROM master.staff
+                WHERE staff_id = :staff_id
+            """),
+            {"staff_id": staff_id}
+        )
+        staff = result.mappings().first()
+
+    if not staff or not staff["is_active"]:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Inactive or invalid staff"
+        )
+
+    return {
+        "staff_id": staff["staff_id"],
+        "designation": staff["designation"]
+    }

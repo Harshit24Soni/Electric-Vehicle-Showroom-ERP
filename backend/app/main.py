@@ -16,3 +16,7 @@ app.include_router(auth_router)
 from app.api.v1.admin.test_admin import router as admin_router
 
 app.include_router(admin_router)
+
+from app.api.v1.admin.staff import router as admin_staff_router
+
+app.include_router(admin_staff_router)

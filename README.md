@@ -1,162 +1,304 @@
-# ⚡ Electric Vehicle Showroom ERP
-
-## 📌 Project Overview
-
-**Electric Vehicle Showroom ERP** is a modular, production-oriented **Enterprise Resource Planning (ERP) system** designed specifically for **Electric Two-Wheeler Showrooms**.
-
-The objective of this project is to build a **real-world dealership management system** that covers the complete operational lifecycle of an EV showroom — from customer enquiry to sales, service, warranty, inventory, OEM compliance, and reporting.
-
-This project is being designed based on **actual showroom workflows and OEM practices**, not as a theoretical or academic exercise.
+# 🚗 Electric Vehicle Showroom ERP
+## Backend Architecture & System Design (DB‑First, ERP‑Grade)
 
 ---
 
-## 🎯 Project Goals
+## 1. What This Project Actually Is
 
-- Replace Excel-based and manual showroom operations
-- Maintain **accurate inventory with serial-level traceability**
-- Handle **complex service and warranty workflows**
-- Support **OEM reimbursement and compliance**
-- Build a **full CRM system** (leads → follow-ups → conversion → retention)
-- Provide **clean, auditable data** for accounting and reporting
-- Ensure scalability for **future multi-branch expansion**
+This project is a **serious, DB‑first Electric Vehicle Showroom ERP backend**, designed after analysing **real Indian EV showroom workflows**, not as a CRUD demo or tutorial project.
 
----
+This backend is meant to power a **desktop ERP system running on a local network**, where:
+- One machine acts as the server
+- Multiple staff systems connect over LAN
+- Data integrity, auditability, and long‑term correctness matter more than shortcuts
 
-## 🏗️ Current Phase – System Design & Database Architecture
-
-The project is currently in the **architecture and database design phase**.
-
-At this stage, the focus is on:
-- Identifying real-world business entities
-- Designing a **fully normalized PostgreSQL database**
-- Defining clear data ownership between modules
-- Ensuring audit safety, data integrity, and future extensibility
-
-No frontend or backend code has been implemented yet.  
-The foundation is being built first to avoid rework later.
+This repository represents **intentional architectural decisions**, trade‑offs, and corrections made during development.
 
 ---
 
-## 🧩 Modules Designed / In Progress
+## 2. Core Architectural Decisions (Why Things Are the Way They Are)
 
-### ✅ Core Modules (Database Design Locked)
+### 2.1 Database‑First Design (Non‑Negotiable)
 
-#### 🔹 Master Data
-- Customer management (multiple phones, documents, GST, Aadhaar, PAN)
-- Vendor management (OEM & non-OEM, representatives, documents)
-- Vehicle models and variants
-- Spare master with pricing policy (dealer landing price & margin)
+The PostgreSQL database is the **single source of truth**.
 
-#### 🔹 Procurement
-- Vehicle purchase from OEM (one vehicle per invoice)
-- Spare purchase from OEM and other vendors
-- Warranty inward (OEM replacement parts received with invoice)
+- All tables were designed manually
+- All constraints live in PostgreSQL
+- Normalization was done consciously, not blindly
+- Backend code never “fixes” bad DB design
 
-#### 🔹 Inventory Management
-- Ledger-based spare stock movement (no static stock values)
-- Serial-numbered spare tracking
-- Correct handling of:
-  - paid service usage
-  - insurance usage
-  - counter spare sales
-  - warranty replacements (no stock leakage)
-
-#### 🔹 Sales & Billing
-- Vehicle sales with booking and mixed payment handling
-- Editable invoices (Draft → Finalized)
-- Counter spare sales
-- Insurance estimates and final billing
-
-#### 🔹 Service & Workshop
-- Job cards with mixed service, warranty, and insurance work
-- Labour decided at job completion
-- Vehicle stay duration tracking
-- Component serial replacement tracking
-
-#### 🔹 Warranty Management
-- Component-level warranty claims
-- OEM Service Order (SO) number tracking
-- Claim status tracking (raised, approved, rejected)
-- Courier docket and shipment tracking
-- Serial-level fault audit
-
-#### 🔹 OEM Reimbursement
-- Free service claims (count-based)
-- Warranty labour claims (job-based)
-- Periodic invoices raised to OEM for accounting and settlement
+This mirrors how **real ERP systems** are built.
 
 ---
 
-## 🚀 Planned Development Phases
+### 2.2 Multi‑Schema Database (ERP‑Style)
 
-### 🔹 Phase 1 – Full CRM System
-- Lead and enquiry management
-- Follow-up tracking (calls, WhatsApp, visits)
-- Lead status and temperature tracking (HOT / WARM / COLD)
-- Test ride tracking
-- Missed follow-up detection
-- Staff-wise performance and conversion analysis
+The database is split into **logical schemas**, not a flat public schema:
 
-### 🔹 Phase 2 – Compliance & Vehicle Lifecycle
-- RTO registration tracking
-- RC and number plate management
-- Insurance lifecycle tracking and renewals
-- Customer document workflows
+| Schema | Responsibility |
+|------|---------------|
+| master | Core master data (staff, vehicles, variants, etc.) |
+| sales | Vehicle sales lifecycle |
+| service | Service job cards & service history |
+| inventory | Vehicle & spare stock |
+| procurement | OEM purchases |
+| billing | Billing & receipts |
+| warranty | Warranty tracking |
+| insurance | Insurance policies |
+| crm | Leads & follow‑ups |
+| finance | Expenses & income |
+| hr | Attendance & salary |
+| communication | Notifications & reminders |
+| oem | OEM‑specific master data |
 
-### 🔹 Phase 3 – Automation & Customer Engagement
-- Service due reminders (OEM km / month logic)
-- Insurance renewal reminders
-- Customer feedback and complaint tracking
-- Communication activity logging
-
-### 🔹 Phase 4 – Reporting & Analytics
-- Sales and purchase summaries
-- Inventory valuation
-- Service and warranty analytics
-- OEM reimbursement status
-- CA-friendly financial summaries
-
-### 🔹 Phase 5 – Application Development
-- Backend API implementation (planned with Python)
-- Desktop-based user interface
-- Role-based access control
-- Data migration from legacy Excel systems
+This separation:
+- Prevents accidental coupling
+- Improves long‑term maintainability
+- Matches real ERP databases
 
 ---
 
-## 🧠 Design Principles
+### 2.3 Why FastAPI (and not Django)
 
-- Database-first architecture
-- No hardcoded business logic
-- Audit-safe and OEM-compliant design
-- Frontend flexibility for pricing and billing
-- Modular and scalable structure
+FastAPI was chosen because:
+- The database already exists (DB‑first)
+- SQLAlchemy Core allows explicit SQL
+- JWT & RBAC are cleanly implemented
+- No forced ORM abstractions
+- Predictable request/response contracts
 
----
-
-## 🛠️ Planned Tech Stack
-
-- **Database:** PostgreSQL  
-- **Backend:** Python (planned)  
-- **Frontend:** Desktop-based application (planned)  
-- **Version Control:** Git & GitHub  
+Django ORM was intentionally avoided due to:
+- Schema rigidity
+- ORM‑driven mindset
+- Difficulty aligning with complex ERP databases
 
 ---
 
-## 📈 Project Status
+### 2.4 Desktop ERP Focus (Not a Web App)
 
-🚧 **Active Design Phase**
+This backend is designed for:
+- **PySide6 / PyQt desktop frontend**
+- LAN‑based deployment
+- Printer integration
+- Offline‑tolerant workflows
 
-This repository will gradually include:
-- Database schemas
-- SQL scripts
-- System documentation
-- Backend and frontend code in later phases
+This matches how **actual Indian showrooms operate**.
 
 ---
 
-## 👤 Author
+## 3. Backend Folder Structure (Deep Explanation)
 
-**Harshit Soni**  
-B.Tech (3rd Year)  
-Focused on building **real-world, production-grade software systems**
+```
+backend/
+├── app/
+│   ├── main.py
+│   ├── core/
+│   ├── db/
+│   ├── auth/
+│   ├── api/
+│   ├── schemas/
+│   └── utils/
+├── .env
+├── requirements.txt
+└── README.md
+```
+
+---
+
+### 3.1 main.py — Application Root
+
+Responsibilities:
+- Create FastAPI instance
+- Register routers
+- Startup configuration only
+
+Rules:
+- No business logic
+- No DB logic
+- No auth logic
+
+---
+
+### 3.2 core/
+
+Holds **global configuration and security constants**.
+
+- `config.py`: loads `.env`, DB URL, JWT config
+- Keeps secrets out of code
+- Allows environment portability
+
+---
+
+### 3.3 db/session.py — Transaction Boundary
+
+- Creates SQLAlchemy engine
+- Uses `engine.begin()` for atomic transactions
+- Enforces ACID compliance
+
+Every write operation is expected to be:
+- Fully committed
+- Or fully rolled back
+
+---
+
+### 3.4 auth/ — Authentication & Authorization Layer
+
+This is **foundational ERP infrastructure**, not a feature.
+
+#### jwt_utils.py
+- JWT creation & decoding
+- Embeds staff_id and designation
+
+#### pin_utils.py
+- Hashes numeric PINs
+- Lightweight by design
+- bcrypt intentionally removed to avoid unnecessary overhead
+
+#### dependencies.py
+- Extracts JWT from request
+- Loads logged‑in staff context
+- Blocks unauthorized access early
+
+#### roles.py
+- Enforces role‑based access
+- ADMIN, STAFF, DEALER (future‑ready)
+
+---
+
+### 3.5 api/v1/
+
+Versioned API structure to allow:
+- Future mobile apps
+- Versioned upgrades without breaking clients
+
+#### auth/login.py
+- PIN‑based login
+- Returns JWT token
+
+#### admin/ping.py
+- ADMIN‑only test endpoint
+- Confirms RBAC correctness
+
+---
+
+### 3.6 schemas/
+
+Contains **Pydantic schemas only**.
+
+Rules:
+- Schemas represent API contracts, not DB tables
+- No auth context in schemas
+- No dependencies in schemas
+- Separate Create / Update / Response models
+
+This prevents:
+- Swagger confusion
+- Leaking internal context
+- Tight coupling
+
+---
+
+## 4. Staff System Design (Critical ERP Component)
+
+### master.staff Table Philosophy
+
+The staff table is **not just users** — it is:
+- Authentication identity
+- Authorization anchor
+- Audit actor
+- HR reference
+
+Key design points:
+- staff_id auto‑generated
+- PIN‑based authentication
+- Role stored as designation
+- PAN & UPI intentionally nullable
+- is_active used instead of deletes
+- created_at for audit trails
+
+---
+
+## 5. Security Model
+
+- Stateless JWT authentication
+- Role‑based authorization enforced at backend
+- Frontend has zero authority
+- Database never trusts frontend input
+
+This ensures:
+- UI bugs cannot escalate privileges
+- All enforcement happens server‑side
+
+---
+
+## 6. Swagger & API Contract Reality
+
+Swagger is used as:
+- Documentation aid
+- Manual testing helper
+
+Swagger is **not** treated as:
+- Source of truth
+- Validation authority
+
+Database state + API behavior are the truth.
+
+---
+
+## 7. Development Stages (How This Project Progresses)
+
+### Completed
+- Stage 1–3: Database design & normalization
+- Stage 4: JWT authentication + RBAC (stable baseline)
+
+### Current
+- Stage 5: Admin & master modules (restarted cleanly)
+
+### Planned
+- Sales workflow
+- Service lifecycle
+- Inventory automation
+- Finance reporting
+- Notification engine
+
+---
+
+## 8. Why the Reset to Stage 4 Was the Correct Decision
+
+During Stage 5 development:
+- FastAPI OpenAPI limitations surfaced
+- Swagger behavior conflicted with expectations
+- Instead of stacking hacks, the system was reset
+
+This was a **correct senior‑level decision**:
+- Preserved architectural integrity
+- Avoided hidden technical debt
+- Ensured long‑term correctness
+
+---
+
+## 9. How to Continue Development (Rules)
+
+1. Verify DB structure first
+2. Add schemas next
+3. Add one API at a time
+4. Verify DB writes directly
+5. Only then move forward
+
+No shortcuts.
+
+---
+
+## 10. Final Statement
+
+This project is not a tutorial.
+It is not a CRUD demo.
+It is not framework‑driven.
+
+It is a **deliberately designed ERP backend** meant to survive:
+- Feature expansion
+- New developers
+- Real showroom usage
+- Long‑term maintenance
+
+Every decision prioritizes **correctness over convenience**.
