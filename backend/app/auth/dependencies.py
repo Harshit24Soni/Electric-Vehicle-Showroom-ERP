@@ -4,6 +4,7 @@ from jose import jwt, JWTError
 from sqlalchemy import text
 import os
 from dotenv import load_dotenv
+from fastapi import HTTPException, status
 
 from app.db.session import engine
 
@@ -27,6 +28,7 @@ def get_current_staff(
     - Decodes JWT from Authorization header
     - Validates payload
     - Confirms staff exists and is active in DB
+    - Enforces mandatory PIN change if required
     """
 
     token = credentials.credentials
@@ -64,6 +66,13 @@ def get_current_staff(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Inactive or invalid staff"
+        )
+
+    # ⛔ FORCE PIN CHANGE ENFORCEMENT (CORRECT PLACE)
+    if payload.get("force_pin_change") is True:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="PIN change required before accessing the system"
         )
 
     return {
