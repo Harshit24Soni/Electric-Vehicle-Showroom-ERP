@@ -1,16 +1,28 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import text
+import os
+import random
 from datetime import datetime, timedelta
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy import text
+from jose import jwt, JWTError
+
 from app.db.session import engine
-from app.schemas.auth import PinLoginRequest
-from app.auth.pin_utils import verify_pin
+from app.schemas.auth import PinLoginRequest, PinChangeRequest, AdminPinResetRequest
+from app.auth.pin_utils import verify_pin, hash_pin
 from app.auth.token_utils import create_access_token
+from app.auth.dependencies import get_current_staff
+from app.auth.roles import require_roles
 
 router = APIRouter(
     prefix="/auth",
     tags=["Auth"]
 )
+
+security = HTTPBearer()
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+ALGORITHM = os.getenv("JWT_ALGORITHM")
 
 @router.post("/login-pin")
 def login_with_pin(payload: PinLoginRequest) -> dict:
@@ -131,18 +143,6 @@ def login_with_pin(payload: PinLoginRequest) -> dict:
         "force_pin_change": staff["is_pin_reset_required"]
     }
 
-from jose import jwt, JWTError
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.auth.pin_utils import verify_pin, hash_pin
-from app.schemas.auth import PinChangeRequest
-import os
-
-
-security = HTTPBearer()
-
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-ALGORITHM = os.getenv("JWT_ALGORITHM")
-
 @router.post("/change-pin")
 def change_pin(
     payload: PinChangeRequest,
@@ -224,4 +224,59 @@ def change_pin(
 
     return {
         "message": "PIN changed successfully. Please login again."
+    }
+
+@router.post(
+    "/reset-pin",
+    dependencies=[Depends(require_roles("ADMIN", "DEALER"))]
+)
+def reset_staff_pin(payload: AdminPinResetRequest):
+    """
+    Reset a staff member's PIN (Admin / Dealer only).
+
+    - Generates temporary PIN
+    - Forces PIN change on next login
+    - Unlocks account if locked
+    """
+
+    staff_id = payload.staff_id
+
+    # 🔢 Generate 6-digit temporary PIN
+    temp_pin = str(random.randint(100000, 999999))
+
+    with engine.begin() as conn:
+        staff = conn.execute(
+            text("""
+                SELECT staff_id
+                FROM master.staff
+                WHERE staff_id = :staff_id
+            """),
+            {"staff_id": staff_id}
+        ).mappings().first()
+
+        if not staff:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Staff not found"
+            )
+
+        conn.execute(
+            text("""
+                UPDATE master.staff
+                SET pin_hash = :pin_hash,
+                    is_pin_reset_required = true,
+                    failed_attempts = 0,
+                    locked_until = NULL,
+                    last_pin_changed_at = NOW()
+                WHERE staff_id = :staff_id
+            """),
+            {
+                "pin_hash": hash_pin(temp_pin),
+                "staff_id": staff_id
+            }
+        )
+
+    return {
+        "message": "PIN reset successfully",
+        "temporary_pin": temp_pin
     }

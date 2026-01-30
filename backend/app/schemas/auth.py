@@ -7,3 +7,6 @@ class PinLoginRequest(BaseModel):
 class PinChangeRequest(BaseModel):
     old_pin: str = Field(..., min_length=4, max_length=6)
     new_pin: str = Field(..., min_length=4, max_length=6)
+
+class AdminPinResetRequest(BaseModel):
+    staff_id: int = Field(..., gt=0)
