@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from datetime import datetime, timedelta
 
@@ -129,4 +129,99 @@ def login_with_pin(payload: PinLoginRequest) -> dict:
         "access_token": access_token,
         "token_type": "bearer",
         "force_pin_change": staff["is_pin_reset_required"]
+    }
+
+from jose import jwt, JWTError
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.auth.pin_utils import verify_pin, hash_pin
+from app.schemas.auth import PinChangeRequest
+import os
+
+
+security = HTTPBearer()
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+ALGORITHM = os.getenv("JWT_ALGORITHM")
+
+@router.post("/change-pin")
+def change_pin(
+    payload: PinChangeRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Change staff PIN.
+
+    - Requires valid JWT
+    - Verifies old PIN
+    - Updates PIN hash
+    - Clears force PIN change flag
+    """
+
+    token = credentials.credentials
+
+    try:
+        decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        staff_id = decoded.get("staff_id")
+
+        if not staff_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+
+    old_pin = payload.old_pin
+    new_pin = payload.new_pin
+
+    if old_pin == new_pin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New PIN must be different from old PIN"
+        )
+
+    with engine.begin() as conn:
+        staff = conn.execute(
+            text("""
+                SELECT staff_id, pin_hash
+                FROM master.staff
+                WHERE staff_id = :staff_id
+            """),
+            {"staff_id": staff_id}
+        ).mappings().first()
+
+        if not staff or not staff["pin_hash"]:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid staff"
+            )
+
+        if not verify_pin(old_pin, staff["pin_hash"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Old PIN is incorrect"
+            )
+
+        conn.execute(
+            text("""
+                UPDATE master.staff
+                SET pin_hash = :pin_hash,
+                    is_pin_reset_required = false,
+                    failed_attempts = 0,
+                    locked_until = NULL,
+                    last_pin_changed_at = NOW()
+                WHERE staff_id = :staff_id
+            """),
+            {
+                "pin_hash": hash_pin(new_pin),
+                "staff_id": staff_id
+            }
+        )
+
+    return {
+        "message": "PIN changed successfully. Please login again."
     }
