@@ -1,10 +1,10 @@
+import os
+
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from sqlalchemy import text
-import os
-from dotenv import load_dotenv
-from fastapi import HTTPException, status
 
 from app.db.session import engine
 

@@ -1,13 +1,15 @@
-from datetime import datetime, timedelta
-from jose import jwt
 import os
+from datetime import datetime, timedelta
+
 from dotenv import load_dotenv
+from jose import jwt
 
 load_dotenv()
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = os.getenv("JWT_ALGORITHM")
 EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES"))
+
 
 def create_access_token(data: dict):
     to_encode = data.copy()

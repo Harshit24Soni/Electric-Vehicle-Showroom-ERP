@@ -153,29 +153,34 @@ GRANT INSERT, SELECT, UPDATE ON TABLE warranty.shipment TO app_user;
 
 GRANT ALL ON TABLE warranty.shipment TO postgres;
 
--- Table: warranty.shipment
+-- Table: warranty.shipment_item
 
--- DROP TABLE IF EXISTS warranty.shipment;
+-- DROP TABLE IF EXISTS warranty.shipment_item;
 
-CREATE TABLE IF NOT EXISTS warranty.shipment
+CREATE TABLE IF NOT EXISTS warranty.shipment_item
 (
-    shipment_id bigint NOT NULL DEFAULT nextval('warranty.shipment_shipment_id_seq'::regclass),
-    courier_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
-    docket_no character varying(100) COLLATE pg_catalog."default" NOT NULL,
-    dispatch_date date NOT NULL,
-    received_date date,
-    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT shipment_pkey PRIMARY KEY (shipment_id),
-    CONSTRAINT uq_warranty_docket UNIQUE (docket_no)
+    shipment_item_id bigint NOT NULL DEFAULT nextval('warranty.shipment_item_shipment_item_id_seq'::regclass),
+    shipment_id bigint NOT NULL,
+    claim_id bigint NOT NULL,
+    CONSTRAINT shipment_item_pkey PRIMARY KEY (shipment_item_id),
+    CONSTRAINT uq_claim_single_shipment UNIQUE (claim_id),
+    CONSTRAINT fk_ship_item_claim FOREIGN KEY (claim_id)
+        REFERENCES warranty.claim (claim_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_ship_item_shipment FOREIGN KEY (shipment_id)
+        REFERENCES warranty.shipment (shipment_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
 )
 
 TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS warranty.shipment
+ALTER TABLE IF EXISTS warranty.shipment_item
     OWNER to postgres;
 
-REVOKE ALL ON TABLE warranty.shipment FROM app_user;
+REVOKE ALL ON TABLE warranty.shipment_item FROM app_user;
 
-GRANT INSERT, SELECT, UPDATE ON TABLE warranty.shipment TO app_user;
+GRANT INSERT, SELECT, UPDATE ON TABLE warranty.shipment_item TO app_user;
 
-GRANT ALL ON TABLE warranty.shipment TO postgres;
+GRANT ALL ON TABLE warranty.shipment_item TO postgres;

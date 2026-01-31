@@ -2,17 +2,20 @@ import os
 import random
 from datetime import datetime, timedelta
 
+from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import text
 from jose import jwt, JWTError
+from sqlalchemy import text
 
-from app.db.session import engine
-from app.schemas.auth import PinLoginRequest, PinChangeRequest, AdminPinResetRequest
-from app.auth.pin_utils import verify_pin, hash_pin
-from app.auth.token_utils import create_access_token
 from app.auth.dependencies import get_current_staff
+from app.auth.pin_utils import hash_pin, verify_pin
 from app.auth.roles import require_roles
+from app.auth.schemas import AdminPinResetRequest, PinChangeRequest, PinLoginRequest
+from app.auth.token_utils import create_access_token
+from app.db.session import engine
+
+load_dotenv()
 
 router = APIRouter(
     prefix="/auth",

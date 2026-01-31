@@ -1,8 +1,8 @@
 from datetime import date, datetime
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr
-from enum import Enum
 
 
 class StaffDesignation(str, Enum):

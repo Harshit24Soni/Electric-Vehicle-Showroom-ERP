@@ -1,5 +1,7 @@
 from fastapi import Depends, HTTPException, status
+
 from app.auth.dependencies import get_current_staff
+
 
 def require_roles(*allowed_roles: str):
     def role_checker(
