@@ -8,7 +8,8 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = os.getenv("JWT_ALGORITHM")
-EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES"))
+# default to 8 hours (480 minutes) if not explicitly provided
+EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "480"))
 
 
 def create_access_token(data: dict):

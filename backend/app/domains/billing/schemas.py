@@ -13,3 +13,19 @@ class InvoiceUpdate(BaseModel):
     gst_rate: float
     remarks: Optional[str] = None
 
+
+class InvoiceResponse(BaseModel):
+    invoice_id: int
+    sale_id: int
+    invoice_number: str
+    invoice_date: Optional[str]
+    taxable_amount: float
+    gst_rate: float
+    gst_amount: float
+    total_amount: float
+    is_final: bool
+    revision_no: int
+
+    class Config:
+        from_attributes = True
+

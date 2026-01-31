@@ -2,15 +2,18 @@ from fastapi import APIRouter, Depends
 from app.db.session import get_db
 from app.shared.utils import export_csv
 from app.domains.reports import services
+from app.auth.dependencies import get_current_staff
 from datetime import date
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
+
 
 @router.get("/sales-register")
 def export_sales_register(
     from_date: date,
     to_date: date,
     db=Depends(get_db),
+    _staff=Depends(get_current_staff),
 ):
     rows = services.sales_register(
         db=db,
@@ -33,7 +36,7 @@ def export_sales_register(
     )
 
 @router.get("/finance-register")
-def export_finance_register(db=Depends(get_db)):
+def export_finance_register(db=Depends(get_db), _staff=Depends(get_current_staff)):
     rows = services.finance_register(db=db)
 
     return export_csv(

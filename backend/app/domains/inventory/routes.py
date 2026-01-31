@@ -9,6 +9,9 @@ from app.domains.inventory import services
 from app.domains.inventory.schemas import (
     VehicleMovementCreate,
     SpareMovementCreate,
+    VehicleMovementResponse,
+    SpareMovementResponse,
+    SpareStockResponse,
 )
 
 router = APIRouter(
@@ -16,9 +19,11 @@ router = APIRouter(
     tags=["Inventory"]
 )
 
+
 @router.post(
     "/vehicle/movement",
     status_code=status.HTTP_201_CREATED,
+    response_model=VehicleMovementResponse,
 )
 def create_vehicle_movement(
     data: VehicleMovementCreate,
@@ -36,15 +41,13 @@ def create_vehicle_movement(
             to_location=data.to_location,
             remarks=data.remarks,
         )
-        return {
-            "message": "Vehicle movement recorded",
-            "movement_id": movement.movement_id,
-        }
+        return movement
     except services.InventoryError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
 
 @router.get("/vehicle/{chassis_no}/availability")
 def check_vehicle_availability(
@@ -58,9 +61,11 @@ def check_vehicle_availability(
         "is_available": available,
     }
 
+
 @router.post(
     "/spare/movement",
     status_code=status.HTTP_201_CREATED,
+    response_model=SpareMovementResponse,
 )
 def create_spare_movement(
     data: SpareMovementCreate,
@@ -78,17 +83,15 @@ def create_spare_movement(
             reference_id=data.reference_id,
             remarks=data.remarks,
         )
-        return {
-            "message": "Spare movement recorded",
-            "movement_id": movement.movement_id,
-        }
+        return movement
     except services.InventoryError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
 
-@router.get("/spare/{spare_id}/stock")
+
+@router.get("/spare/{spare_id}/stock", response_model=SpareStockResponse)
 def get_spare_stock(
     spare_id: int,
     db: Session = Depends(get_db),

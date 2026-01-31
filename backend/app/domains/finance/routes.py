@@ -1,42 +1,46 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.domains.finance import services
-from app.domains.finance.schemas import FinanceCreate, FinanceStatusUpdate
+from app.domains.finance import schemas
 from app.domains.finance.models import VehicleFinance
 from app.db.session import get_db
-from app.domains.finance.services import FinanceResponse
 from app.auth.dependencies import get_current_staff
 
-router = APIRouter()
+router = APIRouter(prefix="/finance", tags=["Finance"])
 
-@router.post("/finance", response_model=FinanceResponse)
+
+@router.post("/", response_model=schemas.FinanceResponse, status_code=status.HTTP_201_CREATED)
 def create_finance_api(
-    data: FinanceCreate,
+    data: schemas.FinanceCreate,
     db: Session = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
-    finance = services.create_finance(
-        db=db,
-        sale_id=data.sale_id,
-        financer_name=data.financer_name,
-        financer_contact=data.financer_contact,
-        loan_amount=data.loan_amount,
-        down_payment=data.down_payment,
-        remarks=data.remarks,
-    )
-    return finance
+    try:
+        finance = services.create_finance(
+            db=db,
+            sale_id=data.sale_id,
+            financer_name=data.financer_name,
+            financer_contact=data.financer_contact,
+            loan_amount=data.loan_amount,
+            down_payment=data.down_payment,
+            remarks=data.remarks,
+        )
+        return finance
+    except services.FinanceError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.put("/finance/{finance_id}/status")
+
+@router.put("/{finance_id}/status", status_code=status.HTTP_200_OK)
 def update_finance_status_api(
     finance_id: int,
-    data: FinanceStatusUpdate,
+    data: schemas.FinanceStatusUpdate,
     db: Session = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
     finance = db.get(VehicleFinance, finance_id)
     if not finance:
-        raise HTTPException(404, "Finance record not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finance record not found")
 
     services.update_finance_status(
         db=db,
