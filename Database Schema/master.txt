@@ -1,3 +1,17 @@
+-- SCHEMA: master
+
+-- DROP SCHEMA IF EXISTS master ;
+
+CREATE SCHEMA IF NOT EXISTS master
+    AUTHORIZATION postgres;
+
+GRANT USAGE ON SCHEMA master TO app_user;
+
+GRANT ALL ON SCHEMA master TO postgres;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA master
+GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
+
 -- Table: master.customer
 
 -- DROP TABLE IF EXISTS master.customer;
@@ -33,7 +47,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.customer
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.customer FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE master.customer TO app_user;
+
+GRANT ALL ON TABLE master.customer TO postgres;
 
 -- Table: master.customer_document
 
@@ -61,6 +79,12 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS master.customer_document
     OWNER to postgres;
+
+REVOKE ALL ON TABLE master.customer_document FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE master.customer_document TO app_user;
+
+GRANT ALL ON TABLE master.customer_document TO postgres;
 -- Index: idx_customer_document_customer
 
 -- DROP INDEX IF EXISTS master.idx_customer_document_customer;
@@ -80,9 +104,7 @@ CREATE INDEX IF NOT EXISTS idx_customer_document_type
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
 
-
-
--- Table: master.customer_phone
+    -- Table: master.customer_phone
 
 -- DROP TABLE IF EXISTS master.customer_phone;
 
@@ -110,22 +132,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.customer_phone
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.customer_phone FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE master.customer_phone TO app_user;
 
--- Table: master.employee
-
--- DROP TABLE IF EXISTS master.employee;
-
-CREATE TABLE IF NOT EXISTS master.employee
-(
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS master.employee
-    OWNER to postgres;
-
-
+GRANT ALL ON TABLE master.customer_phone TO postgres;
 
 -- Table: master.expense_category
 
@@ -133,6 +144,17 @@ ALTER TABLE IF EXISTS master.employee
 
 CREATE TABLE IF NOT EXISTS master.expense_category
 (
+    expense_category_id bigint NOT NULL DEFAULT nextval('master.expense_category_expense_category_id_seq'::regclass),
+    category_name character varying(150) COLLATE pg_catalog."default" NOT NULL,
+    parent_category_id bigint,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT expense_category_pkey PRIMARY KEY (expense_category_id),
+    CONSTRAINT expense_category_category_name_key UNIQUE (category_name),
+    CONSTRAINT fk_expense_parent FOREIGN KEY (parent_category_id)
+        REFERENCES master.expense_category (expense_category_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE SET NULL
 )
 
 TABLESPACE pg_default;
@@ -140,7 +162,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.expense_category
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.expense_category FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE master.expense_category TO app_user;
+
+GRANT ALL ON TABLE master.expense_category TO postgres;
 
 -- Table: master.job_card_category
 
@@ -148,6 +174,13 @@ ALTER TABLE IF EXISTS master.expense_category
 
 CREATE TABLE IF NOT EXISTS master.job_card_category
 (
+    job_card_category_id bigint NOT NULL DEFAULT nextval('master.job_card_category_job_card_category_id_seq'::regclass),
+    category_code character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    display_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT job_card_category_pkey PRIMARY KEY (job_card_category_id),
+    CONSTRAINT job_card_category_category_code_key UNIQUE (category_code)
 )
 
 TABLESPACE pg_default;
@@ -155,7 +188,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.job_card_category
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.job_card_category FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE master.job_card_category TO app_user;
+
+GRANT ALL ON TABLE master.job_card_category TO postgres;
 
 -- Table: master.payment_mode
 
@@ -163,6 +200,13 @@ ALTER TABLE IF EXISTS master.job_card_category
 
 CREATE TABLE IF NOT EXISTS master.payment_mode
 (
+    payment_mode_id bigint NOT NULL DEFAULT nextval('master.payment_mode_payment_mode_id_seq'::regclass),
+    mode_code character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    display_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT payment_mode_pkey PRIMARY KEY (payment_mode_id),
+    CONSTRAINT payment_mode_mode_code_key UNIQUE (mode_code)
 )
 
 TABLESPACE pg_default;
@@ -170,22 +214,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.payment_mode
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.payment_mode FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE master.payment_mode TO app_user;
 
--- Table: master.spare_part
-
--- DROP TABLE IF EXISTS master.spare_part;
-
-CREATE TABLE IF NOT EXISTS master.spare_part
-(
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS master.spare_part
-    OWNER to postgres;
-
-
+GRANT ALL ON TABLE master.payment_mode TO postgres;
 
 -- Table: master.staff
 
@@ -206,10 +239,18 @@ CREATE TABLE IF NOT EXISTS master.staff
     bank_account_no character varying(30) COLLATE pg_catalog."default",
     bank_name character varying(100) COLLATE pg_catalog."default",
     ifsc_code character varying(20) COLLATE pg_catalog."default",
+    pin_hash text COLLATE pg_catalog."default",
+    upi_id character varying(100) COLLATE pg_catalog."default",
+    is_pin_reset_required boolean NOT NULL DEFAULT true,
+    failed_attempts integer NOT NULL DEFAULT 0,
+    last_failed_at timestamp without time zone,
+    locked_until timestamp without time zone,
+    last_pin_changed_at timestamp without time zone,
     CONSTRAINT staff_pkey PRIMARY KEY (staff_id),
     CONSTRAINT uq_staff_aadhaar UNIQUE (aadhaar_no),
     CONSTRAINT uq_staff_mobile UNIQUE (mobile_no),
-    CONSTRAINT uq_staff_pan UNIQUE (pan_no)
+    CONSTRAINT uq_staff_pan UNIQUE (pan_no),
+    CONSTRAINT uq_staff_upi UNIQUE (upi_id)
 )
 
 TABLESPACE pg_default;
@@ -217,9 +258,22 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.staff
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.staff FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE master.staff TO app_user;
 
--- Table: master.vehicle
+GRANT ALL ON TABLE master.staff TO postgres;
+-- Index: idx_staff_active_lock
+
+-- DROP INDEX IF EXISTS master.idx_staff_active_lock;
+
+CREATE INDEX IF NOT EXISTS idx_staff_active_lock
+    ON master.staff USING btree
+    (staff_id ASC NULLS LAST, is_active ASC NULLS LAST, locked_until ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: master.vehicle
 
 -- DROP TABLE IF EXISTS master.vehicle;
 
@@ -240,6 +294,7 @@ CREATE TABLE IF NOT EXISTS master.vehicle
         REFERENCES master.vehicle_model (vehicle_model_id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE RESTRICT,
+    CONSTRAINT chk_vehicle_dom CHECK (date_of_manufacture IS NULL OR date_of_manufacture <= CURRENT_DATE),
     CONSTRAINT vehicle_current_status_check CHECK (current_status::text = ANY (ARRAY['IN_STOCK'::character varying, 'SOLD'::character varying, 'SERVICE'::character varying]::text[]))
 )
 
@@ -248,7 +303,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.vehicle
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.vehicle FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE master.vehicle TO app_user;
+
+GRANT ALL ON TABLE master.vehicle TO postgres;
 
 -- Table: master.vehicle_model
 
@@ -276,6 +335,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.vehicle_model
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.vehicle_model FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE master.vehicle_model TO app_user;
+
+GRANT ALL ON TABLE master.vehicle_model TO postgres;
 
 -- Table: master.vendor
 
@@ -306,7 +370,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.vendor
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.vendor FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE master.vendor TO app_user;
+
+GRANT ALL ON TABLE master.vendor TO postgres;
 
 -- Table: master.vendor_contact
 
@@ -336,6 +404,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.vendor_contact
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.vendor_contact FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE master.vendor_contact TO app_user;
+
+GRANT ALL ON TABLE master.vendor_contact TO postgres;
 
 -- Table: master.vendor_document
 
@@ -364,3 +437,8 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS master.vendor_document
     OWNER to postgres;
 
+REVOKE ALL ON TABLE master.vendor_document FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE master.vendor_document TO app_user;
+
+GRANT ALL ON TABLE master.vendor_document TO postgres;

@@ -1,4 +1,11 @@
--- Table: communication.message_log
+-- SCHEMA: communication
+
+-- DROP SCHEMA IF EXISTS communication ;
+
+CREATE SCHEMA IF NOT EXISTS communication
+    AUTHORIZATION postgres;
+
+    -- Table: communication.message_log
 
 -- DROP TABLE IF EXISTS communication.message_log;
 
@@ -11,8 +18,7 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS communication.message_log
     OWNER to postgres;
 
-
--- Table: communication.reminder
+    -- Table: communication.reminder
 
 -- DROP TABLE IF EXISTS communication.reminder;
 

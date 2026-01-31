@@ -1,9 +1,39 @@
+-- SCHEMA: hr
+
+-- DROP SCHEMA IF EXISTS hr ;
+
+CREATE SCHEMA IF NOT EXISTS hr
+    AUTHORIZATION postgres;
+
+GRANT USAGE ON SCHEMA hr TO app_user;
+
+GRANT ALL ON SCHEMA hr TO postgres;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA hr
+GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
+
 -- Table: hr.attendance
 
 -- DROP TABLE IF EXISTS hr.attendance;
 
 CREATE TABLE IF NOT EXISTS hr.attendance
 (
+    attendance_id bigint NOT NULL DEFAULT nextval('hr.attendance_attendance_id_seq'::regclass),
+    staff_id bigint NOT NULL,
+    attendance_date date NOT NULL,
+    attendance_status character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    in_time time without time zone,
+    out_time time without time zone,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT attendance_pkey PRIMARY KEY (attendance_id),
+    CONSTRAINT uq_staff_attendance_date UNIQUE (staff_id, attendance_date),
+    CONSTRAINT fk_attendance_staff FOREIGN KEY (staff_id)
+        REFERENCES master.staff (staff_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT chk_attendance_status CHECK (attendance_status::text = ANY (ARRAY['PRESENT'::character varying, 'ABSENT'::character varying, 'HALF_DAY'::character varying]::text[])),
+    CONSTRAINT chk_attendance_time CHECK (in_time IS NULL OR out_time IS NULL OR out_time >= in_time)
 )
 
 TABLESPACE pg_default;
@@ -11,16 +41,59 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS hr.attendance
     OWNER to postgres;
 
+REVOKE ALL ON TABLE hr.attendance FROM app_user;
 
--- Table: hr.salary
+GRANT INSERT, SELECT, UPDATE ON TABLE hr.attendance TO app_user;
+
+GRANT ALL ON TABLE hr.attendance TO postgres;
+-- Index: idx_attendance_date
+
+-- DROP INDEX IF EXISTS hr.idx_attendance_date;
+
+CREATE INDEX IF NOT EXISTS idx_attendance_date
+    ON hr.attendance USING btree
+    (attendance_date ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_attendance_staff
+
+-- DROP INDEX IF EXISTS hr.idx_attendance_staff;
+
+CREATE INDEX IF NOT EXISTS idx_attendance_staff
+    ON hr.attendance USING btree
+    (staff_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: hr.salary
 
 -- DROP TABLE IF EXISTS hr.salary;
 
 CREATE TABLE IF NOT EXISTS hr.salary
 (
+    salary_id bigint NOT NULL DEFAULT nextval('hr.salary_salary_id_seq'::regclass),
+    staff_id bigint NOT NULL,
+    salary_month date NOT NULL,
+    gross_amount numeric(14,2) NOT NULL,
+    payment_date date,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT salary_pkey PRIMARY KEY (salary_id),
+    CONSTRAINT uq_staff_salary_month UNIQUE (staff_id, salary_month),
+    CONSTRAINT fk_salary_staff FOREIGN KEY (staff_id)
+        REFERENCES master.staff (staff_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_salary_amount CHECK (gross_amount > 0::numeric)
 )
 
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS hr.salary
     OWNER to postgres;
+
+REVOKE ALL ON TABLE hr.salary FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE hr.salary TO app_user;
+
+GRANT ALL ON TABLE hr.salary TO postgres;

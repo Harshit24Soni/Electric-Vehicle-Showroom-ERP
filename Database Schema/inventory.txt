@@ -1,3 +1,17 @@
+-- SCHEMA: inventory
+
+-- DROP SCHEMA IF EXISTS inventory ;
+
+CREATE SCHEMA IF NOT EXISTS inventory
+    AUTHORIZATION postgres;
+
+GRANT USAGE ON SCHEMA inventory TO app_user;
+
+GRANT ALL ON SCHEMA inventory TO postgres;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA inventory
+GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
+
 -- Table: inventory.spare_master
 
 -- DROP TABLE IF EXISTS inventory.spare_master;
@@ -22,37 +36,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS inventory.spare_master
     OWNER to postgres;
 
+REVOKE ALL ON TABLE inventory.spare_master FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE inventory.spare_master TO app_user;
 
--- Table: inventory.spare_purchase
-
--- DROP TABLE IF EXISTS inventory.spare_purchase;
-
-CREATE TABLE IF NOT EXISTS inventory.spare_purchase
-(
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS inventory.spare_purchase
-    OWNER to postgres;
-
-
-
--- Table: inventory.spare_purchase_detail
-
--- DROP TABLE IF EXISTS inventory.spare_purchase_detail;
-
-CREATE TABLE IF NOT EXISTS inventory.spare_purchase_detail
-(
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS inventory.spare_purchase_detail
-    OWNER to postgres;
-
-
+GRANT ALL ON TABLE inventory.spare_master TO postgres;
 
 -- Table: inventory.spare_serial
 
@@ -82,7 +70,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS inventory.spare_serial
     OWNER to postgres;
 
+REVOKE ALL ON TABLE inventory.spare_serial FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE inventory.spare_serial TO app_user;
+
+GRANT ALL ON TABLE inventory.spare_serial TO postgres;
 
 -- Table: inventory.spare_stock_movement
 
@@ -91,7 +83,6 @@ ALTER TABLE IF EXISTS inventory.spare_serial
 CREATE TABLE IF NOT EXISTS inventory.spare_stock_movement
 (
     movement_id bigint NOT NULL DEFAULT nextval('inventory.spare_stock_movement_movement_id_seq'::regclass),
-    part_code character varying(100) COLLATE pg_catalog."default" NOT NULL,
     movement_type character varying(30) COLLATE pg_catalog."default" NOT NULL,
     quantity integer NOT NULL,
     rate numeric(12,2),
@@ -99,7 +90,12 @@ CREATE TABLE IF NOT EXISTS inventory.spare_stock_movement
     reference_id bigint,
     remarks text COLLATE pg_catalog."default",
     created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    spare_id bigint NOT NULL,
     CONSTRAINT spare_stock_movement_pkey PRIMARY KEY (movement_id),
+    CONSTRAINT fk_spare_stock_movement_spare FOREIGN KEY (spare_id)
+        REFERENCES inventory.spare_master (spare_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
     CONSTRAINT chk_spare_stock_movement_type CHECK (movement_type::text = ANY (ARRAY['PURCHASE'::character varying, 'SALE'::character varying, 'SERVICE_PAID'::character varying, 'SERVICE_INSURANCE'::character varying, 'ADJUSTMENT'::character varying]::text[]))
 )
 
@@ -108,9 +104,22 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS inventory.spare_stock_movement
     OWNER to postgres;
 
+REVOKE ALL ON TABLE inventory.spare_stock_movement FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE inventory.spare_stock_movement TO app_user;
 
--- Table: inventory.stock_movement
+GRANT ALL ON TABLE inventory.spare_stock_movement TO postgres;
+-- Index: idx_spare_stock_movement_spare
+
+-- DROP INDEX IF EXISTS inventory.idx_spare_stock_movement_spare;
+
+CREATE INDEX IF NOT EXISTS idx_spare_stock_movement_spare
+    ON inventory.spare_stock_movement USING btree
+    (spare_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: inventory.stock_movement
 
 -- DROP TABLE IF EXISTS inventory.stock_movement;
 
@@ -123,7 +132,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS inventory.stock_movement
     OWNER to postgres;
 
+REVOKE ALL ON TABLE inventory.stock_movement FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE inventory.stock_movement TO app_user;
+
+GRANT ALL ON TABLE inventory.stock_movement TO postgres;
 
 -- Table: inventory.vehicle_purchase
 
@@ -150,7 +163,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS inventory.vehicle_purchase
     OWNER to postgres;
 
+REVOKE ALL ON TABLE inventory.vehicle_purchase FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE inventory.vehicle_purchase TO app_user;
+
+GRANT ALL ON TABLE inventory.vehicle_purchase TO postgres;
 
 -- Table: inventory.vehicle_purchase_detail
 
@@ -179,3 +196,9 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS inventory.vehicle_purchase_detail
     OWNER to postgres;
+
+REVOKE ALL ON TABLE inventory.vehicle_purchase_detail FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE inventory.vehicle_purchase_detail TO app_user;
+
+GRANT ALL ON TABLE inventory.vehicle_purchase_detail TO postgres;

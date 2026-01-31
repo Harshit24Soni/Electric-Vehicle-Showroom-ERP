@@ -1,40 +1,14 @@
--- Table: finance.expense_summary_view
+-- SCHEMA: finance
 
--- DROP TABLE IF EXISTS finance.expense_summary_view;
+-- DROP SCHEMA IF EXISTS finance ;
 
-CREATE TABLE IF NOT EXISTS finance.expense_summary_view
-(
-)
+CREATE SCHEMA IF NOT EXISTS finance
+    AUTHORIZATION postgres;
 
-TABLESPACE pg_default;
+GRANT USAGE ON SCHEMA finance TO app_user;
 
-ALTER TABLE IF EXISTS finance.expense_summary_view
-    OWNER to postgres;
+GRANT ALL ON SCHEMA finance TO postgres;
 
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA finance
+GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
 
--- Table: finance.expense_summary_view
-
--- DROP TABLE IF EXISTS finance.expense_summary_view;
-
-CREATE TABLE IF NOT EXISTS finance.expense_summary_view
-(
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS finance.expense_summary_view
-    OWNER to postgres;
-
-
--- Table: finance.sales_summary_view
-
--- DROP TABLE IF EXISTS finance.sales_summary_view;
-
-CREATE TABLE IF NOT EXISTS finance.sales_summary_view
-(
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS finance.sales_summary_view
-    OWNER to postgres;

@@ -1,3 +1,17 @@
+-- SCHEMA: billing
+
+-- DROP SCHEMA IF EXISTS billing ;
+
+CREATE SCHEMA IF NOT EXISTS billing
+    AUTHORIZATION postgres;
+
+GRANT USAGE ON SCHEMA billing TO app_user;
+
+GRANT ALL ON SCHEMA billing TO postgres;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA billing
+GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
+
 -- Table: billing.insurance_estimate
 
 -- DROP TABLE IF EXISTS billing.insurance_estimate;
@@ -23,6 +37,12 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS billing.insurance_estimate
     OWNER to postgres;
+
+REVOKE ALL ON TABLE billing.insurance_estimate FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE billing.insurance_estimate TO app_user;
+
+GRANT ALL ON TABLE billing.insurance_estimate TO postgres;
 
 -- Table: billing.invoice
 
@@ -52,7 +72,8 @@ CREATE TABLE IF NOT EXISTS billing.invoice
         ON UPDATE NO ACTION
         ON DELETE SET NULL,
     CONSTRAINT invoice_invoice_type_check CHECK (invoice_type::text = ANY (ARRAY['SERVICE'::character varying, 'SPARE'::character varying, 'INSURANCE'::character varying]::text[])),
-    CONSTRAINT invoice_invoice_status_check CHECK (invoice_status::text = ANY (ARRAY['DRAFT'::character varying, 'FINALIZED'::character varying, 'CANCELLED'::character varying]::text[]))
+    CONSTRAINT invoice_invoice_status_check CHECK (invoice_status::text = ANY (ARRAY['DRAFT'::character varying, 'FINALIZED'::character varying, 'CANCELLED'::character varying]::text[])),
+    CONSTRAINT chk_invoice_total CHECK (total_amount >= 0::numeric)
 )
 
 TABLESPACE pg_default;
@@ -60,7 +81,40 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS billing.invoice
     OWNER to postgres;
 
--- Table: billing.invoice_line
+REVOKE ALL ON TABLE billing.invoice FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE billing.invoice TO app_user;
+
+GRANT ALL ON TABLE billing.invoice TO postgres;
+-- Index: idx_billing_invoice_date
+
+-- DROP INDEX IF EXISTS billing.idx_billing_invoice_date;
+
+CREATE INDEX IF NOT EXISTS idx_billing_invoice_date
+    ON billing.invoice USING btree
+    (invoice_date ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_billing_invoice_status
+
+-- DROP INDEX IF EXISTS billing.idx_billing_invoice_status;
+
+CREATE INDEX IF NOT EXISTS idx_billing_invoice_status
+    ON billing.invoice USING btree
+    (invoice_status COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_billing_invoice_type
+
+-- DROP INDEX IF EXISTS billing.idx_billing_invoice_type;
+
+CREATE INDEX IF NOT EXISTS idx_billing_invoice_type
+    ON billing.invoice USING btree
+    (invoice_type COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: billing.invoice_line
 
 -- DROP TABLE IF EXISTS billing.invoice_line;
 
@@ -86,3 +140,9 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS billing.invoice_line
     OWNER to postgres;
+
+REVOKE ALL ON TABLE billing.invoice_line FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE billing.invoice_line TO app_user;
+
+GRANT ALL ON TABLE billing.invoice_line TO postgres;

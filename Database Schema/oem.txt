@@ -1,3 +1,17 @@
+-- SCHEMA: oem
+
+-- DROP SCHEMA IF EXISTS oem ;
+
+CREATE SCHEMA IF NOT EXISTS oem
+    AUTHORIZATION postgres;
+
+GRANT USAGE ON SCHEMA oem TO app_user;
+
+GRANT ALL ON SCHEMA oem TO postgres;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA oem
+GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
+
 -- Table: oem.reimbursement_invoice
 
 -- DROP TABLE IF EXISTS oem.reimbursement_invoice;
@@ -23,7 +37,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS oem.reimbursement_invoice
     OWNER to postgres;
 
+REVOKE ALL ON TABLE oem.reimbursement_invoice FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE oem.reimbursement_invoice TO app_user;
+
+GRANT ALL ON TABLE oem.reimbursement_invoice TO postgres;
 
 -- Table: oem.reimbursement_line
 
@@ -61,3 +79,9 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS oem.reimbursement_line
     OWNER to postgres;
+
+REVOKE ALL ON TABLE oem.reimbursement_line FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE oem.reimbursement_line TO app_user;
+
+GRANT ALL ON TABLE oem.reimbursement_line TO postgres;

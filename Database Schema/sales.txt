@@ -1,17 +1,16 @@
--- Table: sales.invoice
+-- SCHEMA: sales
 
--- DROP TABLE IF EXISTS sales.invoice;
+-- DROP SCHEMA IF EXISTS sales ;
 
-CREATE TABLE IF NOT EXISTS sales.invoice
-(
-)
+CREATE SCHEMA IF NOT EXISTS sales
+    AUTHORIZATION postgres;
 
-TABLESPACE pg_default;
+GRANT USAGE ON SCHEMA sales TO app_user;
 
-ALTER TABLE IF EXISTS sales.invoice
-    OWNER to postgres;
+GRANT ALL ON SCHEMA sales TO postgres;
 
-
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA sales
+GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
 
 -- Table: sales.spare_sale
 
@@ -19,6 +18,22 @@ ALTER TABLE IF EXISTS sales.invoice
 
 CREATE TABLE IF NOT EXISTS sales.spare_sale
 (
+    spare_sale_id bigint NOT NULL DEFAULT nextval('sales.spare_sale_spare_sale_id_seq'::regclass),
+    sale_date date NOT NULL,
+    customer_id bigint,
+    job_card_id bigint,
+    total_amount numeric(14,2) NOT NULL,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT spare_sale_pkey PRIMARY KEY (spare_sale_id),
+    CONSTRAINT fk_spare_sale_customer FOREIGN KEY (customer_id)
+        REFERENCES master.customer (customer_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE SET NULL,
+    CONSTRAINT fk_spare_sale_job_card FOREIGN KEY (job_card_id)
+        REFERENCES service.job_card (job_card_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE SET NULL
 )
 
 TABLESPACE pg_default;
@@ -26,14 +41,54 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS sales.spare_sale
     OWNER to postgres;
 
+REVOKE ALL ON TABLE sales.spare_sale FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE sales.spare_sale TO app_user;
 
--- Table: sales.spare_sale_detail
+GRANT ALL ON TABLE sales.spare_sale TO postgres;
+-- Index: idx_spare_sale_customer
+
+-- DROP INDEX IF EXISTS sales.idx_spare_sale_customer;
+
+CREATE INDEX IF NOT EXISTS idx_spare_sale_customer
+    ON sales.spare_sale USING btree
+    (customer_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_spare_sale_date
+
+-- DROP INDEX IF EXISTS sales.idx_spare_sale_date;
+
+CREATE INDEX IF NOT EXISTS idx_spare_sale_date
+    ON sales.spare_sale USING btree
+    (sale_date ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: sales.spare_sale_detail
 
 -- DROP TABLE IF EXISTS sales.spare_sale_detail;
 
 CREATE TABLE IF NOT EXISTS sales.spare_sale_detail
 (
+    spare_sale_detail_id bigint NOT NULL DEFAULT nextval('sales.spare_sale_detail_spare_sale_detail_id_seq'::regclass),
+    spare_sale_id bigint NOT NULL,
+    spare_id bigint NOT NULL,
+    quantity integer NOT NULL,
+    rate numeric(12,2) NOT NULL,
+    amount numeric(14,2) NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT spare_sale_detail_pkey PRIMARY KEY (spare_sale_detail_id),
+    CONSTRAINT fk_spare_sale_detail_sale FOREIGN KEY (spare_sale_id)
+        REFERENCES sales.spare_sale (spare_sale_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_spare_sale_detail_spare FOREIGN KEY (spare_id)
+        REFERENCES inventory.spare_master (spare_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_spare_sale_amount CHECK (amount >= 0::numeric),
+    CONSTRAINT chk_spare_sale_quantity CHECK (quantity > 0)
 )
 
 TABLESPACE pg_default;
@@ -41,9 +96,22 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS sales.spare_sale_detail
     OWNER to postgres;
 
+REVOKE ALL ON TABLE sales.spare_sale_detail FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE sales.spare_sale_detail TO app_user;
 
--- Table: sales.vehicle_payment
+GRANT ALL ON TABLE sales.spare_sale_detail TO postgres;
+-- Index: idx_spare_sale_detail_spare
+
+-- DROP INDEX IF EXISTS sales.idx_spare_sale_detail_spare;
+
+CREATE INDEX IF NOT EXISTS idx_spare_sale_detail_spare
+    ON sales.spare_sale_detail USING btree
+    (spare_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: sales.vehicle_payment
 
 -- DROP TABLE IF EXISTS sales.vehicle_payment;
 
@@ -73,7 +141,8 @@ CREATE TABLE IF NOT EXISTS sales.vehicle_payment
         REFERENCES master.vehicle (chassis_no) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE SET NULL,
-    CONSTRAINT vehicle_payment_payment_context_check CHECK (payment_context::text = ANY (ARRAY['BOOKING'::character varying, 'SALE'::character varying, 'ADJUSTMENT'::character varying]::text[]))
+    CONSTRAINT vehicle_payment_payment_context_check CHECK (payment_context::text = ANY (ARRAY['BOOKING'::character varying, 'SALE'::character varying, 'ADJUSTMENT'::character varying]::text[])),
+    CONSTRAINT chk_vehicle_payment_amount CHECK (payment_amount > 0::numeric)
 )
 
 TABLESPACE pg_default;
@@ -81,9 +150,31 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS sales.vehicle_payment
     OWNER to postgres;
 
+REVOKE ALL ON TABLE sales.vehicle_payment FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE sales.vehicle_payment TO app_user;
 
--- Table: sales.vehicle_registration
+GRANT ALL ON TABLE sales.vehicle_payment TO postgres;
+-- Index: idx_vehicle_payment_context
+
+-- DROP INDEX IF EXISTS sales.idx_vehicle_payment_context;
+
+CREATE INDEX IF NOT EXISTS idx_vehicle_payment_context
+    ON sales.vehicle_payment USING btree
+    (payment_context COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_vehicle_payment_date
+
+-- DROP INDEX IF EXISTS sales.idx_vehicle_payment_date;
+
+CREATE INDEX IF NOT EXISTS idx_vehicle_payment_date
+    ON sales.vehicle_payment USING btree
+    (payment_date ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: sales.vehicle_registration
 
 -- DROP TABLE IF EXISTS sales.vehicle_registration;
 
@@ -111,6 +202,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS sales.vehicle_registration
     OWNER to postgres;
 
+REVOKE ALL ON TABLE sales.vehicle_registration FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE sales.vehicle_registration TO app_user;
+
+GRANT ALL ON TABLE sales.vehicle_registration TO postgres;
 
 -- Table: sales.vehicle_sale
 
@@ -149,9 +245,31 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS sales.vehicle_sale
     OWNER to postgres;
 
+REVOKE ALL ON TABLE sales.vehicle_sale FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE sales.vehicle_sale TO app_user;
 
--- Table: sales.vehicle_sale_finance
+GRANT ALL ON TABLE sales.vehicle_sale TO postgres;
+-- Index: idx_vehicle_sale_created_at
+
+-- DROP INDEX IF EXISTS sales.idx_vehicle_sale_created_at;
+
+CREATE INDEX IF NOT EXISTS idx_vehicle_sale_created_at
+    ON sales.vehicle_sale USING btree
+    (created_at ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_vehicle_sale_is_financed
+
+-- DROP INDEX IF EXISTS sales.idx_vehicle_sale_is_financed;
+
+CREATE INDEX IF NOT EXISTS idx_vehicle_sale_is_financed
+    ON sales.vehicle_sale USING btree
+    (is_financed ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: sales.vehicle_sale_finance
 
 -- DROP TABLE IF EXISTS sales.vehicle_sale_finance;
 
@@ -175,3 +293,9 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS sales.vehicle_sale_finance
     OWNER to postgres;
+
+REVOKE ALL ON TABLE sales.vehicle_sale_finance FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE sales.vehicle_sale_finance TO app_user;
+
+GRANT ALL ON TABLE sales.vehicle_sale_finance TO postgres;

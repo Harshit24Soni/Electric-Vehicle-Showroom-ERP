@@ -1,3 +1,17 @@
+-- SCHEMA: warranty
+
+-- DROP SCHEMA IF EXISTS warranty ;
+
+CREATE SCHEMA IF NOT EXISTS warranty
+    AUTHORIZATION postgres;
+
+GRANT USAGE ON SCHEMA warranty TO app_user;
+
+GRANT ALL ON SCHEMA warranty TO postgres;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA warranty
+GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
+
 -- Table: warranty.claim
 
 -- DROP TABLE IF EXISTS warranty.claim;
@@ -26,9 +40,32 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS warranty.claim
     OWNER to postgres;
 
+REVOKE ALL ON TABLE warranty.claim FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE warranty.claim TO app_user;
 
--- Table: warranty.inward
+GRANT ALL ON TABLE warranty.claim TO postgres;
+-- Index: idx_warranty_claim_status
+
+-- DROP INDEX IF EXISTS warranty.idx_warranty_claim_status;
+
+CREATE INDEX IF NOT EXISTS idx_warranty_claim_status
+    ON warranty.claim USING btree
+    (claim_status COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_warranty_pending
+
+-- DROP INDEX IF EXISTS warranty.idx_warranty_pending;
+
+CREATE INDEX IF NOT EXISTS idx_warranty_pending
+    ON warranty.claim USING btree
+    (created_at ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default
+    WHERE claim_status::text = 'RAISED'::text;
+
+    -- Table: warranty.inward
 
 -- DROP TABLE IF EXISTS warranty.inward;
 
@@ -48,7 +85,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS warranty.inward
     OWNER to postgres;
 
+REVOKE ALL ON TABLE warranty.inward FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE warranty.inward TO app_user;
+
+GRANT ALL ON TABLE warranty.inward TO postgres;
 
 -- Table: warranty.inward_item
 
@@ -79,7 +120,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS warranty.inward_item
     OWNER to postgres;
 
+REVOKE ALL ON TABLE warranty.inward_item FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE warranty.inward_item TO app_user;
+
+GRANT ALL ON TABLE warranty.inward_item TO postgres;
 
 -- Table: warranty.shipment
 
@@ -102,30 +147,35 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS warranty.shipment
     OWNER to postgres;
 
+REVOKE ALL ON TABLE warranty.shipment FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE warranty.shipment TO app_user;
 
--- Table: warranty.shipment_item
+GRANT ALL ON TABLE warranty.shipment TO postgres;
 
--- DROP TABLE IF EXISTS warranty.shipment_item;
+-- Table: warranty.shipment
 
-CREATE TABLE IF NOT EXISTS warranty.shipment_item
+-- DROP TABLE IF EXISTS warranty.shipment;
+
+CREATE TABLE IF NOT EXISTS warranty.shipment
 (
-    shipment_item_id bigint NOT NULL DEFAULT nextval('warranty.shipment_item_shipment_item_id_seq'::regclass),
-    shipment_id bigint NOT NULL,
-    claim_id bigint NOT NULL,
-    CONSTRAINT shipment_item_pkey PRIMARY KEY (shipment_item_id),
-    CONSTRAINT uq_claim_single_shipment UNIQUE (claim_id),
-    CONSTRAINT fk_ship_item_claim FOREIGN KEY (claim_id)
-        REFERENCES warranty.claim (claim_id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE CASCADE,
-    CONSTRAINT fk_ship_item_shipment FOREIGN KEY (shipment_id)
-        REFERENCES warranty.shipment (shipment_id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE CASCADE
+    shipment_id bigint NOT NULL DEFAULT nextval('warranty.shipment_shipment_id_seq'::regclass),
+    courier_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    docket_no character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    dispatch_date date NOT NULL,
+    received_date date,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT shipment_pkey PRIMARY KEY (shipment_id),
+    CONSTRAINT uq_warranty_docket UNIQUE (docket_no)
 )
 
 TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS warranty.shipment_item
+ALTER TABLE IF EXISTS warranty.shipment
     OWNER to postgres;
+
+REVOKE ALL ON TABLE warranty.shipment FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE warranty.shipment TO app_user;
+
+GRANT ALL ON TABLE warranty.shipment TO postgres;

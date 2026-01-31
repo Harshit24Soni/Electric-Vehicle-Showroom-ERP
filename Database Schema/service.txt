@@ -1,3 +1,17 @@
+-- SCHEMA: service
+
+-- DROP SCHEMA IF EXISTS service ;
+
+CREATE SCHEMA IF NOT EXISTS service
+    AUTHORIZATION postgres;
+
+GRANT USAGE ON SCHEMA service TO app_user;
+
+GRANT ALL ON SCHEMA service TO postgres;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA service
+GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
+
 -- Table: service.job_card
 
 -- DROP TABLE IF EXISTS service.job_card;
@@ -24,7 +38,9 @@ CREATE TABLE IF NOT EXISTS service.job_card
     CONSTRAINT fk_job_vehicle FOREIGN KEY (chassis_no)
         REFERENCES master.vehicle (chassis_no) MATCH SIMPLE
         ON UPDATE NO ACTION
-        ON DELETE RESTRICT
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_job_card_datetime CHECK (out_datetime IS NULL OR out_datetime >= in_datetime),
+    CONSTRAINT chk_job_card_km CHECK (opening_km >= 0)
 )
 
 TABLESPACE pg_default;
@@ -32,9 +48,31 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS service.job_card
     OWNER to postgres;
 
+REVOKE ALL ON TABLE service.job_card FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE service.job_card TO app_user;
 
--- Table: service.job_labour
+GRANT ALL ON TABLE service.job_card TO postgres;
+-- Index: idx_job_card_in_datetime
+
+-- DROP INDEX IF EXISTS service.idx_job_card_in_datetime;
+
+CREATE INDEX IF NOT EXISTS idx_job_card_in_datetime
+    ON service.job_card USING btree
+    (in_datetime ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_job_card_out_datetime
+
+-- DROP INDEX IF EXISTS service.idx_job_card_out_datetime;
+
+CREATE INDEX IF NOT EXISTS idx_job_card_out_datetime
+    ON service.job_card USING btree
+    (out_datetime ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: service.job_labour
 
 -- DROP TABLE IF EXISTS service.job_labour;
 
@@ -57,7 +95,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS service.job_labour
     OWNER to postgres;
 
+REVOKE ALL ON TABLE service.job_labour FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE service.job_labour TO app_user;
+
+GRANT ALL ON TABLE service.job_labour TO postgres;
 
 -- Table: service.job_spare
 
@@ -67,11 +109,15 @@ CREATE TABLE IF NOT EXISTS service.job_spare
 (
     job_spare_id bigint NOT NULL DEFAULT nextval('service.job_spare_job_spare_id_seq'::regclass),
     work_item_id bigint NOT NULL,
-    part_code character varying(100) COLLATE pg_catalog."default" NOT NULL,
     quantity integer NOT NULL DEFAULT 1,
     rate numeric(12,2),
     created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    spare_id bigint NOT NULL,
     CONSTRAINT job_spare_pkey PRIMARY KEY (job_spare_id),
+    CONSTRAINT fk_job_spare_spare FOREIGN KEY (spare_id)
+        REFERENCES inventory.spare_master (spare_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
     CONSTRAINT fk_job_spare_work FOREIGN KEY (work_item_id)
         REFERENCES service.job_work_item (work_item_id) MATCH SIMPLE
         ON UPDATE NO ACTION
@@ -83,9 +129,22 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS service.job_spare
     OWNER to postgres;
 
+REVOKE ALL ON TABLE service.job_spare FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE service.job_spare TO app_user;
 
--- Table: service.job_work_item
+GRANT ALL ON TABLE service.job_spare TO postgres;
+-- Index: idx_job_spare_spare
+
+-- DROP INDEX IF EXISTS service.idx_job_spare_spare;
+
+CREATE INDEX IF NOT EXISTS idx_job_spare_spare
+    ON service.job_spare USING btree
+    (spare_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: service.job_work_item
 
 -- DROP TABLE IF EXISTS service.job_work_item;
 
@@ -109,9 +168,22 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS service.job_work_item
     OWNER to postgres;
 
+REVOKE ALL ON TABLE service.job_work_item FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE service.job_work_item TO app_user;
 
--- Table: service.service_schedule
+GRANT ALL ON TABLE service.job_work_item TO postgres;
+-- Index: idx_job_work_item_type
+
+-- DROP INDEX IF EXISTS service.idx_job_work_item_type;
+
+CREATE INDEX IF NOT EXISTS idx_job_work_item_type
+    ON service.job_work_item USING btree
+    (work_type COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+    -- Table: service.service_schedule
 
 -- DROP TABLE IF EXISTS service.service_schedule;
 
@@ -138,7 +210,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS service.service_schedule
     OWNER to postgres;
 
+REVOKE ALL ON TABLE service.service_schedule FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE service.service_schedule TO app_user;
+
+GRANT ALL ON TABLE service.service_schedule TO postgres;
 
 -- Table: service.vehicle_component_change
 
@@ -179,7 +255,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS service.vehicle_component_change
     OWNER to postgres;
 
+REVOKE ALL ON TABLE service.vehicle_component_change FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE service.vehicle_component_change TO app_user;
+
+GRANT ALL ON TABLE service.vehicle_component_change TO postgres;
 
 -- Table: service.vehicle_service_summary
 
@@ -215,3 +295,19 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS service.vehicle_service_summary
     OWNER to postgres;
+
+REVOKE ALL ON TABLE service.vehicle_service_summary FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE service.vehicle_service_summary TO app_user;
+
+GRANT ALL ON TABLE service.vehicle_service_summary TO postgres;
+-- Index: idx_service_due_alert
+
+-- DROP INDEX IF EXISTS service.idx_service_due_alert;
+
+CREATE INDEX IF NOT EXISTS idx_service_due_alert
+    ON service.vehicle_service_summary USING btree
+    (due_status COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default
+    WHERE due_status::text = ANY (ARRAY['DUE'::character varying, 'OVERDUE'::character varying]::text[]);

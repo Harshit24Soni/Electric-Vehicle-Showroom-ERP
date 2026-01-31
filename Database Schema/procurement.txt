@@ -1,3 +1,17 @@
+-- SCHEMA: procurement
+
+-- DROP SCHEMA IF EXISTS procurement ;
+
+CREATE SCHEMA IF NOT EXISTS procurement
+    AUTHORIZATION postgres;
+
+GRANT USAGE ON SCHEMA procurement TO app_user;
+
+GRANT ALL ON SCHEMA procurement TO postgres;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA procurement
+GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
+
 -- Table: procurement.spare_purchase
 
 -- DROP TABLE IF EXISTS procurement.spare_purchase;
@@ -23,7 +37,11 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS procurement.spare_purchase
     OWNER to postgres;
 
+REVOKE ALL ON TABLE procurement.spare_purchase FROM app_user;
 
+GRANT INSERT, SELECT, UPDATE ON TABLE procurement.spare_purchase TO app_user;
+
+GRANT ALL ON TABLE procurement.spare_purchase TO postgres;
 
 -- Table: procurement.spare_purchase_item
 
@@ -55,3 +73,9 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS procurement.spare_purchase_item
     OWNER to postgres;
+
+REVOKE ALL ON TABLE procurement.spare_purchase_item FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE procurement.spare_purchase_item TO app_user;
+
+GRANT ALL ON TABLE procurement.spare_purchase_item TO postgres;
