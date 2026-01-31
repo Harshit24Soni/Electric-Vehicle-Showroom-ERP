@@ -3,7 +3,7 @@ import random
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 
-from backend.app.domains.staff.schemas import StaffCreate, StaffResponse
+from app.domains.staff.schemas import StaffCreate, StaffResponse
 from app.auth.dependencies import get_current_staff
 from app.auth.pin_utils import hash_pin
 from app.auth.roles import require_roles

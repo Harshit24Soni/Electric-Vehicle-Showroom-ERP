@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from backend.app.domains.staff.staff_routes import router as admin_staff_router
-from app.auth.routes import router as auth_router
+from app.domains.admin.routes import router as admin_staff_router
+from app.domains.staff.routes import router as auth_router
 
 app = FastAPI(title="EV Showroom ERP Backend")
 
@@ -13,3 +13,7 @@ def health_check():
 
 app.include_router(auth_router)
 app.include_router(admin_staff_router)
+
+from app.domains.inventory.routes import router as inventory_router
+
+app.include_router(inventory_router)

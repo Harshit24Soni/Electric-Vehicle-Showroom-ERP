@@ -11,7 +11,7 @@ from sqlalchemy import text
 from app.auth.dependencies import get_current_staff
 from app.auth.pin_utils import hash_pin, verify_pin
 from app.auth.roles import require_roles
-from app.auth.schemas import AdminPinResetRequest, PinChangeRequest, PinLoginRequest
+from app.domains.staff.models import AdminPinResetRequest, PinChangeRequest, PinLoginRequest
 from app.auth.token_utils import create_access_token
 from app.db.session import engine
 
