@@ -8,7 +8,7 @@ from sqlalchemy import (
 	Index,
 	ForeignKey,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
 from app.db.base import Base
@@ -16,9 +16,13 @@ from app.db.base import Base
 
 class Customer(Base):
 	__tablename__ = "customer"
-	__table_args__ = ({"schema": "master"},)
+	__table_args__ = (
+		Index("idx_customer_created", "created_at"),
+		{"schema": "master"}
+	)
 
 	customer_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+	lead_reference_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)  # References the lead this customer was converted from
 	customer_type: Mapped[str | None] = mapped_column(String(20))
 	name: Mapped[str | None] = mapped_column(String(150))
 	guardian_name: Mapped[str | None] = mapped_column(String(150))
@@ -36,12 +40,39 @@ class Customer(Base):
 	is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class Nominee(Base):
+	"""Insurance nominee details for a customer"""
+	__tablename__ = "nominee"
+	__table_args__ = (
+		Index("idx_nominee_customer", "customer_id"),
+		{"schema": "master"}
+	)
+
+	nominee_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+	customer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.customer.customer_id", ondelete="CASCADE"), nullable=False)
+	nominee_name: Mapped[str] = mapped_column(String(150), nullable=False)
+	nominee_dob: Mapped[Date] = mapped_column(Date, nullable=False)
+	relation: Mapped[str] = mapped_column(String(100), nullable=False)
+	is_primary: Mapped[bool] = mapped_column(Boolean, default=True)
+	created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+	is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+
+class Brand(Base):
+	__tablename__ = "brand"
+	__table_args__ = ({"schema": "master"},)
+
+	brand_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+	brand_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+
+
 class VehicleModel(Base):
 	__tablename__ = "vehicle_model"
 	__table_args__ = (Index("idx_vehicle_model_material", "created_at"), {"schema": "master"})
 
 	vehicle_model_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-	brand: Mapped[str] = mapped_column(String(100), nullable=False)
+	brand_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.brand.brand_id"), nullable=False)
 	model_name: Mapped[str] = mapped_column(String(100), nullable=False)
 	material_number: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
 	colour: Mapped[str | None] = mapped_column(String(50))
@@ -51,6 +82,9 @@ class VehicleModel(Base):
 	hsn_code: Mapped[str | None] = mapped_column(String(20))
 	is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 	created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
+	# Relationships
+	brand = relationship("Brand")
 
 
 class Vehicle(Base):

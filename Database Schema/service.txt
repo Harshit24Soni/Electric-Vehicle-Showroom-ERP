@@ -12,6 +12,8 @@ GRANT ALL ON SCHEMA service TO postgres;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA service
 GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
 
+
+
 -- Table: service.job_card
 
 -- DROP TABLE IF EXISTS service.job_card;
@@ -71,8 +73,20 @@ CREATE INDEX IF NOT EXISTS idx_job_card_out_datetime
     (out_datetime ASC NULLS LAST)
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
+-- Index: uq_open_job_per_vehicle
 
-    -- Table: service.job_labour
+-- DROP INDEX IF EXISTS service.uq_open_job_per_vehicle;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_open_job_per_vehicle
+    ON service.job_card USING btree
+    (chassis_no COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default
+    WHERE out_datetime IS NULL;
+
+
+
+-- Table: service.job_labour
 
 -- DROP TABLE IF EXISTS service.job_labour;
 
@@ -100,6 +114,8 @@ REVOKE ALL ON TABLE service.job_labour FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE service.job_labour TO app_user;
 
 GRANT ALL ON TABLE service.job_labour TO postgres;
+
+
 
 -- Table: service.job_spare
 
@@ -144,6 +160,8 @@ CREATE INDEX IF NOT EXISTS idx_job_spare_spare
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
 
+
+
     -- Table: service.job_work_item
 
 -- DROP TABLE IF EXISTS service.job_work_item;
@@ -183,6 +201,8 @@ CREATE INDEX IF NOT EXISTS idx_job_work_item_type
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
 
+
+
     -- Table: service.service_schedule
 
 -- DROP TABLE IF EXISTS service.service_schedule;
@@ -215,6 +235,8 @@ REVOKE ALL ON TABLE service.service_schedule FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE service.service_schedule TO app_user;
 
 GRANT ALL ON TABLE service.service_schedule TO postgres;
+
+
 
 -- Table: service.vehicle_component_change
 
@@ -260,6 +282,8 @@ REVOKE ALL ON TABLE service.vehicle_component_change FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE service.vehicle_component_change TO app_user;
 
 GRANT ALL ON TABLE service.vehicle_component_change TO postgres;
+
+
 
 -- Table: service.vehicle_service_summary
 

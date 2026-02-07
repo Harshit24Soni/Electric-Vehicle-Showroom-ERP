@@ -12,6 +12,8 @@ GRANT ALL ON SCHEMA warranty TO postgres;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA warranty
 GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
 
+
+
 -- Table: warranty.claim
 
 -- DROP TABLE IF EXISTS warranty.claim;
@@ -65,6 +67,8 @@ CREATE INDEX IF NOT EXISTS idx_warranty_pending
     TABLESPACE pg_default
     WHERE claim_status::text = 'RAISED'::text;
 
+
+
     -- Table: warranty.inward
 
 -- DROP TABLE IF EXISTS warranty.inward;
@@ -90,6 +94,8 @@ REVOKE ALL ON TABLE warranty.inward FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE warranty.inward TO app_user;
 
 GRANT ALL ON TABLE warranty.inward TO postgres;
+
+
 
 -- Table: warranty.inward_item
 
@@ -126,6 +132,8 @@ GRANT INSERT, SELECT, UPDATE ON TABLE warranty.inward_item TO app_user;
 
 GRANT ALL ON TABLE warranty.inward_item TO postgres;
 
+
+
 -- Table: warranty.shipment
 
 -- DROP TABLE IF EXISTS warranty.shipment;
@@ -152,6 +160,8 @@ REVOKE ALL ON TABLE warranty.shipment FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE warranty.shipment TO app_user;
 
 GRANT ALL ON TABLE warranty.shipment TO postgres;
+
+
 
 -- Table: warranty.shipment_item
 

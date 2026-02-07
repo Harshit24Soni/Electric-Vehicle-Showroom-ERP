@@ -12,6 +12,8 @@ GRANT ALL ON SCHEMA billing TO postgres;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA billing
 GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
 
+
+
 -- Table: billing.insurance_estimate
 
 -- DROP TABLE IF EXISTS billing.insurance_estimate;
@@ -44,6 +46,8 @@ GRANT INSERT, SELECT, UPDATE ON TABLE billing.insurance_estimate TO app_user;
 
 GRANT ALL ON TABLE billing.insurance_estimate TO postgres;
 
+
+
 -- Table: billing.invoice
 
 -- DROP TABLE IF EXISTS billing.invoice;
@@ -61,6 +65,7 @@ CREATE TABLE IF NOT EXISTS billing.invoice
     finalized_at timestamp without time zone,
     remarks text COLLATE pg_catalog."default",
     created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_locked boolean NOT NULL DEFAULT false,
     CONSTRAINT invoice_pkey PRIMARY KEY (invoice_id),
     CONSTRAINT uq_billing_invoice_no UNIQUE (invoice_number),
     CONSTRAINT fk_invoice_customer FOREIGN KEY (customer_id)
@@ -113,6 +118,8 @@ CREATE INDEX IF NOT EXISTS idx_billing_invoice_type
     (invoice_type COLLATE pg_catalog."default" ASC NULLS LAST)
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
+
+
 
     -- Table: billing.invoice_line
 

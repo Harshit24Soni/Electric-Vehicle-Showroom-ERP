@@ -1,25 +1,30 @@
-import os
-
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
+import logging
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-load_dotenv()
+from app.core.config import settings
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Create Async Engine
+# We use str(settings.DATABASE_URL) to ensure it's a string, even if Pydantic returns a DSN object
+engine = create_async_engine(
+    str(settings.DATABASE_URL),
+    echo=False,
+    pool_pre_ping=True
+)
 
-engine = create_engine(DATABASE_URL, echo=False)
-
-SessionLocal = sessionmaker(
+# Create Async Session Factory
+AsyncSessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
     autocommit=False,
     autoflush=False,
-    bind=engine
 )
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db():
+    async with AsyncSessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()

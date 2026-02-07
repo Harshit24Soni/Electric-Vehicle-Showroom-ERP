@@ -12,3 +12,77 @@ GRANT ALL ON SCHEMA finance TO postgres;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA finance
 GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
 
+
+
+-- Table: finance.vehicle_loan
+
+-- DROP TABLE IF EXISTS finance.vehicle_loan;
+
+CREATE TABLE IF NOT EXISTS finance.vehicle_loan
+(
+    loan_id bigint NOT NULL DEFAULT nextval('finance.vehicle_loan_loan_id_seq'::regclass),
+    sale_id bigint NOT NULL,
+    financer_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    financer_type character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    loan_amount numeric(12,2) NOT NULL,
+    down_payment numeric(12,2) NOT NULL DEFAULT 0,
+    approval_status character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    financer_ref_no character varying(100) COLLATE pg_catalog."default",
+    approval_date date,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT vehicle_loan_pkey PRIMARY KEY (loan_id),
+    CONSTRAINT uq_one_loan_per_sale UNIQUE (sale_id),
+    CONSTRAINT fk_vehicle_loan_sale FOREIGN KEY (sale_id)
+        REFERENCES sales.vehicle_sale (vehicle_sale_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_loan_status CHECK (approval_status::text = ANY (ARRAY['APPLIED'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS finance.vehicle_loan
+    OWNER to postgres;
+
+REVOKE ALL ON TABLE finance.vehicle_loan FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE finance.vehicle_loan TO app_user;
+
+GRANT ALL ON TABLE finance.vehicle_loan TO postgres;
+
+
+
+-- Table: finance.vehicle_subsidy
+
+-- DROP TABLE IF EXISTS finance.vehicle_subsidy;
+
+CREATE TABLE IF NOT EXISTS finance.vehicle_subsidy
+(
+    subsidy_id bigint NOT NULL DEFAULT nextval('finance.vehicle_subsidy_subsidy_id_seq'::regclass),
+    chassis_no character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    subsidy_customer_id character varying(100) COLLATE pg_catalog."default",
+    portal_name character varying(100) COLLATE pg_catalog."default",
+    application_status character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    docs_uploaded boolean NOT NULL DEFAULT false,
+    approval_date date,
+    remarks text COLLATE pg_catalog."default",
+    CONSTRAINT vehicle_subsidy_pkey PRIMARY KEY (subsidy_id),
+    CONSTRAINT uq_one_subsidy_per_vehicle UNIQUE (chassis_no),
+    CONSTRAINT fk_subsidy_vehicle FOREIGN KEY (chassis_no)
+        REFERENCES master.vehicle (chassis_no) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_subsidy_status CHECK (application_status::text = ANY (ARRAY['NOT_APPLIED'::character varying, 'APPLIED'::character varying, 'DOCS_UPLOADED'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying]::text[]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS finance.vehicle_subsidy
+    OWNER to postgres;
+
+REVOKE ALL ON TABLE finance.vehicle_subsidy FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE finance.vehicle_subsidy TO app_user;
+
+GRANT ALL ON TABLE finance.vehicle_subsidy TO postgres;

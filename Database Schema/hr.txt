@@ -12,6 +12,8 @@ GRANT ALL ON SCHEMA hr TO postgres;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA hr
 GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
 
+
+
 -- Table: hr.attendance
 
 -- DROP TABLE IF EXISTS hr.attendance;
@@ -64,6 +66,8 @@ CREATE INDEX IF NOT EXISTS idx_attendance_staff
     (staff_id ASC NULLS LAST)
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
+
+
 
     -- Table: hr.salary
 

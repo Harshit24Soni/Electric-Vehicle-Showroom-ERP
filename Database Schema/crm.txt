@@ -12,7 +12,75 @@ GRANT ALL ON SCHEMA crm TO postgres;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA crm
 GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
 
--- Table: crm.followup_schedule
+
+
+-- Table: crm.lead_status_master
+
+CREATE TABLE IF NOT EXISTS crm.lead_status_master
+(
+    status_id SERIAL PRIMARY KEY,
+    status_name VARCHAR(50) NOT NULL UNIQUE,
+    display_order INT DEFAULT 0
+);
+
+-- Table: crm.enquiry_status_master
+
+CREATE TABLE IF NOT EXISTS crm.enquiry_status_master
+(
+    status_id SERIAL PRIMARY KEY,
+    status_name VARCHAR(50) NOT NULL UNIQUE,
+    display_order INT DEFAULT 0
+);
+
+
+
+-- Table: crm.enquiry
+
+-- DROP TABLE IF EXISTS crm.enquiry;
+
+CREATE TABLE IF NOT EXISTS crm.enquiry
+(
+    enquiry_id bigint NOT NULL DEFAULT nextval('crm.enquiry_enquiry_id_seq'::regclass),
+    lead_id bigint NOT NULL,
+    enquiry_source character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    enquiry_status_id INT NOT NULL,
+    owner_staff_id bigint NOT NULL,
+    last_followup_date date,
+    last_message_date timestamp without time zone,
+    remarks text COLLATE pg_catalog."default",
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT enquiry_pkey PRIMARY KEY (enquiry_id),
+    CONSTRAINT enquiry_lead_id_fkey FOREIGN KEY (lead_id)
+        REFERENCES crm.lead (lead_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_enquiry_status FOREIGN KEY (enquiry_status_id)
+        REFERENCES crm.enquiry_status_master (status_id)
+);
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS crm.enquiry
+    OWNER to postgres;
+
+REVOKE ALL ON TABLE crm.enquiry FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE crm.enquiry TO app_user;
+
+GRANT ALL ON TABLE crm.enquiry TO postgres;
+-- Index: idx_enquiry_created
+
+-- DROP INDEX IF EXISTS crm.idx_enquiry_created;
+
+CREATE INDEX IF NOT EXISTS idx_enquiry_created
+    ON crm.enquiry USING btree
+    (created_at ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
+
+    -- Table: crm.followup_schedule
 
 -- DROP TABLE IF EXISTS crm.followup_schedule;
 
@@ -77,6 +145,8 @@ CREATE INDEX IF NOT EXISTS idx_followup_schedule_status
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
 
+
+
     -- Table: crm.lead
 
 -- DROP TABLE IF EXISTS crm.lead;
@@ -84,14 +154,17 @@ CREATE INDEX IF NOT EXISTS idx_followup_schedule_status
 CREATE TABLE IF NOT EXISTS crm.lead
 (
     lead_id bigint NOT NULL DEFAULT nextval('crm.lead_lead_id_seq'::regclass),
-    customer_id bigint NOT NULL,
+    customer_id bigint,
     vehicle_model_id bigint NOT NULL,
     lead_source character varying(50) COLLATE pg_catalog."default" NOT NULL,
-    lead_status character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    lead_status_id INT NOT NULL,
     owner_staff_id bigint NOT NULL,
     expected_purchase_date date,
     remarks text COLLATE pg_catalog."default",
     created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    name character varying(150) COLLATE pg_catalog."default" NOT NULL DEFAULT 'Pending'::character varying,
+    phone character varying(15) COLLATE pg_catalog."default" NOT NULL DEFAULT '0000000000'::character varying,
+    email character varying(150) COLLATE pg_catalog."default",
     CONSTRAINT lead_pkey PRIMARY KEY (lead_id),
     CONSTRAINT fk_lead_customer FOREIGN KEY (customer_id)
         REFERENCES master.customer (customer_id) MATCH SIMPLE
@@ -105,7 +178,8 @@ CREATE TABLE IF NOT EXISTS crm.lead
         REFERENCES master.vehicle_model (vehicle_model_id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE RESTRICT,
-    CONSTRAINT lead_lead_status_check CHECK (lead_status::text = ANY (ARRAY['NEW'::character varying, 'HOT'::character varying, 'WARM'::character varying, 'COLD'::character varying, 'CONVERTED'::character varying, 'LOST'::character varying, 'DROPPED'::character varying]::text[]))
+    CONSTRAINT fk_lead_status FOREIGN KEY (lead_status_id)
+        REFERENCES crm.lead_status_master (status_id)
 )
 
 TABLESPACE pg_default;
@@ -133,9 +207,11 @@ CREATE INDEX IF NOT EXISTS idx_crm_lead_created
 
 CREATE INDEX IF NOT EXISTS idx_crm_lead_status
     ON crm.lead USING btree
-    (lead_status COLLATE pg_catalog."default" ASC NULLS LAST)
+    (lead_status_id ASC NULLS LAST)
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
+
+
 
     -- Table: crm.lead_activity
 
@@ -173,6 +249,8 @@ REVOKE ALL ON TABLE crm.lead_activity FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE crm.lead_activity TO app_user;
 
 GRANT ALL ON TABLE crm.lead_activity TO postgres;
+
+
 
 -- Table: crm.lead_assignment_history
 
@@ -213,6 +291,8 @@ GRANT INSERT, SELECT, UPDATE ON TABLE crm.lead_assignment_history TO app_user;
 
 GRANT ALL ON TABLE crm.lead_assignment_history TO postgres;
 
+
+
 -- Table: crm.lead_status_history
 
 -- DROP TABLE IF EXISTS crm.lead_status_history;
@@ -247,6 +327,8 @@ REVOKE ALL ON TABLE crm.lead_status_history FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE crm.lead_status_history TO app_user;
 
 GRANT ALL ON TABLE crm.lead_status_history TO postgres;
+
+
 
 -- Table: crm.test_ride
 

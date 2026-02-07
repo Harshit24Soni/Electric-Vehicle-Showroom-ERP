@@ -20,7 +20,7 @@ class ClaimResponse(BaseModel):
     remarks: Optional[str]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class InwardItemCreate(BaseModel):
@@ -44,7 +44,7 @@ class InwardResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ShipmentItemCreate(BaseModel):
@@ -67,4 +67,4 @@ class ShipmentResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True

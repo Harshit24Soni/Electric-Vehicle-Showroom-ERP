@@ -9,7 +9,13 @@ from sqlalchemy import text
 from app.auth.dependencies import SECRET_KEY, ALGORITHM, security
 from app.auth.pin_utils import hash_pin, verify_pin
 from app.auth.roles import require_roles
-from app.domains.staff.models import AdminPinResetRequest, PinChangeRequest, PinLoginRequest
+from app.domains.staff.models import (
+    AdminPinResetRequest,
+    PinChangeRequest,
+    PinLoginRequest,
+    ForgotPinRequest,
+    DealerPinResetRequest
+)
 from app.auth.token_utils import create_access_token
 from app.db.session import engine
 
@@ -22,6 +28,10 @@ router = APIRouter(
 
 @router.post("/login-pin")
 def login_with_pin(payload: PinLoginRequest) -> dict:
+    """
+    Login with PIN using mobile number or email.
+    Note: Staff ID is NOT allowed for login (only database tracking).
+    """
     identifier = payload.identifier.strip()
     pin = payload.pin
 
@@ -38,7 +48,7 @@ def login_with_pin(payload: PinLoginRequest) -> dict:
                     is_pin_reset_required
                 FROM master.staff
                 WHERE mobile_no = :identifier
-                   OR staff_id::text = :identifier
+                   OR email = :identifier
             """),
             {"identifier": identifier}
         ).mappings().first()
@@ -128,11 +138,48 @@ def login_with_pin(payload: PinLoginRequest) -> dict:
     }
 
 
+@router.post("/forgot-pin")
+def forgot_pin(payload: ForgotPinRequest):
+    """
+    Request PIN reset when staff forgets their PIN.
+    Logs the request for admin review.
+    """
+    identifier = payload.identifier.strip()
+
+    with engine.begin() as conn:
+        staff = conn.execute(
+            text("""
+                SELECT staff_id, name, email, mobile_no
+                FROM master.staff
+                WHERE mobile_no = :identifier
+                   OR email = :identifier
+            """),
+            {"identifier": identifier}
+        ).mappings().first()
+
+        if staff:
+            # Log the PIN reset request
+            conn.execute(
+                text("""
+                    INSERT INTO master.pin_reset_request 
+                    (staff_id, request_type, requested_at, status)
+                    VALUES (:staff_id, 'STAFF_FORGOT_PIN', NOW(), 'PENDING')
+                """),
+                {"staff_id": staff["staff_id"]}
+            )
+        
+    # Always return same message for security
+    return {
+        "message": "If the account exists, admin will be notified"
+    }
+
+
 @router.post("/change-pin")
 def change_pin(
     payload: PinChangeRequest,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
+    """Change PIN for authenticated user"""
     token = credentials.credentials
 
     try:
@@ -208,6 +255,7 @@ def change_pin(
     dependencies=[Depends(require_roles("ADMIN", "DEALER"))]
 )
 def reset_staff_pin(payload: AdminPinResetRequest):
+    """Admin/Dealer can reset a staff member's PIN"""
     staff_id = payload.staff_id
 
     temp_pin = str(random.randint(100000, 999999))

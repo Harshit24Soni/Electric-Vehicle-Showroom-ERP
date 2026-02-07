@@ -12,6 +12,8 @@ GRANT ALL ON SCHEMA master TO postgres;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA master
 GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
 
+
+
 -- Table: master.customer
 
 -- DROP TABLE IF EXISTS master.customer;
@@ -34,11 +36,16 @@ CREATE TABLE IF NOT EXISTS master.customer
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     is_active boolean DEFAULT true,
     customer_id bigint NOT NULL DEFAULT nextval('master.customer_customer_id_seq'::regclass),
+    lead_reference_id bigint,
     CONSTRAINT customer_pkey PRIMARY KEY (customer_id),
     CONSTRAINT uq_customer_aadhaar UNIQUE (aadhaar_no),
     CONSTRAINT uq_customer_gstin UNIQUE (gstin),
     CONSTRAINT uq_customer_pan UNIQUE (pan_no),
     CONSTRAINT uq_customer_primary_phone UNIQUE (primary_phone),
+    CONSTRAINT customer_lead_reference_id_fkey FOREIGN KEY (lead_reference_id)
+        REFERENCES crm.lead (lead_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE SET NULL,
     CONSTRAINT chk_customer_type CHECK (customer_type::text = ANY (ARRAY['INDIVIDUAL'::character varying, 'BUSINESS'::character varying]::text[]))
 )
 
@@ -52,8 +59,19 @@ REVOKE ALL ON TABLE master.customer FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE master.customer TO app_user;
 
 GRANT ALL ON TABLE master.customer TO postgres;
+-- Index: idx_customer_created
 
--- Table: master.customer_document
+-- DROP INDEX IF EXISTS master.idx_customer_created;
+
+CREATE INDEX IF NOT EXISTS idx_customer_created
+    ON master.customer USING btree
+    (created_at ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
+
+    -- Table: master.customer_document
 
 -- DROP TABLE IF EXISTS master.customer_document;
 
@@ -104,6 +122,8 @@ CREATE INDEX IF NOT EXISTS idx_customer_document_type
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
 
+
+
     -- Table: master.customer_phone
 
 -- DROP TABLE IF EXISTS master.customer_phone;
@@ -138,6 +158,8 @@ GRANT INSERT, SELECT, UPDATE ON TABLE master.customer_phone TO app_user;
 
 GRANT ALL ON TABLE master.customer_phone TO postgres;
 
+
+
 -- Table: master.expense_category
 
 -- DROP TABLE IF EXISTS master.expense_category;
@@ -168,6 +190,8 @@ GRANT INSERT, SELECT, UPDATE ON TABLE master.expense_category TO app_user;
 
 GRANT ALL ON TABLE master.expense_category TO postgres;
 
+
+
 -- Table: master.job_card_category
 
 -- DROP TABLE IF EXISTS master.job_card_category;
@@ -194,7 +218,52 @@ GRANT INSERT, SELECT, UPDATE ON TABLE master.job_card_category TO app_user;
 
 GRANT ALL ON TABLE master.job_card_category TO postgres;
 
--- Table: master.payment_mode
+
+
+-- Table: master.nominee
+
+-- DROP TABLE IF EXISTS master.nominee;
+
+CREATE TABLE IF NOT EXISTS master.nominee
+(
+    nominee_id bigint NOT NULL DEFAULT nextval('master.nominee_nominee_id_seq'::regclass),
+    customer_id bigint NOT NULL,
+    nominee_name character varying(150) COLLATE pg_catalog."default" NOT NULL,
+    nominee_dob date NOT NULL,
+    relation character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    is_primary boolean DEFAULT true,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT nominee_pkey PRIMARY KEY (nominee_id),
+    CONSTRAINT nominee_customer_id_fkey FOREIGN KEY (customer_id)
+        REFERENCES master.customer (customer_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.nominee
+    OWNER to postgres;
+
+REVOKE ALL ON TABLE master.nominee FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE master.nominee TO app_user;
+
+GRANT ALL ON TABLE master.nominee TO postgres;
+-- Index: idx_nominee_customer
+
+-- DROP INDEX IF EXISTS master.idx_nominee_customer;
+
+CREATE INDEX IF NOT EXISTS idx_nominee_customer
+    ON master.nominee USING btree
+    (customer_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
+
+    -- Table: master.payment_mode
 
 -- DROP TABLE IF EXISTS master.payment_mode;
 
@@ -219,6 +288,8 @@ REVOKE ALL ON TABLE master.payment_mode FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE master.payment_mode TO app_user;
 
 GRANT ALL ON TABLE master.payment_mode TO postgres;
+
+
 
 -- Table: master.staff
 
@@ -273,6 +344,8 @@ CREATE INDEX IF NOT EXISTS idx_staff_active_lock
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
 
+
+
     -- Table: master.vehicle
 
 -- DROP TABLE IF EXISTS master.vehicle;
@@ -309,6 +382,31 @@ GRANT INSERT, SELECT, UPDATE ON TABLE master.vehicle TO app_user;
 
 GRANT ALL ON TABLE master.vehicle TO postgres;
 
+
+
+    -- Table: master.brand
+
+-- DROP TABLE IF EXISTS master.brand;
+
+CREATE TABLE IF NOT EXISTS master.brand
+(
+    brand_id SERIAL PRIMARY KEY,
+    brand_name VARCHAR(100) NOT NULL UNIQUE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS master.brand
+    OWNER to postgres;
+
+REVOKE ALL ON TABLE master.brand FROM app_user;
+
+GRANT INSERT, SELECT, UPDATE ON TABLE master.brand TO app_user;
+
+GRANT ALL ON TABLE master.brand TO postgres;
+
+
+
 -- Table: master.vehicle_model
 
 -- DROP TABLE IF EXISTS master.vehicle_model;
@@ -316,7 +414,7 @@ GRANT ALL ON TABLE master.vehicle TO postgres;
 CREATE TABLE IF NOT EXISTS master.vehicle_model
 (
     vehicle_model_id bigint NOT NULL DEFAULT nextval('master.vehicle_model_vehicle_model_id_seq'::regclass),
-    brand character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    brand_id bigint NOT NULL,
     model_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
     material_number character varying(100) COLLATE pg_catalog."default" NOT NULL,
     colour character varying(50) COLLATE pg_catalog."default" NOT NULL,
@@ -327,7 +425,8 @@ CREATE TABLE IF NOT EXISTS master.vehicle_model
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT vehicle_model_pkey PRIMARY KEY (vehicle_model_id),
-    CONSTRAINT uq_vehicle_model_material UNIQUE (material_number)
+    CONSTRAINT uq_vehicle_model_material UNIQUE (material_number),
+    CONSTRAINT fk_vehicle_model_brand FOREIGN KEY (brand_id) REFERENCES master.brand (brand_id)
 )
 
 TABLESPACE pg_default;
@@ -340,6 +439,8 @@ REVOKE ALL ON TABLE master.vehicle_model FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE master.vehicle_model TO app_user;
 
 GRANT ALL ON TABLE master.vehicle_model TO postgres;
+
+
 
 -- Table: master.vendor
 
@@ -376,6 +477,8 @@ GRANT INSERT, SELECT, UPDATE ON TABLE master.vendor TO app_user;
 
 GRANT ALL ON TABLE master.vendor TO postgres;
 
+
+
 -- Table: master.vendor_contact
 
 -- DROP TABLE IF EXISTS master.vendor_contact;
@@ -409,6 +512,8 @@ REVOKE ALL ON TABLE master.vendor_contact FROM app_user;
 GRANT INSERT, SELECT, UPDATE ON TABLE master.vendor_contact TO app_user;
 
 GRANT ALL ON TABLE master.vendor_contact TO postgres;
+
+
 
 -- Table: master.vendor_document
 

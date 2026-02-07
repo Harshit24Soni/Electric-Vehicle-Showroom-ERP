@@ -6,21 +6,21 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from sqlalchemy import text
 
-from app.db.session import engine
+from app.db.session import get_db
 
 load_dotenv()
 
 security = HTTPBearer()
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-ALGORITHM = os.getenv("JWT_ALGORITHM")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-key")
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
-if not SECRET_KEY or not ALGORITHM:
-    raise RuntimeError("JWT configuration missing")
+# In development, allow defaults so the app can run without explicit env vars.
 
 
-def get_current_staff(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+async def get_current_staff(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db=Depends(get_db)
 ) -> dict:
     """
     Extract and validate the currently authenticated staff member.
@@ -51,16 +51,16 @@ def get_current_staff(
         )
 
     # 🔒 ERP-grade check: ensure staff still exists & is active
-    with engine.connect() as conn:
-        result = conn.execute(
-            text("""
-                SELECT staff_id, designation, is_active
-                FROM master.staff
-                WHERE staff_id = :staff_id
-            """),
-            {"staff_id": staff_id}
-        )
-        staff = result.mappings().first()
+    # Using Async Session
+    result = await db.execute(
+        text("""
+            SELECT staff_id, designation, is_active
+            FROM master.staff
+            WHERE staff_id = :staff_id
+        """),
+        {"staff_id": staff_id}
+    )
+    staff = result.mappings().first()
 
     if not staff or not staff["is_active"]:
         raise HTTPException(

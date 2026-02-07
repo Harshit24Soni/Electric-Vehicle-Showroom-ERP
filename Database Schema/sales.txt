@@ -12,6 +12,8 @@ GRANT ALL ON SCHEMA sales TO postgres;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA sales
 GRANT INSERT, SELECT, UPDATE ON TABLES TO app_user;
 
+
+
 -- Table: sales.spare_sale
 
 -- DROP TABLE IF EXISTS sales.spare_sale;
@@ -65,6 +67,8 @@ CREATE INDEX IF NOT EXISTS idx_spare_sale_date
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
 
+
+
     -- Table: sales.spare_sale_detail
 
 -- DROP TABLE IF EXISTS sales.spare_sale_detail;
@@ -110,6 +114,8 @@ CREATE INDEX IF NOT EXISTS idx_spare_sale_detail_spare
     (spare_id ASC NULLS LAST)
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
+
+
 
     -- Table: sales.vehicle_payment
 
@@ -174,6 +180,8 @@ CREATE INDEX IF NOT EXISTS idx_vehicle_payment_date
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
 
+
+
     -- Table: sales.vehicle_registration
 
 -- DROP TABLE IF EXISTS sales.vehicle_registration;
@@ -208,6 +216,8 @@ GRANT INSERT, SELECT, UPDATE ON TABLE sales.vehicle_registration TO app_user;
 
 GRANT ALL ON TABLE sales.vehicle_registration TO postgres;
 
+
+
 -- Table: sales.vehicle_sale
 
 -- DROP TABLE IF EXISTS sales.vehicle_sale;
@@ -226,6 +236,7 @@ CREATE TABLE IF NOT EXISTS sales.vehicle_sale
     is_financed boolean NOT NULL DEFAULT false,
     sale_channel character varying(50) COLLATE pg_catalog."default",
     created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    lead_id bigint NOT NULL,
     CONSTRAINT vehicle_sale_pkey PRIMARY KEY (vehicle_sale_id),
     CONSTRAINT uq_sale_challan UNIQUE (delivery_challan_no),
     CONSTRAINT uq_sale_chassis UNIQUE (chassis_no),
@@ -236,6 +247,10 @@ CREATE TABLE IF NOT EXISTS sales.vehicle_sale
         ON DELETE RESTRICT,
     CONSTRAINT fk_sale_vehicle FOREIGN KEY (chassis_no)
         REFERENCES master.vehicle (chassis_no) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_vehicle_sale_lead FOREIGN KEY (lead_id)
+        REFERENCES crm.lead (lead_id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE RESTRICT
 )
@@ -268,6 +283,17 @@ CREATE INDEX IF NOT EXISTS idx_vehicle_sale_is_financed
     (is_financed ASC NULLS LAST)
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
+-- Index: uq_vehicle_sale_lead
+
+-- DROP INDEX IF EXISTS sales.uq_vehicle_sale_lead;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_vehicle_sale_lead
+    ON sales.vehicle_sale USING btree
+    (lead_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
 
     -- Table: sales.vehicle_sale_finance
 
