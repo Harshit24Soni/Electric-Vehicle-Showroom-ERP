@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.domains.finance.models import VehicleFinance
-from app.domains.sales.models import VehicleSale
+from app.domains.sales.models import Sale
 
 class FinanceResponse(BaseModel):
     finance_id: int
@@ -32,7 +32,7 @@ def create_finance(
     remarks: str | None = None,
 ) -> VehicleFinance:
 
-    sale = db.get(VehicleSale, sale_id)
+    sale = db.get(Sale, sale_id)
     if not sale:
         raise FinanceError("Invalid sale")
 

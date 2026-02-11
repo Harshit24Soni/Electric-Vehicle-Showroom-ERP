@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
+from app.auth.roles import require_roles
 from app.domains.master import services, schemas
 
 
@@ -199,5 +200,46 @@ async def list_vendors(
 ):
     """List all vendors"""
     return await services.list_vendors(db)
+
+
+# ==================== PRICING ENDPOINTS ====================
+
+@router.post("/pricing/spares/{spare_id}", response_model=schemas.SparePriceHistoryResponse)
+async def update_spare_price(
+    spare_id: int,
+    data: schemas.SparePriceUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("ADMIN"))
+):
+    """Update spare part price (Admin only)"""
+    return await services.update_spare_price(db, spare_id, data, current_staff.staff_id)
+
+@router.get("/pricing/spares/{spare_id}/history", response_model=list[schemas.SparePriceHistoryResponse])
+async def get_spare_price_history(
+    spare_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("ADMIN", "DEALER"))
+):
+    """Get price history for a spare part"""
+    return await services.get_spare_price_history(db, spare_id)
+
+@router.post("/pricing/vehicles/{vehicle_model_id}", response_model=schemas.VehiclePriceHistoryResponse)
+async def update_vehicle_price(
+    vehicle_model_id: int,
+    data: schemas.VehiclePriceUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("ADMIN"))
+):
+    """Update vehicle model price (Admin only)"""
+    return await services.update_vehicle_price(db, vehicle_model_id, data, current_staff.staff_id)
+
+@router.get("/pricing/vehicles/{vehicle_model_id}/history", response_model=list[schemas.VehiclePriceHistoryResponse])
+async def get_vehicle_price_history(
+    vehicle_model_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("ADMIN", "DEALER"))
+):
+    """Get price history for a vehicle model"""
+    return await services.get_vehicle_price_history(db, vehicle_model_id)
 
 

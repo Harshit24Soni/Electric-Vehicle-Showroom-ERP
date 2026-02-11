@@ -57,5 +57,7 @@ export const crmApi = {
     api.post(`/crm/leads/${leadId}/assign?new_owner_id=${newOwnerId}`),
   createFollowup: (data: FollowupCreate) => api.post<Followup>('/crm/followups', data),
   getPendingFollowups: () => api.get<Followup[]>('/crm/followups/pending'),
+  updateFollowup: (id: number, data: Partial<Followup>) => api.put<Followup>(`/crm/followups/${id}`, data),
+  getFollowupDashboard: (type: string = 'ALL') => api.get<{ sales_followups: any[] }>(`/crm/followups/dashboard?followup_type=${type}`),
   addActivity: (data: ActivityCreate) => api.post('/crm/activities', data),
 }

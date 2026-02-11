@@ -14,6 +14,7 @@ from app.domains.service.routes import router as service_router
 from app.domains.crm.routes import router as crm_router
 from app.domains.insurance.routes import router as insurance_router
 from app.domains.warranty.routes import router as warranty_router
+from app.domains.procurement.routes import router as procurement_router
 
 
 app = FastAPI(title="EV Showroom ERP Backend")
@@ -51,3 +52,4 @@ app.include_router(service_router)
 app.include_router(crm_router)
 app.include_router(insurance_router)
 app.include_router(warranty_router)
+app.include_router(procurement_router)

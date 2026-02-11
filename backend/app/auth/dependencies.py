@@ -54,7 +54,7 @@ async def get_current_staff(
     # Using Async Session
     result = await db.execute(
         text("""
-            SELECT staff_id, designation, is_active
+            SELECT staff_id, designation, is_active, dealer_id
             FROM master.staff
             WHERE staff_id = :staff_id
         """),
@@ -77,5 +77,7 @@ async def get_current_staff(
 
     return {
         "staff_id": staff["staff_id"],
-        "designation": staff["designation"]
+        "designation": staff["designation"],
+        "dealer_id": staff["dealer_id"]
     }
+

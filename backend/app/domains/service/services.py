@@ -1,54 +1,9 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.domains.service.models import ServiceJobCard
 from datetime import datetime
-
-
-def open_job_card(
-    db: Session,
-    *,
-    chassis_no: str,
-    is_free_service: bool,
-    remarks: str | None = None,
-) -> ServiceJobCard:
-
-    job = ServiceJobCard(
-        chassis_no=chassis_no,
-        is_free_service=is_free_service,
-        remarks=remarks,
-    )
-
-    db.add(job)
-    db.flush()
-
-    return job
-
 from app.domains.inventory.services import add_spare_movement
 
-
-def consume_spare(
-    db: Session,
-    *,
-    job_card_id: int,
-    spare_id: int,
-    quantity: int,
-    serial_id: int | None = None,
-):
-    # inventory is authoritative
-    add_spare_movement(
-        db=db,
-        spare_id=spare_id,
-        quantity=-quantity,
-        serial_id=serial_id,
-        movement_type="SERVICE_CONSUMPTION",
-        reference_type="SERVICE",
-        reference_id=job_card_id,
-        remarks="Consumed during service",
-    )
-
-def close_job_card(
-    job: ServiceJobCard,
-):
-    job.closed_at = datetime.utcnow()
 
 class ServiceError(Exception):
     pass
@@ -61,21 +16,23 @@ class JobCardAlreadyOpenError(ServiceError):
 class JobCardClosedError(ServiceError):
     pass
 
-def open_job_card(
-    db,
+
+async def open_job_card(
+    db: AsyncSession,
     *,
     chassis_no: str,
     is_free_service: bool,
     remarks: str | None = None,
-):
-    existing = (
-        db.query(ServiceJobCard)
+) -> ServiceJobCard:
+    stmt = (
+        select(ServiceJobCard)
         .filter(
             ServiceJobCard.chassis_no == chassis_no,
             ServiceJobCard.closed_at.is_(None),
         )
-        .first()
     )
+    result = await db.execute(stmt)
+    existing = result.scalars().first()
 
     if existing:
         raise JobCardAlreadyOpenError(
@@ -86,13 +43,15 @@ def open_job_card(
         chassis_no=chassis_no,
         is_free_service=is_free_service,
         remarks=remarks,
+        opened_at=datetime.utcnow(),
     )
     db.add(job)
-    db.flush()
+    await db.flush()
     return job
 
-def consume_spare(
-    db,
+
+async def consume_spare(
+    db: AsyncSession,
     *,
     job_card_id: int,
     spare_id: int,
@@ -102,7 +61,7 @@ def consume_spare(
     if quantity <= 0:
         raise ServiceError("Quantity must be greater than zero")
 
-    job = db.get(ServiceJobCard, job_card_id)
+    job = await db.get(ServiceJobCard, job_card_id)
     if not job:
         raise ServiceError("Job card not found")
 
@@ -111,7 +70,7 @@ def consume_spare(
             "Cannot consume spares on a closed job card"
         )
 
-    add_spare_movement(
+    await add_spare_movement(
         db=db,
         spare_id=spare_id,
         quantity=-quantity,
@@ -122,8 +81,13 @@ def consume_spare(
         remarks="Consumed during service",
     )
 
-def close_job_card(job: ServiceJobCard):
+
+async def close_job_card(
+    db: AsyncSession,
+    job: ServiceJobCard
+):
     if job.closed_at:
         raise JobCardClosedError("Job card already closed")
 
     job.closed_at = datetime.utcnow()
+    await db.flush()

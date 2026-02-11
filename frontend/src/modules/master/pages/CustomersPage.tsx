@@ -4,11 +4,14 @@ import { masterApi, Customer, CustomerCreate } from '../api/masterApi'
 import { Plus, Search, Edit, Eye } from 'lucide-react'
 import { formatDate } from '../../../lib/utils'
 import CustomerForm from '../components/CustomerForm'
+import CustomerDetailModal from '../components/CustomerDetailModal'
 
 export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null)
   const queryClient = useQueryClient()
 
   const { data: customers = [], isLoading } = useQuery({
@@ -103,12 +106,23 @@ export default function CustomersPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
+                            setSelectedCustomerId(customer.customer_id)
+                            setShowDetail(true)
+                          }}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
                             setSelectedCustomer(customer)
                             setShowForm(true)
                           }}
                           className="p-2 text-primary-600 hover:bg-primary-50 rounded"
+                          title="Edit Customer"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -129,6 +143,16 @@ export default function CustomersPage() {
             setSelectedCustomer(null)
           }}
           isLoading={createMutation.isPending}
+        />
+      )}
+
+      {showDetail && selectedCustomerId !== null && (
+        <CustomerDetailModal
+          customerId={selectedCustomerId}
+          onClose={() => {
+            setShowDetail(false)
+            setSelectedCustomerId(null)
+          }}
         />
       )}
     </div>

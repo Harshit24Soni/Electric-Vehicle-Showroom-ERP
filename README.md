@@ -158,6 +158,27 @@ backend/
 | `token_utils.py` | JWT token generation/validation, configurable expiration (default 480 minutes = 8 hours) |
 | `pin_utils.py` | PIN hashing (Argon2) and verification for secure PIN management |
 | `roles.py` | Role-based access control - enforce role requirements on endpoints |
+| `totp_utils.py` | TOTP generation and verification for Dealer 2FA |
+
+### Authentication Guide
+
+#### 1. Dealer Setup (One-Time)
+1.  Login as Dealer.
+2.  Call `POST /auth/totp/setup`.
+3.  Scan the returned QR code (or use `provisioning_uri`) with Google Authenticator / Authy.
+4.  Call `POST /auth/totp/verify` with the code from the app to enable 2FA.
+
+#### 2. Dealer Forgot PIN
+1.  Call `POST /auth/forgot-pin` with email/phone.
+2.  System returns "TOTP_REQUIRED".
+3.  Call `POST /auth/reset-pin/dealer` with `{ identifier, totp_code, new_pin }`.
+
+#### 3. Staff Forgot PIN
+1.  Call `POST /auth/forgot-pin` with email/phone.
+2.  System generates a **Temporary PIN** and notifies the Dealer (Console Log / Notification).
+3.  Dealer provides the Temporary PIN to the staff.
+4.  Staff logs in with Temporary PIN.
+5.  System forces `change-pin` on next login.
 
 ### Database Layer (`app/db/`)
 
@@ -320,7 +341,26 @@ backend/
 ```
 POST   /auth/login-pin           - Staff login with PIN
 POST   /auth/change-pin          - Change staff PIN (forced on first login)
+POST   /auth/login-pin           - Staff login with PIN
+POST   /auth/change-pin          - Change staff PIN (forced on first login)
+POST   /auth/forgot-pin          - Request PIN reset (Staff -> Notify Dealer, Dealer -> TOTP)
 POST   /auth/reset-pin           - Admin reset staff PIN
+POST   /auth/totp/setup          - Setup 2FA (Dealer only)
+POST   /auth/totp/verify         - Verify & Enable 2FA
+POST   /auth/login-pin           - Staff login with PIN
+POST   /auth/change-pin          - Change staff PIN (forced on first login)
+POST   /auth/forgot-pin          - Request PIN reset
+POST   /auth/reset-pin           - Admin reset staff PIN
+POST   /auth/totp/setup          - Setup 2FA (Dealer only)
+POST   /auth/totp/verify         - Verify & Enable 2FA
+POST   /auth/reset-pin/dealer    - Reset Dealer PIN using TOTP
+
+### Staff Management (Admin/Dealer)
+POST   /admin/staff              - Create new staff (Admin/Dealer)
+GET    /admin/staff              - List all staff
+GET    /admin/staff/{id}         - Get staff details
+PUT    /admin/staff/{id}         - Update staff details
+DELETE /admin/staff/{id}         - Soft delete staff
 ```
 
 ### Master Data Management
@@ -503,15 +543,26 @@ The PostgreSQL database is organized into logical schemas:
 
 ### ✅ Completed Features
 - **Core Architecture**: FastAPI application with structured domain organization
-- **Authentication**: JWT-based with PIN login and role-based access control
+### ✅ Completed Features
+- **Core Architecture**: FastAPI application with structured domain organization
+- **Authentication**: 
+  - JWT-based with PIN login and role-based access control.
+  - **Dealer 2FA**: TOTP (Authenticator App) required for sensitive actions.
+  - **Staff Password Reset**: Automated notification to Dealer with temporary PIN.
 - **Master Data Management**: Customers, vehicles, staff, vendors
-- **Inventory Management**: Real-time stock tracking with movement audit trail
-- **Sales Management**: Complete sales workflow (create → allocate → deliver)
+- **Inventory Management**: Real-time stock tracking with movement audit trail. Soft delete implemented.
+- **Sales Management**: 
+  - Complete sales workflow (create → allocate → deliver).
+  - Strict documentation order (Payment -> Invoice -> Challan -> Service Schedule).
+  - Delivery eligibility checks.
 - **Billing**: Invoice generation with tax calculations
 - **Finance**: Payment and loan tracking
 - **Service Management**: Job card management with spare consumption
 - **Warranty Management**: Claim and logistics tracking
-- **CRM**: Lead and activity management
+- **CRM**: 
+  - Lead and activity management.
+  - Auto-assignment rules.
+  - Mandatory remarks for follow-ups.
 - **Insurance**: Basic policy management
 
 ### 🔄 In Progress
@@ -756,6 +807,27 @@ frontend/
 
 **Issue**: Duplicate invoice numbers**
 - **Solution**: Ensure database constraints are enforced; use transactions for invoice creation
+
+## Purchase & Procurement Module
+
+### Key Features
+- **Vehicle & Spare Purchase**: Integrated with inventory stock updates and accounting flags (`include_in_accounting`).
+- **Pricing History**: Tracks all price changes for spares and vehicles (Versioned).
+- **Temporary Items**: Workflow for DEALER to request new items and ADMIN to approve them.
+- **Component Tracking**: Captures serial numbers for motors, batteries, and chargers during vehicle purchase.
+- **Accounting Integration**: Option to flag purchases for accounting ledger.
+
+### API Endpoints
+- **Procurement**:
+  - `POST /procurement/purchases/spares`: Create spare purchase.
+  - `POST /procurement/purchases/vehicles`: Create vehicle purchase.
+  - `POST /procurement/temporary-items`: Create temporary item (Dealer).
+  - `PUT /procurement/temporary-items/{id}/approve`: Approve item (Admin).
+- **Master Pricing**:
+  - `POST /master/pricing/spares/{id}`: Update spare price.
+  - `GET /master/pricing/spares/{id}/history`: View price history.
+  - `POST /master/pricing/vehicles/{id}`: Update vehicle price.
+  - `GET /master/pricing/vehicles/{id}/history`: View price history.
 
 ---
 

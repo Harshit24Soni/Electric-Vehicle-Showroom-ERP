@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
 from app.domains.billing.models import SalesInvoice
-from app.domains.sales.models import VehicleSale
+from app.domains.sales.models import Sale
 
 
 class BillingError(Exception):
@@ -31,7 +31,7 @@ def generate_invoice(
     remarks: str | None = None,
 ) -> SalesInvoice:
 
-    sale = db.get(VehicleSale, sale_id)
+    sale = db.get(Sale, sale_id)
     if not sale or getattr(sale, "sale_status", None) != "DELIVERED":
         raise BillingError("Invoice can only be generated after vehicle delivery")
 

@@ -1,7 +1,8 @@
+import { useAuthStore } from '../../../store/authStore'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Trash2, RefreshCcw, X } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 interface Staff {
@@ -13,15 +14,64 @@ interface Staff {
   is_active: boolean
   joined_date?: string
   created_at: string
+  deleted_at?: string
+}
+
+interface CreateStaffForm {
+  full_name: string
+  mobile_no: string
+  email: string
+  designation: string
+  aadhaar_no: string
+  pan_no?: string
+  joined_date?: string
+  address_line1?: string
+  city?: string
+  state?: string
+  pincode?: string
+  bank_name?: string
+  bank_account_no?: string
+  ifsc_code?: string
+  upi_id?: string
+  emergency_contact_name?: string
+  emergency_contact_no?: string
+}
+
+const INITIAL_FORM: CreateStaffForm = {
+  full_name: '',
+  mobile_no: '',
+  email: '',
+  designation: 'STAFF',
+  aadhaar_no: '',
+  pan_no: '',
+  joined_date: '',
+  address_line1: '',
+  city: '',
+  state: '',
+  pincode: '',
+  bank_name: '',
+  bank_account_no: '',
+  ifsc_code: '',
+  upi_id: '',
+  emergency_contact_name: '',
+  emergency_contact_no: '',
 }
 
 export default function StaffManagementPage() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [showDeleted, setShowDeleted] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [form, setForm] = useState<CreateStaffForm>({ ...INITIAL_FORM })
+  const [createError, setCreateError] = useState('')
+  const [createdPin, setCreatedPin] = useState('')
   const queryClient = useQueryClient()
+  const { hasRole, user } = useAuthStore()
+
+  const isDealer = user?.designation === 'DEALER'
 
   const { data: staff = [], isLoading } = useQuery({
-    queryKey: ['staff'],
-    queryFn: () => api.get<Staff[]>('/admin/staff'),
+    queryKey: ['staff', showDeleted],
+    queryFn: () => api.get<Staff[]>(`/admin/staff?include_deleted=${showDeleted}`),
   })
 
   const filteredStaff = staff.filter((s) =>
@@ -30,6 +80,72 @@ export default function StaffManagementPage() {
     s.designation.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/admin/staff/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['staff'] }),
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: (id: number) => api.post(`/admin/staff/${id}/restore`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['staff'] }),
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (data: CreateStaffForm) => api.post<Staff>('/admin/staff', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] })
+    },
+  })
+
+  const handleDelete = async (id: number) => {
+    if (confirm('Are you sure you want to delete this staff member?')) {
+      await deleteMutation.mutateAsync(id)
+    }
+  }
+
+  const handleRestore = async (id: number) => {
+    if (confirm('Restore this staff member?')) {
+      await restoreMutation.mutateAsync(id)
+    }
+  }
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreateError('')
+    setCreatedPin('')
+
+    if (!form.full_name || !form.mobile_no || !form.email || !form.aadhaar_no) {
+      setCreateError('Full Name, Mobile, Email, and Aadhaar are required.')
+      return
+    }
+
+    try {
+      await createMutation.mutateAsync(form)
+      setCreatedPin('Staff created! A temporary PIN has been generated (check server logs).')
+      setForm({ ...INITIAL_FORM })
+      setTimeout(() => {
+        setShowModal(false)
+        setCreatedPin('')
+      }, 3000)
+    } catch (err: any) {
+      setCreateError(err?.response?.data?.detail || err?.message || 'Failed to create staff')
+    }
+  }
+
+  const openModal = () => {
+    setForm({ ...INITIAL_FORM })
+    if (isDealer) {
+      setForm(prev => ({ ...prev, designation: 'STAFF' }))
+    }
+    setCreateError('')
+    setCreatedPin('')
+    setShowModal(true)
+  }
+
+  const updateField = (field: keyof CreateStaffForm, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }))
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -37,10 +153,20 @@ export default function StaffManagementPage() {
           <h1 className="text-3xl font-bold text-gray-900">Staff Management</h1>
           <p className="text-gray-600 mt-1">Manage staff members</p>
         </div>
-        <button className="btn btn-primary flex items-center gap-2">
-          <Plus className="w-5 h-5" />
-          Add Staff
-        </button>
+        <div className="flex gap-2">
+          <button
+            className={`btn ${showDeleted ? 'btn-secondary' : 'btn-outline'}`}
+            onClick={() => setShowDeleted(!showDeleted)}
+          >
+            {showDeleted ? 'Hide Deleted' : 'Show Deleted'}
+          </button>
+          {hasRole(['DEALER', 'ADMIN']) && (
+            <button className="btn btn-primary flex items-center gap-2" onClick={openModal}>
+              <Plus className="w-5 h-5" />
+              Add Staff
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="card">
@@ -70,7 +196,7 @@ export default function StaffManagementPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Staff ID</th>
+                  <th>ID</th>
                   <th>Name</th>
                   <th>Mobile</th>
                   <th>Email</th>
@@ -78,11 +204,12 @@ export default function StaffManagementPage() {
                   <th>Status</th>
                   <th>Joined</th>
                   <th>Created</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStaff.map((s) => (
-                  <tr key={s.staff_id}>
+                  <tr key={s.staff_id} className={s.is_active ? '' : 'bg-gray-50'}>
                     <td>{s.staff_id}</td>
                     <td className="font-medium">{s.full_name}</td>
                     <td>{s.mobile_no}</td>
@@ -93,16 +220,40 @@ export default function StaffManagementPage() {
                       </span>
                     </td>
                     <td>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        s.is_active 
-                          ? 'bg-green-100 text-green-800' 
+                      {s.deleted_at ? (
+                        <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Deleted</span>
+                      ) : (
+                        <span className={`px-2 py-1 text-xs rounded-full ${s.is_active
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
-                      }`}>
-                        {s.is_active ? 'Active' : 'Inactive'}
-                      </span>
+                          }`}>
+                          {s.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      )}
                     </td>
                     <td>{s.joined_date ? formatDate(s.joined_date) : '-'}</td>
                     <td>{formatDate(s.created_at)}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        {s.deleted_at ? (
+                          <button
+                            onClick={() => handleRestore(s.staff_id)}
+                            className="text-green-600 hover:text-green-800"
+                            title="Restore"
+                          >
+                            <RefreshCcw className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleDelete(s.staff_id)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -110,6 +261,170 @@ export default function StaffManagementPage() {
           </div>
         )}
       </div>
+
+      {/* Create Staff Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-xl font-semibold">Add New Staff</h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="p-4 space-y-4">
+              {createError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+                  {createError}
+                </div>
+              )}
+              {createdPin && (
+                <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm">
+                  {createdPin}
+                </div>
+              )}
+
+              {/* Basic Info */}
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-semibold text-gray-700 mb-2">Basic Information</legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                    <input type="text" className="input" value={form.full_name}
+                      onChange={e => updateField('full_name', e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mobile No *</label>
+                    <input type="text" className="input" value={form.mobile_no}
+                      onChange={e => updateField('mobile_no', e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                    <input type="email" className="input" value={form.email}
+                      onChange={e => updateField('email', e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+                    {isDealer ? (
+                      <input type="text" className="input bg-gray-100" value="STAFF" disabled />
+                    ) : (
+                      <select className="input" value={form.designation}
+                        onChange={e => updateField('designation', e.target.value)}>
+                        <option value="STAFF">STAFF</option>
+                        <option value="DEALER">DEALER</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                    )}
+                  </div>
+                </div>
+              </fieldset>
+
+              {/* Personal Details */}
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-semibold text-gray-700 mb-2">Personal Details</legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Aadhaar No *</label>
+                    <input type="text" className="input" value={form.aadhaar_no}
+                      onChange={e => updateField('aadhaar_no', e.target.value)} required maxLength={12} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">PAN No</label>
+                    <input type="text" className="input" value={form.pan_no || ''}
+                      onChange={e => updateField('pan_no', e.target.value)} maxLength={10} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Joining Date</label>
+                    <input type="date" className="input" value={form.joined_date || ''}
+                      onChange={e => updateField('joined_date', e.target.value)} />
+                  </div>
+                </div>
+              </fieldset>
+
+              {/* Address */}
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-semibold text-gray-700 mb-2">Address</legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 1</label>
+                    <input type="text" className="input" value={form.address_line1 || ''}
+                      onChange={e => updateField('address_line1', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                    <input type="text" className="input" value={form.city || ''}
+                      onChange={e => updateField('city', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                    <input type="text" className="input" value={form.state || ''}
+                      onChange={e => updateField('state', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
+                    <input type="text" className="input" value={form.pincode || ''}
+                      onChange={e => updateField('pincode', e.target.value)} maxLength={6} />
+                  </div>
+                </div>
+              </fieldset>
+
+              {/* Bank Details */}
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-semibold text-gray-700 mb-2">Bank Details</legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                    <input type="text" className="input" value={form.bank_name || ''}
+                      onChange={e => updateField('bank_name', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Account No</label>
+                    <input type="text" className="input" value={form.bank_account_no || ''}
+                      onChange={e => updateField('bank_account_no', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code</label>
+                    <input type="text" className="input" value={form.ifsc_code || ''}
+                      onChange={e => updateField('ifsc_code', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">UPI ID</label>
+                    <input type="text" className="input" value={form.upi_id || ''}
+                      onChange={e => updateField('upi_id', e.target.value)} />
+                  </div>
+                </div>
+              </fieldset>
+
+              {/* Emergency Contact */}
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-semibold text-gray-700 mb-2">Emergency Contact</legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name</label>
+                    <input type="text" className="input" value={form.emergency_contact_name || ''}
+                      onChange={e => updateField('emergency_contact_name', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact No</label>
+                    <input type="text" className="input" value={form.emergency_contact_no || ''}
+                      onChange={e => updateField('emergency_contact_no', e.target.value)} />
+                  </div>
+                </div>
+              </fieldset>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? 'Creating...' : 'Create Staff'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

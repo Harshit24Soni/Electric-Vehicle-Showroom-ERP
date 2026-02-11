@@ -111,17 +111,51 @@ export interface VendorCreate {
   pincode?: string
 }
 
+export interface Nominee {
+  nominee_id: number
+  customer_id: number
+  nominee_name: string
+  nominee_dob: string
+  relation: string
+  is_primary: boolean
+  is_active: boolean
+}
+
+export interface NomineeCreate {
+  nominee_name: string
+  nominee_dob: string
+  relation: string
+  is_primary?: boolean
+}
+
+export interface CustomerDetailed extends Customer {
+  nominees: Nominee[]
+  vehicle_count: number
+  last_service_date?: string
+  warranty_status?: string
+}
+
 export const masterApi = {
   // Customers
   getCustomers: () => api.get<Customer[]>('/master/customers'),
-  getCustomer: (id: number) => api.get<Customer>(`/master/customers/${id}`),
+  getCustomer: (id: number) => api.get<CustomerDetailed>(`/master/customers/${id}`),
   createCustomer: (data: CustomerCreate) => api.post<Customer>('/master/customers', data),
+  updateCustomer: (id: number, data: Partial<CustomerCreate>) => api.put<Customer>(`/master/customers/${id}`, data),
+
+  // Nominees
+  getNominees: (customerId: number) => api.get<Nominee[]>(`/master/customers/${customerId}/nominees`),
+  createNominee: (customerId: number, data: NomineeCreate) => api.post<Nominee>(`/master/customers/${customerId}/nominees`, data),
+  updateNominee: (customerId: number, nomineeId: number, data: Partial<NomineeCreate>) =>
+    api.put<Nominee>(`/master/customers/${customerId}/nominees/${nomineeId}`, data),
+  deleteNominee: (customerId: number, nomineeId: number) =>
+    api.delete(`/master/customers/${customerId}/nominees/${nomineeId}`),
 
   // Vehicle Models
   getVehicleModels: () => api.get<VehicleModel[]>('/master/vehicle-models'),
   createVehicleModel: (data: VehicleModelCreate) => api.post<VehicleModel>('/master/vehicle-models', data),
 
   // Vehicles
+  getVehicles: (status?: string) => api.get<Vehicle[]>(`/master/vehicles${status ? `?status=${status}` : ''}`),
   getVehicle: (chassisNo: string) => api.get<Vehicle>(`/master/vehicles/${chassisNo}`),
   createVehicle: (data: VehicleCreate) => api.post<Vehicle>('/master/vehicles', data),
 

@@ -36,7 +36,7 @@ export const useMasterStore = create<MasterState>((set, get) => ({
         set({ isLoading: true, error: null })
         try {
             // Parallel fetch for best performance
-            const [lStatus, eStatus, brands, models] = await Promise.all([
+            const [lStatus, eStatus, brands, models] = await Promise.all<any[]>([
                 api.get('/crm/master/lead-statuses').catch(() => []),
                 api.get('/crm/master/enquiry-statuses').catch(() => []),
                 // We might need an endpoint for brands/models if they are not under /crm/master
@@ -48,8 +48,8 @@ export const useMasterStore = create<MasterState>((set, get) => ({
             set({
                 leadStatuses: lStatus,
                 enquiryStatuses: eStatus,
-                brands: brands,
-                vehicleModels: models,
+                brands: brands as any[],
+                vehicleModels: models as any[],
                 isInitialized: true,
                 isLoading: false
             })

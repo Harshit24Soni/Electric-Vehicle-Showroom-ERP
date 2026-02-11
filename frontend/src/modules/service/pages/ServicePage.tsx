@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { serviceApi, JobCardCreate } from '../api/serviceApi'
-import { Plus, Search, XCircle, CheckCircle } from 'lucide-react'
+import { Plus, Search, CheckCircle, Wrench } from 'lucide-react'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import JobCardForm from '../components/JobCardForm'
 
 export default function ServicePage() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all')
   const [showForm, setShowForm] = useState(false)
   const queryClient = useQueryClient()
 
@@ -30,10 +31,22 @@ export default function ServicePage() {
     },
   })
 
-  const filteredJobCards = jobCards.filter((job) =>
-    job.job_card_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.chassis_no.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Status counts
+  const openCount = jobCards.filter((j: any) => !j.out_datetime).length
+  const closedCount = jobCards.filter((j: any) => j.out_datetime).length
+
+  const filteredJobCards = jobCards.filter((job: any) => {
+    const matchesSearch =
+      job.job_card_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.chassis_no?.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'open' && !job.out_datetime) ||
+      (statusFilter === 'closed' && job.out_datetime)
+
+    return matchesSearch && matchesStatus
+  })
 
   const handleClose = (jobCardId: number) => {
     if (confirm('Close this job card?')) {
@@ -43,10 +56,11 @@ export default function ServicePage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Service</h1>
-          <p className="text-gray-600 mt-1">Manage service job cards</p>
+          <h1 className="text-2xl font-bold text-gray-900">Service</h1>
+          <p className="text-gray-500 text-sm mt-1">Manage service job cards</p>
         </div>
         <button onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2">
           <Plus className="w-5 h-5" />
@@ -54,27 +68,56 @@ export default function ServicePage() {
         </button>
       </div>
 
-      <div className="card">
-        <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search job cards..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input pl-10"
-            />
-          </div>
-        </div>
+      {/* Status Tabs */}
+      <div className="flex gap-2 bg-gray-100 p-1 rounded-lg w-fit">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${statusFilter === 'all' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'
+            }`}
+        >
+          All ({jobCards.length})
+        </button>
+        <button
+          onClick={() => setStatusFilter('open')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${statusFilter === 'open' ? 'bg-white shadow text-yellow-700' : 'text-gray-600 hover:text-gray-900'
+            }`}
+        >
+          Open ({openCount})
+        </button>
+        <button
+          onClick={() => setStatusFilter('closed')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${statusFilter === 'closed' ? 'bg-white shadow text-green-700' : 'text-gray-600 hover:text-gray-900'
+            }`}
+        >
+          Closed ({closedCount})
+        </button>
+      </div>
 
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <input
+          type="text"
+          placeholder="Search by job card or chassis..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="input pl-10"
+        />
+      </div>
+
+      {/* Job Cards Table */}
+      <div className="card">
         {isLoading ? (
           <div className="text-center py-8">
             <p className="text-gray-500">Loading job cards...</p>
           </div>
         ) : filteredJobCards.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-gray-500">No job cards found</p>
+            <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500 mb-4">No job cards found</p>
+            <button onClick={() => setShowForm(true)} className="btn btn-primary">
+              Create First Job Card
+            </button>
           </div>
         ) : (
           <div className="table-container">
@@ -87,28 +130,25 @@ export default function ServicePage() {
                   <th>Out Date/Time</th>
                   <th>Opening KM</th>
                   <th>Status</th>
-                  <th>Created</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredJobCards.map((job) => (
+                {filteredJobCards.map((job: any) => (
                   <tr key={job.job_card_id}>
                     <td className="font-medium">{job.job_card_no}</td>
-                    <td>{job.chassis_no}</td>
+                    <td className="font-mono text-sm">{job.chassis_no}</td>
                     <td>{formatDateTime(job.in_datetime)}</td>
                     <td>{job.out_datetime ? formatDateTime(job.out_datetime) : '-'}</td>
                     <td>{job.opening_km}</td>
                     <td>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        job.out_datetime
+                      <span className={`px-2 py-1 text-xs rounded-full ${job.out_datetime
                           ? 'bg-green-100 text-green-800'
                           : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                        }`}>
                         {job.out_datetime ? 'Closed' : 'Open'}
                       </span>
                     </td>
-                    <td>{formatDate(job.created_at)}</td>
                     <td>
                       {!job.out_datetime && (
                         <button
@@ -128,6 +168,7 @@ export default function ServicePage() {
         )}
       </div>
 
+      {/* Job Card Form Modal */}
       {showForm && (
         <JobCardForm
           onSubmit={(data) => createMutation.mutate(data)}

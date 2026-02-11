@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import List
 
 from app.domains.service import services
@@ -16,13 +17,13 @@ router = APIRouter(prefix="/service", tags=["Service"])
 
 
 @router.post("/job-card", response_model=JobCardResponse, status_code=status.HTTP_201_CREATED)
-def open_job(
+async def open_job(
     data: JobCardCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
     try:
-        job = services.open_job_card(
+        job = await services.open_job_card(
             db=db,
             chassis_no=data.chassis_no,
             is_free_service=data.is_free_service,
@@ -34,14 +35,14 @@ def open_job(
 
 
 @router.post("/job-card/{job_card_id}/consume-spare", status_code=status.HTTP_200_OK)
-def consume_spare_api(
+async def consume_spare_api(
     job_card_id: int,
     data: SpareConsumeCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
     try:
-        services.consume_spare(
+        await services.consume_spare(
             db=db,
             job_card_id=job_card_id,
             spare_id=data.spare_id,
@@ -54,18 +55,20 @@ def consume_spare_api(
 
 
 @router.post("/job-card/{job_card_id}/close", status_code=status.HTTP_200_OK)
-def close_job_card_api(job_card_id: int, db: Session = Depends(get_db), _staff=Depends(get_current_staff)):
-    job = db.get(services.ServiceJobCard, job_card_id)
+async def close_job_card_api(job_card_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
+    job = await db.get(services.ServiceJobCard, job_card_id)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job card not found")
     try:
-        services.close_job_card(job)
+        await services.close_job_card(db, job)
         return {"message": "Job card closed"}
     except services.ServiceError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/job-cards", response_model=List[JobCardListItem])
-def list_job_cards(db: Session = Depends(get_db), _staff=Depends(get_current_staff)):
-    jobs = db.query(services.ServiceJobCard).order_by(services.ServiceJobCard.opened_at.desc()).all()
+async def list_job_cards(db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
+    stmt = select(services.ServiceJobCard).order_by(services.ServiceJobCard.opened_at.desc())
+    result = await db.execute(stmt)
+    jobs = result.scalars().all()
     return jobs

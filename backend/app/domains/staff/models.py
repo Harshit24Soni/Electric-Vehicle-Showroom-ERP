@@ -20,8 +20,18 @@ class ForgotPinRequest(BaseModel):
 
 
 class DealerPinResetRequest(BaseModel):
-    """For dealers to reset their own PIN - requires OTP verification"""
+    """For dealers to reset their own PIN - requires TOTP verification"""
     identifier: str = Field(..., description="Mobile number or email", example="9876543210")
-    otp: str = Field(..., min_length=6, max_length=6)
+    totp_code: str = Field(..., min_length=6, max_length=6, description="Code from Authenticator App")
     new_pin: str = Field(..., min_length=6, max_length=6)
+
+
+class TOTPSetupResponse(BaseModel):
+    secret: str
+    provisioning_uri: str
+
+
+class TOTPVerifyRequest(BaseModel):
+    secret: str
+    code: str
 

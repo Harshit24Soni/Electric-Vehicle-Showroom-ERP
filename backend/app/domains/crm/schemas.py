@@ -12,7 +12,7 @@ class LeadCreate(BaseModel):
     vehicle_model_id: int
     lead_source: str
     lead_status_id: int
-    owner_staff_id: int
+    owner_staff_id: Optional[int] = None
     expected_purchase_date: Optional[date] = None
     remarks: Optional[str] = None
 
@@ -39,6 +39,7 @@ class LeadResponse(BaseModel):
     lead_source: str
     lead_status_id: int
     owner_staff_id: int
+    created_by_staff_id: int
     expected_purchase_date: Optional[date] = None
     remarks: Optional[str] = None
     created_at: datetime
@@ -58,7 +59,7 @@ class EnquiryCreate(BaseModel):
     lead_id: int
     enquiry_source: str
     enquiry_status_id: int = Field(default=1, description="Default to ACTIVE (1)")
-    owner_staff_id: int
+    owner_staff_id: Optional[int] = None
     remarks: Optional[str] = None
 
 
@@ -68,6 +69,7 @@ class EnquiryResponse(BaseModel):
     enquiry_source: str
     enquiry_status_id: int
     owner_staff_id: int
+    created_by_staff_id: int
     last_followup_date: Optional[date]
     last_message_date: Optional[datetime]
     remarks: Optional[str]
@@ -80,7 +82,14 @@ class EnquiryResponse(BaseModel):
 class FollowupCreate(BaseModel):
     lead_id: int
     scheduled_date: date
-    assigned_staff_id: int
+    assigned_staff_id: Optional[int] = None
+    remarks: Optional[str] = None
+
+
+class FollowupUpdate(BaseModel):
+    scheduled_date: Optional[date] = None
+    assigned_staff_id: Optional[int] = None
+    followup_status: Optional[str] = None
     remarks: Optional[str] = None
 
 
@@ -100,7 +109,7 @@ class FollowupResponse(BaseModel):
 class ActivityCreate(BaseModel):
     lead_id: int
     activity_type: str
-    performed_by_staff_id: int
+    performed_by_staff_id: Optional[int] = None
     activity_time: datetime
     outcome: Optional[str] = None
     next_action_date: Optional[date] = None

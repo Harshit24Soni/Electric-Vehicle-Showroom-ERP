@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
@@ -25,13 +25,13 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
     response_model=VehicleMovementResponse,
 )
-def create_vehicle_movement(
+async def create_vehicle_movement(
     data: VehicleMovementCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
     try:
-        movement = services.add_vehicle_movement(
+        movement = await services.add_vehicle_movement(
             db=db,
             chassis_no=data.chassis_no,
             movement_type=data.movement_type,
@@ -50,12 +50,12 @@ def create_vehicle_movement(
 
 
 @router.get("/vehicle/{chassis_no}/availability")
-def check_vehicle_availability(
+async def check_vehicle_availability(
     chassis_no: str,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
-    available = services.is_vehicle_available(db, chassis_no)
+    available = await services.is_vehicle_available(db, chassis_no)
     return {
         "chassis_no": chassis_no,
         "is_available": available,
@@ -67,13 +67,13 @@ def check_vehicle_availability(
     status_code=status.HTTP_201_CREATED,
     response_model=SpareMovementResponse,
 )
-def create_spare_movement(
+async def create_spare_movement(
     data: SpareMovementCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
     try:
-        movement = services.add_spare_movement(
+        movement = await services.add_spare_movement(
             db=db,
             spare_id=data.spare_id,
             quantity=data.quantity,
@@ -92,12 +92,12 @@ def create_spare_movement(
 
 
 @router.get("/spare/{spare_id}/stock", response_model=SpareStockResponse)
-def get_spare_stock(
+async def get_spare_stock(
     spare_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
-    stock = services.get_spare_stock(db, spare_id)
+    stock = await services.get_spare_stock(db, spare_id)
     return {
         "spare_id": spare_id,
         "available_quantity": stock,

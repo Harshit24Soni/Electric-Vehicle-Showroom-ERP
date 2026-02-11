@@ -32,7 +32,7 @@ async def create_lead(
     _staff=Depends(get_current_staff)
 ):
     """Create a new lead independently (not tied to customer)"""
-    lead = await services.create_lead(db, payload=data)
+    lead = await services.create_lead(db, payload=data, current_staff_id=_staff["staff_id"])
     return lead
 
 
@@ -123,6 +123,9 @@ async def assign_lead(
     current_staff=Depends(get_current_staff)
 ):
     """Reassign a lead to another staff member"""
+    if current_staff["designation"] not in ["ADMIN", "DEALER"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Admin or Dealer can reassign leads")
+        
     try:
         lead = await services.assign_lead(db, lead_id, new_owner_id, current_staff["staff_id"])
         return {"message": "Lead reassigned successfully", "lead_id": lead.lead_id}
@@ -139,7 +142,7 @@ async def create_enquiry(
     _staff=Depends(get_current_staff)
 ):
     """Create a new enquiry for a lead"""
-    enquiry = await services.create_enquiry(db, data)
+    enquiry = await services.create_enquiry(db, payload=data, current_staff_id=_staff["staff_id"])
     return enquiry
 
 
@@ -198,8 +201,23 @@ async def create_followup(
     _staff=Depends(get_current_staff)
 ):
     """Create a new followup schedule"""
-    f = await services.add_followup(db, data)
+    f = await services.add_followup(db, data, current_staff_id=_staff["staff_id"])
     return f
+
+
+@router.put("/followups/{followup_id}", response_model=schemas.FollowupResponse)
+async def update_followup(
+    followup_id: int,
+    data: schemas.FollowupUpdate,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff)
+):
+    """Update a followup schedule (e.g. mark as COMPLETED)"""
+    try:
+        f = await services.update_followup(db, followup_id, data)
+        return f
+    except services.CRMError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/followups/pending", response_model=list[schemas.FollowupResponse])
@@ -230,6 +248,6 @@ async def add_activity(
     _staff=Depends(get_current_staff)
 ):
     """Record a lead activity"""
-    a = await services.add_activity(db, data)
+    a = await services.add_activity(db, data, current_staff_id=_staff["staff_id"])
     return {"message": "Activity recorded", "activity_id": a.activity_id}
 

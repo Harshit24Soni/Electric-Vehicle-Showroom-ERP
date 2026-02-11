@@ -10,6 +10,7 @@ export interface Lead {
     lead_source: string
     lead_status_id: number
     owner_staff_id: number
+    assigned_staff_id?: number
     expected_purchase_date?: string | null
     remarks?: string | null
     created_at: string
@@ -77,4 +78,12 @@ export const leadsApi = {
     assign: async (id: number, newOwnerId: number): Promise<any> => {
         return api.post(`/crm/leads/${id}/assign`, { new_owner_id: newOwnerId })
     },
+
+    getFollowups: async (type: string = 'ALL'): Promise<any> => {
+        return api.get(`/crm/followups/dashboard?followup_type=${type}`)
+    },
+
+    getPendingFollowups: async (): Promise<any[]> => {
+        return api.get('/crm/followups/pending')
+    }
 }

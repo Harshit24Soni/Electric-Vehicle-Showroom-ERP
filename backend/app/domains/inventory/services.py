@@ -1,6 +1,7 @@
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.domains.inventory.models import (
     VehicleStockMovement,
@@ -28,26 +29,28 @@ class InsufficientSpareStockError(InventoryError):
 class InvalidSpareMovementError(InventoryError):
     pass
 
-def get_latest_vehicle_movement(
-    db: Session, chassis_no: str
+
+async def get_latest_vehicle_movement(
+    db: AsyncSession, chassis_no: str
 ) -> VehicleStockMovement | None:
-    return (
-        db.query(VehicleStockMovement)
+    stmt = (
+        select(VehicleStockMovement)
         .filter(VehicleStockMovement.chassis_no == chassis_no)
         .order_by(VehicleStockMovement.movement_datetime.desc())
-        .first()
     )
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
-def is_vehicle_available(db: Session, chassis_no: str) -> bool:
-    last = get_latest_vehicle_movement(db, chassis_no)
+async def is_vehicle_available(db: AsyncSession, chassis_no: str) -> bool:
+    last = await get_latest_vehicle_movement(db, chassis_no)
 
     if last is None:
         return False
 
     return last.movement_type in ("INWARD", "AVAILABLE")
 
-def add_vehicle_movement(
-    db: Session,
+async def add_vehicle_movement(
+    db: AsyncSession,
     *,
     chassis_no: str,
     movement_type: str,
@@ -58,7 +61,7 @@ def add_vehicle_movement(
     remarks: str | None = None,
 ) -> VehicleStockMovement:
 
-    last = get_latest_vehicle_movement(db, chassis_no)
+    last = await get_latest_vehicle_movement(db, chassis_no)
 
     # Prevent duplicate allocation
     if movement_type == "ALLOCATED":
@@ -91,22 +94,22 @@ def add_vehicle_movement(
     )
 
     db.add(movement)
-    db.flush()  # important for transaction integrity
+    await db.flush()  # important for transaction integrity
 
     return movement
 
-def get_spare_stock(
-    db: Session, spare_id: int
+async def get_spare_stock(
+    db: AsyncSession, spare_id: int
 ) -> int:
-    qty = (
-        db.query(func.coalesce(func.sum(SpareStockMovement.quantity), 0))
+    stmt = (
+        select(func.coalesce(func.sum(SpareStockMovement.quantity), 0))
         .filter(SpareStockMovement.spare_id == spare_id)
-        .scalar()
     )
+    result = await db.execute(stmt)
+    qty = result.scalar()
     return int(qty)
 
 def _validate_spare_movement(
-    db: Session,
     spare: SpareMaster,
     quantity: int,
     serial_id: int | None,
@@ -126,8 +129,8 @@ def _validate_spare_movement(
                 "Non-serialized spare cannot have serial_id"
             )
 
-def add_spare_movement(
-    db: Session,
+async def add_spare_movement(
+    db: AsyncSession,
     *,
     spare_id: int,
     quantity: int,
@@ -138,17 +141,22 @@ def add_spare_movement(
     remarks: str | None = None,
 ) -> SpareStockMovement:
 
-    spare = db.get(SpareMaster, spare_id)
+    spare = await db.get(SpareMaster, spare_id)
     if not spare:
         raise InventoryError("Invalid spare_id")
 
-    _validate_spare_movement(db, spare, quantity, serial_id)
+    _validate_spare_movement(spare, quantity, serial_id)
 
-    current_stock = get_spare_stock(db, spare_id)
-    if current_stock + quantity < 0:
-        raise InsufficientSpareStockError(
-            f"Insufficient stock for spare {spare.spare_code}"
-        )
+    # Check for negative stock
+    # Note: We need to check stock BEFORE adding movement for consumption
+    # But for INWARD it's fine.
+    # Logic: if quantity < 0 (consumption), check if current_stock + quantity < 0
+    if quantity < 0:
+        current_stock = await get_spare_stock(db, spare_id)
+        if current_stock + quantity < 0:
+             raise InsufficientSpareStockError(
+                f"Insufficient stock for spare {spare.spare_code}"
+            )
 
     movement = SpareStockMovement(
         spare_id=spare_id,
@@ -162,7 +170,7 @@ def add_spare_movement(
     )
 
     db.add(movement)
-    db.flush()
+    await db.flush()
 
     return movement
 

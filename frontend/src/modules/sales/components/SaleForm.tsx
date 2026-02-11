@@ -49,9 +49,13 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
   const lead = leads.find((l: any) => l.lead_id === selectedLead)
 
   const onFormSubmit = (data: SaleFormData) => {
+    const selectedLeadData = leads.find((l: any) => l.lead_id === data.lead_id)
     onSubmit({
       lead_id: data.lead_id,
+      customer_id: selectedLeadData?.customer_id || 0,
       chassis_no: data.chassis_no,
+      sale_date: new Date().toISOString().split('T')[0],
+      total_amount: data.booking_amount,
       booking_amount: data.booking_amount,
       remarks: data.remarks,
     })

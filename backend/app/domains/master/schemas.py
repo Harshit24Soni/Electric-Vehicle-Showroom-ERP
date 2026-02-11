@@ -157,3 +157,41 @@ class VendorResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SparePriceUpdate(BaseModel):
+    price: float = Field(..., gt=0)
+    margin: float = Field(..., ge=0, le=100)
+    effective_from: Optional[datetime] = None
+
+
+class SparePriceHistoryResponse(BaseModel):
+    history_id: int
+    spare_id: int
+    price: float
+    margin: float
+    effective_from: datetime
+    effective_to: Optional[datetime]
+    created_at: datetime
+    created_by: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+
+class VehiclePriceUpdate(BaseModel):
+    price: float = Field(..., gt=0)
+    effective_from: Optional[datetime] = None
+
+
+class VehiclePriceHistoryResponse(BaseModel):
+    history_id: int
+    vehicle_model_id: int
+    price: float
+    effective_from: datetime
+    effective_to: Optional[datetime]
+    created_at: datetime
+    created_by: Optional[int]
+
+    class Config:
+        from_attributes = True

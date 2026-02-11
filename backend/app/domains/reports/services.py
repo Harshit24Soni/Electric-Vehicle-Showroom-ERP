@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.domains.billing.models import SalesInvoice
-from app.domains.sales.models import VehicleSale
+from app.domains.sales.models import Sale
 
 def sales_register(
     db: Session,
@@ -16,9 +16,9 @@ def sales_register(
             SalesInvoice.gst_rate,
             SalesInvoice.gst_amount,
             SalesInvoice.total_amount,
-            VehicleSale.chassis_no,
+            Sale.chassis_no,
         )
-        .join(VehicleSale, VehicleSale.sale_id == SalesInvoice.sale_id)
+        .join(Sale, Sale.sale_id == SalesInvoice.sale_id)
         .filter(
             SalesInvoice.invoice_date.between(from_date, to_date),
             SalesInvoice.is_final.is_(True),

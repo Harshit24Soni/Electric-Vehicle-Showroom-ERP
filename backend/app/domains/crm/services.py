@@ -13,7 +13,7 @@ class CRMError(Exception):
 
 # ==================== LEAD SERVICES ====================
 
-async def create_lead(db: AsyncSession, *, payload) -> models.Lead:
+async def create_lead(db: AsyncSession, *, payload, current_staff_id: int) -> models.Lead:
     """Create a new lead independent of customer"""
     lead = models.Lead(
         customer_id=None,  # Lead can exist without customer
@@ -23,7 +23,8 @@ async def create_lead(db: AsyncSession, *, payload) -> models.Lead:
         vehicle_model_id=payload.vehicle_model_id,
         lead_source=payload.lead_source,
         lead_status_id=payload.lead_status_id,
-        owner_staff_id=payload.owner_staff_id,
+        owner_staff_id=payload.owner_staff_id or current_staff_id,
+        created_by_staff_id=current_staff_id,
         expected_purchase_date=payload.expected_purchase_date,
         remarks=payload.remarks,
         created_at=datetime.utcnow(),
@@ -142,6 +143,7 @@ async def convert_lead_to_customer(db: AsyncSession, lead_id: int, payload) -> O
     # Update lead with customer_id and status (5 = CONVERTED)
     lead.customer_id = customer.customer_id
     
+    # TODO: Fetch status ID dynamically or use constant
     stmt = select(models.LeadStatusMaster).filter_by(status_name='CONVERTED')
     result = await db.execute(stmt)
     converted_status = result.scalars().first()
@@ -192,13 +194,14 @@ async def get_lead_statuses(db: AsyncSession):
 
 # ==================== ENQUIRY SERVICES ====================
 
-async def create_enquiry(db: AsyncSession, payload) -> models.Enquiry:
+async def create_enquiry(db: AsyncSession, payload, current_staff_id: int) -> models.Enquiry:
     """Create a new enquiry"""
     enquiry = models.Enquiry(
         lead_id=payload.lead_id,
         enquiry_source=payload.enquiry_source,
         enquiry_status_id=payload.enquiry_status_id,
-        owner_staff_id=payload.owner_staff_id,
+        owner_staff_id=payload.owner_staff_id or current_staff_id,
+        created_by_staff_id=current_staff_id,
         remarks=payload.remarks,
         created_at=datetime.utcnow(),
     )
@@ -213,9 +216,6 @@ async def list_enquiries(db: AsyncSession, status_id: int = None) -> list[models
     
     if status_id:
         stmt = stmt.filter(models.Enquiry.enquiry_status_id == status_id)
-    else:
-        # Default behavior can go here
-        pass 
     
     stmt = stmt.order_by(desc(models.Enquiry.created_at))
     result = await db.execute(stmt)
@@ -233,7 +233,6 @@ async def update_enquiry(db: AsyncSession, enquiry_id: int, payload: dict) -> mo
     if not enquiry:
         return None
     
-    # Update provided fields
     if "enquiry_source" in payload:
         enquiry.enquiry_source = payload["enquiry_source"]
     if "enquiry_status_id" in payload:
@@ -257,12 +256,6 @@ async def get_enquiry_statuses(db: AsyncSession):
 
 async def get_enquiry_stats(db: AsyncSession) -> dict:
     """Get enquiry statistics"""
-    # Requires joining with status master to get names
-    # Simplified for now:
-    result = await db.execute(select(models.Enquiry)) # This is inefficient count, but using scalar subquery is better.
-    # For now just use len(all) or count query
-    # Better: await db.scalar(select(func.count()).select_from(models.Enquiry))
-    # Keeping it simple for this step:
     result = await db.execute(select(models.Enquiry))
     total = len(result.scalars().all())
     return {"total_enquiries": total}
@@ -270,12 +263,12 @@ async def get_enquiry_stats(db: AsyncSession) -> dict:
 
 # ==================== FOLLOWUP SERVICES ====================
 
-async def add_followup(db: AsyncSession, payload) -> models.FollowupSchedule:
+async def add_followup(db: AsyncSession, payload, current_staff_id: int) -> models.FollowupSchedule:
     """Create a new followup schedule"""
     f = models.FollowupSchedule(
         lead_id=payload.lead_id,
         scheduled_date=payload.scheduled_date,
-        assigned_staff_id=payload.assigned_staff_id,
+        assigned_staff_id=payload.assigned_staff_id or current_staff_id,
         followup_status="PENDING",
         remarks=payload.remarks,
         created_at=datetime.utcnow(),
@@ -294,6 +287,38 @@ async def list_pending_followups(db: AsyncSession) -> list[models.FollowupSchedu
     return result.scalars().all()
 
 
+async def get_followup(db: AsyncSession, followup_id: int) -> models.FollowupSchedule | None:
+    return await db.get(models.FollowupSchedule, followup_id)
+
+
+async def update_followup(db: AsyncSession, followup_id: int, payload) -> models.FollowupSchedule:
+    f = await get_followup(db, followup_id)
+    if not f:
+        raise CRMError("Followup not found")
+
+    # Validation: If completing, remark is required
+    if payload.followup_status in ["COMPLETED", "DONE"] and not payload.remarks and not f.remarks:
+        # Check if remarks provided in payload OR already exist
+        # Requirement: "cannot be marked 'Done' without adding a Remark"
+        # If user adds remark now, it's fine.
+        if not payload.remarks:
+             raise CRMError("Remarks are required when completing a follow-up")
+
+    if payload.scheduled_date:
+        f.scheduled_date = payload.scheduled_date
+    if payload.assigned_staff_id:
+        f.assigned_staff_id = payload.assigned_staff_id
+    if payload.followup_status:
+        f.followup_status = payload.followup_status
+        if payload.followup_status in ["COMPLETED", "DONE"]:
+            f.completed_at = datetime.utcnow()
+    if payload.remarks:
+        f.remarks = payload.remarks
+        
+    await db.flush()
+    return f
+
+
 async def get_followup_dashboard(db: AsyncSession, followup_type: str = "ALL") -> dict:
     """Get unified followup dashboard with all types"""
     sales_followups = []
@@ -301,14 +326,11 @@ async def get_followup_dashboard(db: AsyncSession, followup_type: str = "ALL") -
     warranty_followups = []
     
     if followup_type in ("ALL", "SALES"):
-        # Get pending sales followups
         stmt = select(models.FollowupSchedule)\
             .filter(models.FollowupSchedule.followup_status.in_(("PENDING", "MISSED")))\
             .order_by(models.FollowupSchedule.scheduled_date)
         result = await db.execute(stmt)
         sales_followups = result.scalars().all()
-    
-    # ... Service/Warranty ...
     
     return {
         "sales_followups": [
@@ -327,13 +349,19 @@ async def get_followup_dashboard(db: AsyncSession, followup_type: str = "ALL") -
 
 # ==================== ACTIVITY SERVICES ====================
 
-async def add_activity(db: AsyncSession, payload: dict) -> models.LeadActivity:
+async def add_activity(db: AsyncSession, payload: dict, current_staff_id: int) -> models.LeadActivity:
     """Record a lead activity"""
+    
+    # Handle activity_time parsing if it's a string
+    activity_time = payload.get("activity_time")
+    if isinstance(activity_time, str):
+        activity_time = datetime.fromisoformat(activity_time)
+        
     a = models.LeadActivity(
         lead_id=payload.get("lead_id"),
         activity_type=payload.get("activity_type"),
-        activity_time=datetime.fromisoformat(payload.get("activity_time")) if isinstance(payload.get("activity_time"), str) else payload.get("activity_time"),
-        performed_by_staff_id=payload.get("performed_by_staff_id"),
+        activity_time=activity_time,
+        performed_by_staff_id=current_staff_id, # Always current user
         outcome=payload.get("outcome"),
         next_action_date=payload.get("next_action_date"),
         created_at=datetime.utcnow(),

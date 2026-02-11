@@ -1,13 +1,15 @@
 from sqlalchemy import (
     BigInteger,
+    Integer,
     String,
     Text,
     ForeignKey,
     TIMESTAMP,
     CheckConstraint,
     Index,
+    Boolean,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
 from app.db.base import Base
@@ -72,20 +74,10 @@ class VehicleStockMovement(Base):
 
     remarks: Mapped[str | None] = mapped_column(Text)
 
-from sqlalchemy import (
-    BigInteger,
-    Integer,
-    String,
-    Text,
-    ForeignKey,
-    TIMESTAMP,
-    CheckConstraint,
-    Index,
-)
-from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
+    # Relationships
+    # Use string reference to avoid circular import if master imports inventory
+    vehicle = relationship("app.domains.master.models.Vehicle")
 
-from app.db.base import Base
 
 class SpareMaster(Base):
     __tablename__ = "spare_master"
@@ -111,7 +103,16 @@ class SpareMaster(Base):
         nullable=False, default=False
     )
 
+    is_temporary: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean, default=True
+    )
+
     remarks: Mapped[str | None] = mapped_column(Text)
+
 
 class SpareSerial(Base):
     __tablename__ = "spare_serial"
@@ -135,6 +136,10 @@ class SpareSerial(Base):
     )
 
     remarks: Mapped[str | None] = mapped_column(Text)
+
+    # Relationship
+    spare: Mapped["SpareMaster"] = relationship("SpareMaster")
+
 
 class SpareStockMovement(Base):
     __tablename__ = "spare_stock_movement"
@@ -190,3 +195,5 @@ class SpareStockMovement(Base):
 
     remarks: Mapped[str | None] = mapped_column(Text)
 
+    # Relationships
+    spare: Mapped["SpareMaster"] = relationship("SpareMaster")

@@ -1,10 +1,12 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { useEffect, useState } from 'react'
 
 export type UserRole = 'ADMIN' | 'DEALER' | 'STAFF'
 
 export interface User {
   staff_id: number
+  name?: string
   designation: string
   role: UserRole
   force_pin_change: boolean
@@ -48,45 +50,73 @@ export const useAuthStore = create<AuthState>()(
 
       login: (token: string) => {
         const decoded = decodeJWT(token)
+        console.log('Decoded Token:', decoded) // Debugging
         if (decoded) {
+          const rawRole = decoded.role || decoded.designation || 'STAFF'
           const user: User = {
             staff_id: decoded.staff_id || decoded.sub || 0,
+            name: decoded.name || decoded.designation || '',
             designation: decoded.designation || '',
-            role: decoded.role || 'STAFF',
+            role: rawRole.toUpperCase() as UserRole,
             force_pin_change: decoded.force_pin_change || false,
           }
+          console.log('User Role Set To:', user.role) // Debugging
           set({ token, user, isAuthenticated: true })
         } else {
-          set({ token, user: null, isAuthenticated: false })
+          set({ token: null, user: null, isAuthenticated: false })
         }
       },
 
       logout: () => {
         set({ token: null, user: null, isAuthenticated: false })
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
       },
 
       hasRole: (roles: UserRole[]) => {
         const { user } = get()
         if (!user) return false
-        return roles.includes(user.role)
+        // Check exact match OR uppercase match (for legacy state)
+        return roles.includes(user.role as UserRole) || roles.includes(user.role.toUpperCase() as UserRole)
       },
 
       setAuth: (user: User, token: string) => {
         set({ token, user, isAuthenticated: true })
-        localStorage.setItem('token', token)
       },
 
       clearAuth: () => {
         set({ token: null, user: null, isAuthenticated: false })
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
       },
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ token: state.token, user: state.user, isAuthenticated: state.isAuthenticated }),
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        token: state.token,
+        user: state.user,
+        isAuthenticated: state.isAuthenticated
+      }),
     }
   )
 )
+
+// Custom hook to wait for hydration
+export const useAuthHydration = () => {
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    // Check if already hydrated via persist API
+    const unsubFinishHydration = useAuthStore.persist.onFinishHydration(() => {
+      setHydrated(true)
+    })
+
+    // If already hydrated (happens on fast loads)
+    if (useAuthStore.persist.hasHydrated()) {
+      setHydrated(true)
+    }
+
+    return () => {
+      unsubFinishHydration()
+    }
+  }, [])
+
+  return hydrated
+}

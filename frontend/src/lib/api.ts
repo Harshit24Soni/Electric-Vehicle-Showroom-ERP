@@ -4,6 +4,20 @@ import axios, { AxiosError, AxiosInstance } from 'axios'
 // Or set VITE_API_URL=http://localhost:8000 in .env to call backend directly
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
+// Helper to get token from Zustand's persisted auth-storage
+function getAuthToken(): string | null {
+  try {
+    const authStorage = localStorage.getItem('auth-storage')
+    if (authStorage) {
+      const parsed = JSON.parse(authStorage)
+      return parsed.state?.token || null
+    }
+  } catch (e) {
+    console.error('Error reading auth token:', e)
+  }
+  return null
+}
+
 class ApiClient {
   private client: AxiosInstance
 
@@ -18,7 +32,7 @@ class ApiClient {
     // Request interceptor to add auth token
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('token')
+        const token = getAuthToken()
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
         }
@@ -28,14 +42,12 @@ class ApiClient {
     )
 
     // Response interceptor to handle errors
+    // NOTE: We do NOT redirect on 401 here - let React Router handle auth state
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          window.location.href = '/login'
-        }
+        // Just reject the error, let the calling code handle it
+        // The auth store and ProtectedRoute will handle logout/redirect
         return Promise.reject(error)
       }
     )
@@ -57,6 +69,11 @@ class ApiClient {
 
   async put<T>(url: string, data?: any, config?: any): Promise<T> {
     const response = await this.client.put<T>(url, data, config)
+    return response.data
+  }
+
+  async patch<T>(url: string, data?: any, config?: any): Promise<T> {
+    const response = await this.client.patch<T>(url, data, config)
     return response.data
   }
 

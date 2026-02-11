@@ -14,7 +14,9 @@ from datetime import datetime
 from app.db.base import Base
 
 
-class Enquiry(Base):
+from app.db.mixins import SoftDeleteMixin
+
+class Enquiry(Base, SoftDeleteMixin):
     """Enquiry tracking for leads - stores initial inquiry information"""
     __tablename__ = "enquiry"
     __table_args__ = (
@@ -30,7 +32,8 @@ class Enquiry(Base):
     lead_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("crm.lead.lead_id", ondelete="CASCADE"), nullable=False)
     enquiry_source: Mapped[str] = mapped_column(String(50), nullable=False)
     enquiry_status_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("crm.enquiry_status_master.status_id"), nullable=False)
-    owner_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    owner_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
+    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
     last_followup_date: Mapped[datetime | None] = mapped_column(Date)
     last_message_date: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     remarks: Mapped[str | None] = mapped_column(Text)
@@ -41,7 +44,7 @@ class Enquiry(Base):
     enquiry_status = relationship("EnquiryStatusMaster")
 
 
-class Lead(Base):
+class Lead(Base, SoftDeleteMixin):
     """Lead tracking - represents potential customer with interest"""
     __tablename__ = "lead"
     __table_args__ = (
@@ -58,7 +61,8 @@ class Lead(Base):
     vehicle_model_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     lead_source: Mapped[str] = mapped_column(String(50), nullable=False)
     lead_status_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("crm.lead_status_master.status_id"), nullable=False)
-    owner_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    owner_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
+    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
     expected_purchase_date: Mapped[datetime | None] = mapped_column(Date)
     remarks: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
@@ -86,7 +90,7 @@ class EnquiryStatusMaster(Base):
     display_order: Mapped[int] = mapped_column(BigInteger, default=0)
 
 
-class FollowupSchedule(Base):
+class FollowupSchedule(Base, SoftDeleteMixin):
     __tablename__ = "followup_schedule"
     __table_args__ = (
         Index("idx_followup_schedule_date", "scheduled_date"),
@@ -146,7 +150,7 @@ class LeadStatusHistory(Base):
     remarks: Mapped[str | None] = mapped_column(Text)
 
 
-class TestRide(Base):
+class TestRide(Base, SoftDeleteMixin):
     __tablename__ = "test_ride"
     __table_args__ = ({"schema": "crm"},)
 

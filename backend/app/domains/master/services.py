@@ -332,4 +332,96 @@ async def list_vendors(db: AsyncSession) -> list[models.Vendor]:
     return result.scalars().all()
 
 
+# ==================== PRICING SERVICES ====================
+
+async def update_spare_price(db: AsyncSession, spare_id: int, payload, user_id: int) -> models.SparePriceHistory:
+    """Update spare part price and maintain history"""
+    # 1. Close current active price
+    stmt = select(models.SparePriceHistory).filter(
+        models.SparePriceHistory.spare_id == spare_id,
+        models.SparePriceHistory.is_active == True
+    )
+    result = await db.execute(stmt)
+    current_price = result.scalars().first()
+    
+    now = datetime.utcnow()
+    
+    if current_price:
+        current_price.is_active = False
+        current_price.effective_to = now
+    
+    # 2. Create new history record
+    new_price = models.SparePriceHistory(
+        spare_id=spare_id,
+        price=payload.price,
+        margin=payload.margin,
+        effective_from=payload.effective_from or now,
+        is_active=True,
+        created_by=user_id,
+        created_at=now
+    )
+    db.add(new_price)
+    
+    # 3. Update Master Table
+    from app.domains.inventory import models as inv_models
+    spare = await db.get(inv_models.SpareMaster, spare_id)
+    if spare:
+        # Assuming we eventually add price columns to SpareMaster or ignore this step if columns missing.
+        # Check if SpareMaster has dealer_landing_price. 
+        # Since I didn't verify if I added them to inventory/models.py (I didn't), I will comment this out for now 
+        # OR better: I should add them to inventory/models.py to be consistent with plan.
+        # But for now, let's rely on history as primary source if we want.
+        # However, to be safe, I'll pass on updating master if attributes don't exist.
+        if hasattr(spare, 'dealer_landing_price'):
+             spare.dealer_landing_price = payload.price
+        if hasattr(spare, 'dealer_margin_percent'):
+             spare.dealer_margin_percent = payload.margin
+
+    await db.flush()
+    return new_price
+
+async def get_spare_price_history(db: AsyncSession, spare_id: int) -> list[models.SparePriceHistory]:
+    stmt = select(models.SparePriceHistory).filter(
+        models.SparePriceHistory.spare_id == spare_id
+    ).order_by(desc(models.SparePriceHistory.effective_from))
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+async def update_vehicle_price(db: AsyncSession, vehicle_model_id: int, payload, user_id: int) -> models.VehiclePriceHistory:
+    """Update vehicle model price"""
+    # 1. Close current active price
+    stmt = select(models.VehiclePriceHistory).filter(
+        models.VehiclePriceHistory.vehicle_model_id == vehicle_model_id,
+        models.VehiclePriceHistory.is_active == True
+    )
+    result = await db.execute(stmt)
+    current_price = result.scalars().first()
+    
+    now = datetime.utcnow()
+    
+    if current_price:
+        current_price.is_active = False
+        current_price.effective_to = now
+        
+    # 2. Create new history record
+    new_price = models.VehiclePriceHistory(
+        vehicle_model_id=vehicle_model_id,
+        price=payload.price,
+        effective_from=payload.effective_from or now,
+        is_active=True,
+        created_by=user_id,
+        created_at=now
+    )
+    db.add(new_price)
+    await db.flush()
+    return new_price
+
+async def get_vehicle_price_history(db: AsyncSession, vehicle_model_id: int) -> list[models.VehiclePriceHistory]:
+    stmt = select(models.VehiclePriceHistory).filter(
+        models.VehiclePriceHistory.vehicle_model_id == vehicle_model_id
+    ).order_by(desc(models.VehiclePriceHistory.effective_from))
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
 

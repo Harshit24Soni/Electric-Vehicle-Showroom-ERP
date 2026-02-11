@@ -20,7 +20,7 @@ class VehicleFinance(Base):
 
     sale_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("sales.vehicle_sale.sale_id", ondelete="RESTRICT"),
+        ForeignKey("sales.sale.sale_id", ondelete="RESTRICT"),
         nullable=False,
         unique=True,
     )

@@ -1,0 +1,372 @@
+👥 Staff & User Management Module — Complete Functional Specification
+🎯 Objective
+
+Implement a User/Staff Management system with strict role hierarchy and soft-delete architecture where:
+
+Admin manages the entire system
+
+Dealer manages their dealership operations
+
+Staff are restricted operational users
+
+Admin and Dealer have full access to staff records
+
+Staff have limited self-only access
+
+No hard deletes are allowed
+
+This module must be secure, auditable, and hierarchy-based.
+
+1️⃣ Role Hierarchy (Authority Model)
+
+This hierarchy is mandatory and must never be bypassed.
+
+Admin
+   ↓
+Dealer
+   ↓
+Staff
+
+
+Higher roles control lower roles only.
+Lower roles can NEVER control higher roles.
+
+2️⃣ Role Responsibilities & Permissions
+🔵 Admin (System Controller — Highest Authority)
+Can:
+
+✅ Create Dealer
+✅ Create Staff
+✅ View all users
+✅ Edit all users
+✅ Soft delete Dealer
+✅ Soft delete Staff
+✅ Restore deleted users
+✅ View and modify all details (employment + personal)
+✅ Manage system configuration
+
+Cannot:
+
+❌ Be created by Dealer
+❌ Be deleted by Dealer
+
+Only an existing Admin can create another Admin (if allowed by system design).
+
+🟢 Dealer (Business Operator — Mid Authority)
+Can:
+
+✅ Create Staff
+✅ View their own staff
+✅ Edit their staff
+✅ View and modify ALL staff details (employment + personal)
+✅ Soft delete Staff
+✅ Restore Staff
+
+Cannot:
+
+❌ Create Admin
+❌ Create Dealer
+❌ Delete Admin
+❌ Delete other Dealers
+❌ Access users outside their dealership
+
+Dealer has full control over their staff, not restricted fields.
+
+🟡 Staff (Restricted Users — Lowest Authority)
+Can:
+
+✅ Login
+✅ Perform assigned operational work
+✅ View their own profile
+✅ Edit their own details
+
+Cannot:
+
+❌ Create users
+❌ Delete users
+❌ Edit other users
+❌ Change roles
+❌ Access staff management
+❌ Access system settings
+
+3️⃣ Soft Delete Policy (STRICT — Mandatory)
+Hard delete is strictly prohibited.
+
+The system must NEVER permanently delete any user record.
+
+Required Behavior
+
+When deleting:
+
+mark inactive OR set deleted timestamp
+
+hide from UI
+
+preserve all history
+
+allow restoration
+
+Why
+
+Because users may have:
+
+sales
+
+purchases
+
+service logs
+
+audit records
+
+Deleting breaks data integrity.
+
+Implementation Rule
+
+❌ DELETE statements not allowed
+✅ Use soft-delete flags only
+
+4️⃣ User Creation Rules
+Admin can create:
+
+Dealer
+
+Staff
+
+Dealer can create:
+
+Staff only
+
+Staff can create:
+
+Nobody
+
+Strict Restrictions
+
+System must block:
+❌ Dealer creating Admin
+❌ Dealer creating Dealer
+❌ Staff creating anyone
+❌ Role escalation
+
+All checks must be enforced in backend (not only frontend).
+
+5️⃣ Staff Creation Data Entry Rules
+
+When Admin/Dealer creates staff, they enter basic information.
+
+Employment/Basic fields:
+
+name
+
+role/designation
+
+join date
+
+contact
+
+email/login
+
+dealer linkage
+
+status
+
+After creation, the account is usable.
+
+6️⃣ Personal & Extended Details Management
+
+The system must allow each logged-in user to access and update their own profile.
+
+This is for convenience and self-service.
+
+Self Profile Rule
+
+Every user (Admin, Dealer, Staff) must have:
+
+“My Profile” page
+
+Where they can:
+✅ View their details
+✅ Update their details
+✅ Save changes
+
+What Staff Can Edit
+
+Staff may update:
+
+personal info
+
+address
+
+bank details
+
+Aadhaar
+
+PAN
+
+documents
+
+emergency contact
+
+other profile fields defined in schema
+
+But only their own.
+
+What Admin & Dealer Can Access
+
+Admin and Dealer have full access to all fields of their staff.
+
+They can:
+✅ View
+✅ Edit
+✅ Correct
+✅ Update
+
+No restrictions.
+
+(Only Staff are restricted, not Admin/Dealer.)
+
+7️⃣ Scope Rules (Dealer Isolation)
+
+Dealer must only manage:
+
+their own staff
+
+System must prevent:
+❌ cross-dealer access
+
+Every staff must belong to exactly one dealer.
+
+No orphan staff allowed.
+
+8️⃣ UI Requirements
+Admin Sidebar
+
+Dealers
+
+Staff Management
+
+System Settings
+
+Dealer Sidebar
+
+Staff Management
+
+Staff Sidebar
+
+NO staff management option
+
+9️⃣ Required Pages
+Staff Management Page (Admin + Dealer)
+
+Must include:
+
+list staff
+
+add
+
+edit
+
+soft delete
+
+restore
+
+search/filter
+
+Dealer Management Page (Admin only)
+
+Must include:
+
+create dealer
+
+edit dealer
+
+soft delete dealer
+
+My Profile Page (All users)
+
+Must include:
+
+view own data
+
+edit own data
+
+save
+
+🔟 Security Rules (Backend Mandatory)
+
+Backend must enforce:
+
+Prevent:
+
+❌ editing other users without permission
+❌ role escalation
+❌ staff accessing management routes
+❌ hard delete
+
+Enforce:
+
+✅ hierarchy checks
+✅ dealer scope filtering
+✅ soft deletes only
+
+Frontend restrictions alone are not enough.
+
+1️⃣1️⃣ Audit & Logging
+
+Every action must store:
+
+created_by
+
+updated_by
+
+deleted_by
+
+timestamps
+
+No silent changes.
+
+1️⃣2️⃣ Strict Instructions for Agent
+MUST:
+
+✅ implement soft deletes only
+✅ enforce hierarchy
+✅ allow Admin/Dealer full staff access
+✅ restrict Staff to self only
+✅ create visible UI pages
+✅ protect backend routes
+
+MUST NOT:
+
+❌ hard delete users
+❌ allow Dealer → Admin creation
+❌ allow Staff management access
+❌ mix roles or permissions
+❌ introduce duplicate flows
+
+✅ Completion Criteria
+
+System is correct only if:
+
+As Admin:
+
+can create Dealer & Staff
+
+can edit/delete all
+
+As Dealer:
+
+can create/edit/delete own Staff
+
+cannot create Admin/Dealer
+
+As Staff:
+
+can only edit self
+
+cannot see staff management
+
+Database:
+
+no records ever permanently deleted
+
+Implement exactly as specified. Do not auto-generate additional behavior or alternative logic.

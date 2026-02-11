@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { useAuthStore, UserRole } from '@/store/authStore'
 import { authApi } from '../api/authApi'
 import { Car } from 'lucide-react'
+import ForgotPinModal from '../components/ForgotPinModal'
 
 const loginSchema = z.object({
   identifier: z.string().min(1, 'Identifier is required'),
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const { setAuth } = useAuthStore()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showForgotPin, setShowForgotPin] = useState(false)
 
   const {
     register,
@@ -127,11 +129,22 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <div className="mt-6 flex flex-col items-center gap-4 text-sm text-gray-600">
+            <button
+              type="button"
+              onClick={() => setShowForgotPin(true)}
+              className="text-primary-600 hover:text-primary-700 font-medium"
+            >
+              Forgot PIN?
+            </button>
             <p>Use your email or mobile number and PIN to login</p>
           </div>
         </div>
       </div>
+
+      {showForgotPin && (
+        <ForgotPinModal onClose={() => setShowForgotPin(false)} />
+      )}
     </div>
   )
 }
