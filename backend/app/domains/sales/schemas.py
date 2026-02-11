@@ -1,14 +1,17 @@
 from datetime import date, datetime
+from decimal import Decimal
 from pydantic import BaseModel, Field
 from typing import Optional, List
+
 
 class SaleCreate(BaseModel):
     lead_id: int
     customer_id: int
     chassis_no: str
     sale_date: date = Field(default_factory=date.today)
-    total_amount: float
+    total_amount: Decimal
     remarks: Optional[str] = None
+
 
 class ServiceScheduleResponse(BaseModel):
     schedule_id: int
@@ -16,9 +19,10 @@ class ServiceScheduleResponse(BaseModel):
     service_type: str
     due_date: date
     status: str
-    
+
     class Config:
         from_attributes = True
+
 
 class ChecklistUpdate(BaseModel):
     insurance_completed: Optional[bool] = None
@@ -31,6 +35,7 @@ class ChecklistUpdate(BaseModel):
     celex_subsidy_completed: Optional[bool] = None
     celex_details: Optional[str] = None
     plate_fixation_date: Optional[date] = None
+
 
 class ChecklistResponse(BaseModel):
     checklist_id: int
@@ -46,9 +51,10 @@ class ChecklistResponse(BaseModel):
     celex_details: Optional[str] = None
     plate_fixation_date: Optional[date] = None
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 class SaleResponse(BaseModel):
     sale_id: int
@@ -56,7 +62,7 @@ class SaleResponse(BaseModel):
     customer_id: int
     chassis_no: str
     sale_date: date
-    total_amount: float
+    total_amount: Decimal
     sale_status: str
     invoice_number: Optional[str] = None
     pay_receipt_number: Optional[str] = None
@@ -69,32 +75,33 @@ class SaleResponse(BaseModel):
     remarks: Optional[str] = None
     created_by_staff_id: int
     created_at: datetime
-    
+
     service_schedules: List[ServiceScheduleResponse] = []
-    
+
     # Forward reference handled by Pydantic usually, but to be safe:
     delivery_checklist: Optional['ChecklistResponse'] = None
 
     class Config:
         from_attributes = True
 
+
 class ReceiptCreate(BaseModel):
     sale_id: int
-    amount: float
+    amount: Decimal
     payment_mode: str
     transaction_ref: Optional[str] = None
     receipt_date: date = Field(default_factory=date.today)
 
+
 class ReceiptResponse(BaseModel):
     receipt_id: int
     sale_id: int
-    amount: float
+    amount: Decimal
     payment_mode: str
     transaction_ref: Optional[str]
     receipt_date: date
     created_by_staff_id: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
-

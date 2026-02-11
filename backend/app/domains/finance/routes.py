@@ -6,8 +6,14 @@ from app.domains.finance import schemas
 from app.domains.finance.models import VehicleFinance
 from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
+from app.auth.roles import require_roles
 
-router = APIRouter(prefix="/finance", tags=["Finance"])
+router = APIRouter(
+    prefix="/finance",
+    tags=["Finance"],
+    dependencies=[Depends(get_current_staff)],
+)
+
 
 
 @router.post("/", response_model=schemas.FinanceResponse, status_code=status.HTTP_201_CREATED)

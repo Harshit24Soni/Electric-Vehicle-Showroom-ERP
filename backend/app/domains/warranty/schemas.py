@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
@@ -26,7 +27,7 @@ class ClaimResponse(BaseModel):
 class InwardItemCreate(BaseModel):
     spare_id: int
     quantity: int = Field(gt=0)
-    unit_cost: Optional[float]
+    unit_cost: Optional[Decimal]
 
 
 class InwardCreate(BaseModel):

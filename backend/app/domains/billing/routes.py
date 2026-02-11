@@ -4,11 +4,17 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
+from app.auth.roles import require_roles
 from app.domains.billing.schemas import InvoiceCreate, InvoiceUpdate, InvoiceResponse
 from app.domains.billing import services
 from app.domains.billing.models import SalesInvoice
 
-router = APIRouter(prefix="/billing", tags=["Billing"])
+router = APIRouter(
+    prefix="/billing",
+    tags=["Billing"],
+    dependencies=[Depends(get_current_staff)],
+)
+
 
 
 @router.post("/invoice", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)

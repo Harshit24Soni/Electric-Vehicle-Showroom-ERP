@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel
 
@@ -28,7 +29,7 @@ class PolicyCreate(BaseModel):
     policy_number: str
     policy_start_date: date
     policy_end_date: date
-    premium_amount: Optional[float] = None
+    premium_amount: Optional[Decimal] = None
 
 
 class PolicyResponse(BaseModel):
@@ -39,7 +40,7 @@ class PolicyResponse(BaseModel):
     policy_number: str
     policy_start_date: date
     policy_end_date: date
-    premium_amount: Optional[float]
+    premium_amount: Optional[Decimal]
     is_active: bool
     created_at: datetime
 

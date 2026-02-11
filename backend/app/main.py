@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,14 +17,27 @@ from app.domains.crm.routes import router as crm_router
 from app.domains.insurance.routes import router as insurance_router
 from app.domains.warranty.routes import router as warranty_router
 from app.domains.procurement.routes import router as procurement_router
+from app.bootstrap import init_models
+from app.core.config import settings
 
 
 app = FastAPI(title="EV Showroom ERP Backend")
 
-# Add CORS middleware
+# Initialize all models on startup
+init_models()
+
+# CORS — read allowed origins from env
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173",
+    ).split(",")
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://0.0.0.0:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -58,7 +58,7 @@ class Lead(Base, SoftDeleteMixin):
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     phone: Mapped[str] = mapped_column(String(15), nullable=False)
     email: Mapped[str | None] = mapped_column(String(150))
-    vehicle_model_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    vehicle_model_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.vehicle_model.vehicle_model_id"), nullable=False)
     lead_source: Mapped[str] = mapped_column(String(50), nullable=False)
     lead_status_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("crm.lead_status_master.status_id"), nullable=False)
     owner_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)

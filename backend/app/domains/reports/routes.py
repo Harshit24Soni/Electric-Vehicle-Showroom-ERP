@@ -3,9 +3,18 @@ from app.db.session import get_db
 from app.shared.utils import export_csv
 from app.domains.reports import services
 from app.auth.dependencies import get_current_staff
+from app.auth.roles import require_roles
 from datetime import date
 
-router = APIRouter(prefix="/reports", tags=["Reports"])
+router = APIRouter(
+    prefix="/reports",
+    tags=["Reports"],
+    dependencies=[
+        Depends(get_current_staff),
+        Depends(require_roles("DEALER", "ADMIN", "ACCOUNTS")),
+    ],
+)
+
 
 
 @router.get("/sales-register")

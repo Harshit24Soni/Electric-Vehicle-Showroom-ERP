@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import random
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from sqlalchemy import text
@@ -21,6 +21,7 @@ from app.domains.staff.models import (
 )
 from app.auth.token_utils import create_access_token
 from app.db.session import engine
+from app.middleware.rate_limit import rate_limit
 
 
 router = APIRouter(
@@ -30,7 +31,11 @@ router = APIRouter(
 
 
 @router.post("/login-pin")
-async def login_with_pin(payload: PinLoginRequest) -> dict:
+async def login_with_pin(
+    payload: PinLoginRequest,
+    request: Request,
+    _rate_limit=Depends(rate_limit(max_requests=5, window=300)),
+) -> dict:
     """
     Login with PIN using mobile number or email.
     Note: Staff ID is NOT allowed for login (only database tracking).
