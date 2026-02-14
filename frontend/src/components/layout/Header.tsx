@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/store/authStore'
+import { Link } from 'react-router-dom'
 
 export function Header() {
   const { user } = useAuthStore()
@@ -17,6 +18,11 @@ export function Header() {
             <p className="text-sm font-medium text-gray-900">Current Time</p>
             <p className="text-xs text-gray-500">{new Date().toLocaleTimeString()}</p>
           </div>
+          <Link to="/staff/profile" className="p-2 hover:bg-gray-100 rounded-full" title="My Profile">
+            <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-bold border border-primary-200">
+              {user?.name?.[0]?.toUpperCase() || 'U'}
+            </div>
+          </Link>
         </div>
       </div>
     </header>

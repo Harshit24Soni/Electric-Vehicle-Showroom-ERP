@@ -62,4 +62,27 @@ export const authApi = {
   setupTotp: () => api.post<TOTPSetupResponse>('/auth/totp/setup', {}),
 
   verifyTotp: (data: TOTPVerifyRequest) => api.post<{ message: string }>('/auth/totp/verify', data),
+
+  // PIN Reset Request Flow (Staff)
+  requestPinReset: (mobile: string) =>
+    api.post<{ message: string }>('/auth/pin/request-reset', { mobile }),
+
+  // PIN Reset Requests (Admin/Dealer)
+  getResetRequests: () =>
+    api.get<{
+      requests: Array<{
+        id: number; staff_id: number; staff_name: string;
+        staff_mobile: string; requested_at: string; hours_ago: number
+      }>
+    }>('/auth/pin/reset-requests'),
+
+  approveReset: (requestId: number) =>
+    api.post<{ message: string; staff_name: string; temp_pin: string }>(`/auth/pin/approve-reset/${requestId}`, {}),
+
+  denyReset: (requestId: number) =>
+    api.post<{ message: string }>(`/auth/pin/deny-reset/${requestId}`, {}),
+
+  // Self-reset PIN with TOTP (Admin/Dealer)
+  resetPinSelf: (data: { mobile: string; totp_code: string; new_pin: string; confirm_pin: string }) =>
+    api.post<{ message: string }>('/auth/pin/reset-self', data),
 }

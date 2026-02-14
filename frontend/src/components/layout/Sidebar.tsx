@@ -43,14 +43,13 @@ const menuItems: MenuItem[] = [
       { path: '/master/vendors', label: 'Vendors', roles: ['ADMIN', 'DEALER'] },
     ]
   },
-  { path: '/admin/dealers', label: 'Dealer Management', icon: Users, roles: ['ADMIN'] },
   { path: '/admin/staff', label: 'Staff Management', icon: Settings, roles: ['ADMIN', 'DEALER'] },
 ]
 
 export function Sidebar() {
   const location = useLocation()
   const { user, hasRole, clearAuth } = useAuthStore()
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['/master'])
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([])
 
   const toggleMenu = (path: string) => {
     setExpandedMenus(prev =>

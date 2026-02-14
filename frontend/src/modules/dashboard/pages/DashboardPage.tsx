@@ -7,6 +7,7 @@ import {
   PlusCircle, Phone, FileText, Settings
 } from 'lucide-react'
 import FollowupDashboard from '@/modules/crm/components/FollowupDashboard'
+import PinResetRequests from '@/modules/admin/components/PinResetRequests'
 
 interface DashboardStats {
   totalLeads: number
@@ -44,10 +45,10 @@ export default function DashboardPage() {
   })
 
   const quickActions = [
-    { label: 'New Lead', icon: PlusCircle, path: '/crm', color: 'bg-blue-600 hover:bg-blue-700' },
-    { label: 'New Sale', icon: ShoppingCart, path: '/sales', color: 'bg-green-600 hover:bg-green-700' },
+    { label: 'New Lead', icon: PlusCircle, path: '/crm?action=new', color: 'bg-blue-600 hover:bg-blue-700' },
+    { label: 'New Sale', icon: ShoppingCart, path: '/sales?action=new', color: 'bg-green-600 hover:bg-green-700' },
     { label: 'Follow-up', icon: Phone, path: '/crm', color: 'bg-purple-600 hover:bg-purple-700' },
-    { label: 'New Service', icon: Wrench, path: '/service', color: 'bg-orange-600 hover:bg-orange-700' },
+    { label: 'New Service', icon: Wrench, path: '/service?action=new', color: 'bg-orange-600 hover:bg-orange-700' },
   ]
 
   const statCards = [
@@ -119,6 +120,9 @@ export default function DashboardPage() {
           )
         })}
       </div>
+
+      {/* PIN Reset Requests - Admin/Dealer only */}
+      {isDealer && <PinResetRequests />}
 
       {/* Follow-up Dashboard */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

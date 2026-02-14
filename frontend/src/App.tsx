@@ -126,11 +126,7 @@ function App() {
           } />
 
           {/* Admin & Profile */}
-          <Route path="admin/dealers" element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
-              <DealerManagementPage />
-            </ProtectedRoute>
-          } />
+          <Route path="admin/dealers" element={<Navigate to="/admin/staff" replace />} />
           <Route path="admin/staff" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'DEALER']}>
               <StaffManagementPage />

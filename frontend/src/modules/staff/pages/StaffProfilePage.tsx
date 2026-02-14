@@ -4,9 +4,11 @@ import { api } from '../../../lib/api'
 import { User, Save } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'react-hot-toast'
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import Enable2FAModal from '../components/Enable2FAModal'
 
 export default function StaffProfilePage() {
+  const [show2FAModal, setShow2FAModal] = useState(false)
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const { register, handleSubmit, reset } = useForm()
@@ -51,17 +53,44 @@ export default function StaffProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Basic Info Card */}
-        <div className="card md:col-span-1 h-fit">
-          <div className="flex flex-col items-center text-center p-4">
-            <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center mb-4">
-              <User className="w-12 h-12 text-primary-600" />
+        <div className="space-y-6 md:col-span-1">
+          {/* Basic Info Card */}
+          <div className="card h-fit">
+            <div className="flex flex-col items-center text-center p-4">
+              <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center mb-4">
+                <User className="w-12 h-12 text-primary-600" />
+              </div>
+              <h2 className="text-xl font-semibold">{user?.name || 'User'}</h2>
+              <p className="text-gray-500">{user?.designation}</p>
+              <div className="mt-4 w-full">
+                <div className="text-sm text-gray-500">Staff ID: {user?.staff_id}</div>
+                {(profile as any)?.dealer_id && <div className="text-sm text-gray-500">Dealer ID: {(profile as any).dealer_id}</div>}
+              </div>
             </div>
-            <h2 className="text-xl font-semibold">{user?.name || 'User'}</h2>
-            <p className="text-gray-500">{user?.designation}</p>
-            <div className="mt-4 w-full">
-              <div className="text-sm text-gray-500">Staff ID: {user?.staff_id}</div>
-              {(profile as any)?.dealer_id && <div className="text-sm text-gray-500">Dealer ID: {(profile as any).dealer_id}</div>}
+          </div>
+
+          {/* Security Card */}
+          <div className="card h-fit">
+            <div className="p-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Security</h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Two-Factor Auth</p>
+                  <p className="text-xs text-gray-500">
+                    {(profile as any)?.totp_enabled ? 'Enabled' : 'Disabled'}
+                  </p>
+                </div>
+                {(profile as any)?.totp_enabled ? (
+                  <span className="text-green-600 bg-green-50 px-2 py-1 rounded text-xs font-medium border border-green-200">Active</span>
+                ) : (
+                  <button
+                    onClick={() => setShow2FAModal(true)}
+                    className="btn btn-sm btn-outline text-xs"
+                  >
+                    Enable 2FA
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -177,6 +206,8 @@ export default function StaffProfilePage() {
           </form>
         </div>
       </div>
+
+      {show2FAModal && <Enable2FAModal onClose={() => setShow2FAModal(false)} />}
     </div>
   )
 }

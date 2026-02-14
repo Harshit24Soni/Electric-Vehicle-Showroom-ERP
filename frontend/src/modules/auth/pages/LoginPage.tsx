@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuthStore, UserRole } from '@/store/authStore'
+import { useQueryClient } from '@tanstack/react-query'
 import { authApi } from '../api/authApi'
 import { Car } from 'lucide-react'
 import ForgotPinModal from '../components/ForgotPinModal'
@@ -17,10 +18,31 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { setAuth } = useAuthStore()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showForgotPin, setShowForgotPin] = useState(false)
+  const [retryTime, setRetryTime] = useState<number | null>(null)
+
+  useEffect(() => {
+    let timer: any
+    if (retryTime !== null && retryTime > 0) {
+      timer = setInterval(() => {
+        setRetryTime((prev) => (prev !== null && prev > 0 ? prev - 1 : 0))
+      }, 1000)
+    } else if (retryTime === 0) {
+      setRetryTime(null)
+      setError(null)
+    }
+    return () => clearInterval(timer)
+  }, [retryTime])
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
 
   const {
     register,
@@ -43,11 +65,15 @@ export default function LoginPage() {
         const payload = JSON.parse(atob(tokenParts[1]))
         const user = {
           staff_id: payload.staff_id || payload.sub || 0,
+          name: payload.name || payload.full_name || '',
           designation: payload.designation || '',
           role: (payload.role || 'STAFF') as UserRole,
           force_pin_change: response.force_pin_change || payload.force_pin_change || false,
         }
         setAuth(user, response.access_token)
+
+        // Invalidate all cached queries so dashboard fetches fresh data
+        await queryClient.invalidateQueries()
 
         if (response.force_pin_change || payload.force_pin_change) {
           navigate('/change-pin')
@@ -59,10 +85,21 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error('Login error:', err)
+
+      if (err.response?.status === 423) {
+        const detail = err.response.data.detail
+        if (typeof detail === 'object' && detail.retry_after) {
+          setRetryTime(detail.retry_after)
+          setError(`Account locked. Please wait before trying again.`)
+          setLoading(false)
+          return
+        }
+      }
+
       const errorMessage = err.response?.data?.detail || err.message || 'Login failed. Please check your credentials.'
       setError(errorMessage)
     } finally {
-      setLoading(false)
+      if (!retryTime) setLoading(false)
     }
   }
 
@@ -122,10 +159,12 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || retryTime !== null}
               className="w-full btn btn-primary py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {retryTime !== null
+                ? `Try again in ${formatTime(retryTime)}`
+                : loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 

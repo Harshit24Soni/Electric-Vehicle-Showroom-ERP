@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { leadsApi, LeadCreate } from '../api/leads'
 import { Plus, Search, Eye, ShoppingCart } from 'lucide-react'
@@ -25,10 +26,20 @@ export default function CrmPage() {
     isInitialized: masterInitialized
   } = useMasterStore()
 
+  const [searchParams, setSearchParams] = useSearchParams()
+
   useEffect(() => {
     fetchMasterData()
     fetchLeads()
   }, [])
+
+  // Auto-open form when navigated with ?action=new
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setShowForm(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams])
 
   const createMutation = useMutation({
     mutationFn: (data: LeadCreate) => leadsApi.create(data),
@@ -79,8 +90,8 @@ export default function CrmPage() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === tab.key
-                  ? 'bg-white shadow text-gray-900'
-                  : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white shadow text-gray-900'
+                : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
               {tab.label}

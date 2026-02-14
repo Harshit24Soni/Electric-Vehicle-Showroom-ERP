@@ -22,7 +22,7 @@ router = APIRouter(
     ]
 )
 
-@router.post("", response_model=StaffResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_staff(
     data: StaffCreate,
     db: AsyncSession = Depends(get_db),
@@ -60,6 +60,7 @@ async def create_staff(
         designation=data.designation,
         pin_hash=pin_hash,
         is_active=True,
+        is_pin_reset_required=True,
         dealer_id=data.dealer_id,
         
         # Personal
@@ -89,11 +90,15 @@ async def create_staff(
     
     db.add(new_staff)
     await db.flush()
+    await db.commit()
 
-    # Log PIN for now (In prod, send via SMS/Email)
-    print(f"[TEMP PIN] New staff {new_staff.full_name} PIN: {pin}")
-
-    return StaffResponse.model_validate(new_staff, from_attributes=True)
+    # Return staff data + temp PIN (only shown once)
+    staff_data = StaffResponse.model_validate(new_staff, from_attributes=True)
+    return {
+        **staff_data.model_dump(),
+        "temp_pin": pin,
+        "message": "Staff created successfully"
+    }
 
 @router.get("", response_model=list[StaffResponse])
 async def list_staff(
@@ -204,6 +209,7 @@ async def update_staff(
     if data.emergency_contact_no is not None: staff.emergency_contact_no = data.emergency_contact_no
 
     await db.flush()
+    await db.commit()
 
     return StaffResponse.model_validate(staff, from_attributes=True)
 
@@ -235,6 +241,7 @@ async def delete_staff(
     staff.deleted_at = datetime.utcnow()
     staff.is_active = False
     await db.flush()
+    await db.commit()
     return None
 
 @router.post("/{staff_id}/restore", response_model=StaffResponse)
@@ -272,10 +279,13 @@ async def restore_staff(
 
     # Permission Check (Same as delete)
     if current_staff["designation"] == "DEALER":
+         if staff.designation in ["ADMIN", "DEALER"]:
+             raise HTTPException(status_code=403, detail="Dealers cannot restore Admin/Dealer accounts")
          if staff.dealer_id != current_staff["staff_id"]:
              raise HTTPException(status_code=403, detail="Access denied")
 
     staff.deleted_at = None # Restore
     await db.flush()
+    await db.commit()
     
     return StaffResponse.model_validate(staff, from_attributes=True)

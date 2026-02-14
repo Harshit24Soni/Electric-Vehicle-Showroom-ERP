@@ -35,3 +35,15 @@ class TOTPVerifyRequest(BaseModel):
     secret: str
     code: str
 
+
+class PinResetRequestCreate(BaseModel):
+    mobile: str = Field(..., description="Mobile number of the staff requesting PIN reset")
+
+
+class SelfPinResetRequest(BaseModel):
+    """For Admin/Dealer to reset their own PIN using TOTP verification"""
+    mobile: str = Field(..., description="Mobile number")
+    totp_code: str = Field(..., min_length=6, max_length=6, description="Code from Authenticator App")
+    new_pin: str = Field(..., min_length=6, max_length=6, description="New 6-digit PIN")
+    confirm_pin: str = Field(..., min_length=6, max_length=6, description="Confirm new PIN")
+

@@ -108,6 +108,7 @@ class StaffResponse(BaseModel):
     emergency_contact_no: Optional[str]
 
     created_at: datetime
+    totp_enabled: bool
 
     class Config:
         from_attributes = True

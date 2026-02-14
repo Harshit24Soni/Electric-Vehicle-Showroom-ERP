@@ -108,6 +108,10 @@ class Staff(Base, SoftDeleteMixin):
 	emergency_contact_name: Mapped[str | None] = mapped_column(String(150))
 	emergency_contact_no: Mapped[str | None] = mapped_column(String(15))
 
+	@property
+	def totp_enabled(self):
+		return bool(self.totp_secret)
+
 
 class Brand(Base, SoftDeleteMixin):
 	__tablename__ = "brand"
@@ -197,3 +201,16 @@ class VehiclePriceHistory(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
+
+class PinResetRequest(Base):
+    __tablename__ = "pin_reset_request"
+    __table_args__ = ({"schema": "master"},)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id", ondelete="CASCADE"), nullable=False)
+    request_type: Mapped[str] = mapped_column(String(50), nullable=False) # STAFF_FORGOT_PIN
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING") # PENDING, APPROVED, DENIED
+    requested_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
+    processed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"))

@@ -2,12 +2,39 @@
 -- PostgreSQL database dump
 --
 
-\restrict JU5WId1i3N7kmGH96aB36Tl6QzPLz2kp3fQAtEfGBrtOEVooSMzEgbXpztPfjFU
+\restrict Ab1ecRPM3nQ0mh8dRyY7189USlEdmh1qCYsbdUwgE1mZT507Y60mRYq4hlMBl3D
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
 
--- Started on 2026-02-10 16:09:25
+-- Started on 2026-02-14 13:45:43
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+DROP DATABASE IF EXISTS showroom_db;
+--
+-- TOC entry 6095 (class 1262 OID 24585)
+-- Name: showroom_db; Type: DATABASE; Schema: -; Owner: postgres
+--
+
+CREATE DATABASE showroom_db WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'English_India.1252';
+
+
+ALTER DATABASE showroom_db OWNER TO postgres;
+
+\unrestrict Ab1ecRPM3nQ0mh8dRyY7189USlEdmh1qCYsbdUwgE1mZT507Y60mRYq4hlMBl3D
+\connect showroom_db
+\restrict Ab1ecRPM3nQ0mh8dRyY7189USlEdmh1qCYsbdUwgE1mZT507Y60mRYq4hlMBl3D
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -22,7 +49,31 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 11 (class 2615 OID 25329)
+-- TOC entry 6096 (class 0 OID 0)
+-- Name: showroom_db; Type: DATABASE PROPERTIES; Schema: -; Owner: postgres
+--
+
+ALTER DATABASE showroom_db SET "TimeZone" TO 'Asia/Kolkata';
+
+
+\unrestrict Ab1ecRPM3nQ0mh8dRyY7189USlEdmh1qCYsbdUwgE1mZT507Y60mRYq4hlMBl3D
+\connect showroom_db
+\restrict Ab1ecRPM3nQ0mh8dRyY7189USlEdmh1qCYsbdUwgE1mZT507Y60mRYq4hlMBl3D
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- TOC entry 7 (class 2615 OID 25329)
 -- Name: billing; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -42,7 +93,7 @@ CREATE SCHEMA communication;
 ALTER SCHEMA communication OWNER TO postgres;
 
 --
--- TOC entry 15 (class 2615 OID 24587)
+-- TOC entry 8 (class 2615 OID 24587)
 -- Name: crm; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -52,7 +103,7 @@ CREATE SCHEMA crm;
 ALTER SCHEMA crm OWNER TO postgres;
 
 --
--- TOC entry 17 (class 2615 OID 24593)
+-- TOC entry 9 (class 2615 OID 24593)
 -- Name: finance; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -62,7 +113,7 @@ CREATE SCHEMA finance;
 ALTER SCHEMA finance OWNER TO postgres;
 
 --
--- TOC entry 16 (class 2615 OID 24592)
+-- TOC entry 10 (class 2615 OID 24592)
 -- Name: hr; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -72,7 +123,7 @@ CREATE SCHEMA hr;
 ALTER SCHEMA hr OWNER TO postgres;
 
 --
--- TOC entry 14 (class 2615 OID 25077)
+-- TOC entry 11 (class 2615 OID 25077)
 -- Name: insurance; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -82,7 +133,7 @@ CREATE SCHEMA insurance;
 ALTER SCHEMA insurance OWNER TO postgres;
 
 --
--- TOC entry 8 (class 2615 OID 24588)
+-- TOC entry 12 (class 2615 OID 24588)
 -- Name: inventory; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -92,7 +143,7 @@ CREATE SCHEMA inventory;
 ALTER SCHEMA inventory OWNER TO postgres;
 
 --
--- TOC entry 7 (class 2615 OID 24586)
+-- TOC entry 13 (class 2615 OID 24586)
 -- Name: master; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -102,7 +153,7 @@ CREATE SCHEMA master;
 ALTER SCHEMA master OWNER TO postgres;
 
 --
--- TOC entry 18 (class 2615 OID 25500)
+-- TOC entry 14 (class 2615 OID 25500)
 -- Name: oem; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -112,7 +163,7 @@ CREATE SCHEMA oem;
 ALTER SCHEMA oem OWNER TO postgres;
 
 --
--- TOC entry 9 (class 2615 OID 25455)
+-- TOC entry 15 (class 2615 OID 25455)
 -- Name: procurement; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -122,7 +173,7 @@ CREATE SCHEMA procurement;
 ALTER SCHEMA procurement OWNER TO postgres;
 
 --
--- TOC entry 10 (class 2615 OID 24589)
+-- TOC entry 16 (class 2615 OID 24589)
 -- Name: sales; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -132,7 +183,7 @@ CREATE SCHEMA sales;
 ALTER SCHEMA sales OWNER TO postgres;
 
 --
--- TOC entry 12 (class 2615 OID 24590)
+-- TOC entry 17 (class 2615 OID 24590)
 -- Name: service; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -142,7 +193,7 @@ CREATE SCHEMA service;
 ALTER SCHEMA service OWNER TO postgres;
 
 --
--- TOC entry 13 (class 2615 OID 24591)
+-- TOC entry 18 (class 2615 OID 24591)
 -- Name: warranty; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -190,7 +241,7 @@ CREATE SEQUENCE billing.insurance_estimate_estimate_id_seq
 ALTER SEQUENCE billing.insurance_estimate_estimate_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6088 (class 0 OID 0)
+-- TOC entry 6110 (class 0 OID 0)
 -- Dependencies: 283
 -- Name: insurance_estimate_estimate_id_seq; Type: SEQUENCE OWNED BY; Schema: billing; Owner: postgres
 --
@@ -240,7 +291,7 @@ CREATE SEQUENCE billing.invoice_invoice_id_seq
 ALTER SEQUENCE billing.invoice_invoice_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6090 (class 0 OID 0)
+-- TOC entry 6112 (class 0 OID 0)
 -- Dependencies: 279
 -- Name: invoice_invoice_id_seq; Type: SEQUENCE OWNED BY; Schema: billing; Owner: postgres
 --
@@ -284,7 +335,7 @@ CREATE SEQUENCE billing.invoice_line_invoice_line_id_seq
 ALTER SEQUENCE billing.invoice_line_invoice_line_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6092 (class 0 OID 0)
+-- TOC entry 6114 (class 0 OID 0)
 -- Dependencies: 281
 -- Name: invoice_line_invoice_line_id_seq; Type: SEQUENCE OWNED BY; Schema: billing; Owner: postgres
 --
@@ -352,7 +403,7 @@ CREATE SEQUENCE crm.enquiry_enquiry_id_seq
 ALTER SEQUENCE crm.enquiry_enquiry_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6094 (class 0 OID 0)
+-- TOC entry 6116 (class 0 OID 0)
 -- Dependencies: 345
 -- Name: enquiry_enquiry_id_seq; Type: SEQUENCE OWNED BY; Schema: crm; Owner: postgres
 --
@@ -391,7 +442,7 @@ CREATE SEQUENCE crm.enquiry_status_master_status_id_seq
 ALTER SEQUENCE crm.enquiry_status_master_status_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6096 (class 0 OID 0)
+-- TOC entry 6118 (class 0 OID 0)
 -- Dependencies: 351
 -- Name: enquiry_status_master_status_id_seq; Type: SEQUENCE OWNED BY; Schema: crm; Owner: postgres
 --
@@ -436,7 +487,7 @@ CREATE SEQUENCE crm.followup_schedule_followup_id_seq
 ALTER SEQUENCE crm.followup_schedule_followup_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6098 (class 0 OID 0)
+-- TOC entry 6120 (class 0 OID 0)
 -- Dependencies: 311
 -- Name: followup_schedule_followup_id_seq; Type: SEQUENCE OWNED BY; Schema: crm; Owner: postgres
 --
@@ -505,7 +556,7 @@ CREATE SEQUENCE crm.lead_activity_activity_id_seq
 ALTER SEQUENCE crm.lead_activity_activity_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6101 (class 0 OID 0)
+-- TOC entry 6123 (class 0 OID 0)
 -- Dependencies: 309
 -- Name: lead_activity_activity_id_seq; Type: SEQUENCE OWNED BY; Schema: crm; Owner: postgres
 --
@@ -547,7 +598,7 @@ CREATE SEQUENCE crm.lead_assignment_history_assignment_id_seq
 ALTER SEQUENCE crm.lead_assignment_history_assignment_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6103 (class 0 OID 0)
+-- TOC entry 6125 (class 0 OID 0)
 -- Dependencies: 315
 -- Name: lead_assignment_history_assignment_id_seq; Type: SEQUENCE OWNED BY; Schema: crm; Owner: postgres
 --
@@ -571,7 +622,7 @@ CREATE SEQUENCE crm.lead_lead_id_seq
 ALTER SEQUENCE crm.lead_lead_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6104 (class 0 OID 0)
+-- TOC entry 6126 (class 0 OID 0)
 -- Dependencies: 305
 -- Name: lead_lead_id_seq; Type: SEQUENCE OWNED BY; Schema: crm; Owner: postgres
 --
@@ -613,7 +664,7 @@ CREATE SEQUENCE crm.lead_status_history_status_history_id_seq
 ALTER SEQUENCE crm.lead_status_history_status_history_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6106 (class 0 OID 0)
+-- TOC entry 6128 (class 0 OID 0)
 -- Dependencies: 307
 -- Name: lead_status_history_status_history_id_seq; Type: SEQUENCE OWNED BY; Schema: crm; Owner: postgres
 --
@@ -652,7 +703,7 @@ CREATE SEQUENCE crm.lead_status_master_status_id_seq
 ALTER SEQUENCE crm.lead_status_master_status_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6108 (class 0 OID 0)
+-- TOC entry 6130 (class 0 OID 0)
 -- Dependencies: 349
 -- Name: lead_status_master_status_id_seq; Type: SEQUENCE OWNED BY; Schema: crm; Owner: postgres
 --
@@ -695,7 +746,7 @@ CREATE SEQUENCE crm.test_ride_test_ride_id_seq
 ALTER SEQUENCE crm.test_ride_test_ride_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6110 (class 0 OID 0)
+-- TOC entry 6132 (class 0 OID 0)
 -- Dependencies: 313
 -- Name: test_ride_test_ride_id_seq; Type: SEQUENCE OWNED BY; Schema: crm; Owner: postgres
 --
@@ -821,7 +872,7 @@ CREATE SEQUENCE finance.vehicle_loan_loan_id_seq
 ALTER SEQUENCE finance.vehicle_loan_loan_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6116 (class 0 OID 0)
+-- TOC entry 6138 (class 0 OID 0)
 -- Dependencies: 341
 -- Name: vehicle_loan_loan_id_seq; Type: SEQUENCE OWNED BY; Schema: finance; Owner: postgres
 --
@@ -865,7 +916,7 @@ CREATE SEQUENCE finance.vehicle_subsidy_subsidy_id_seq
 ALTER SEQUENCE finance.vehicle_subsidy_subsidy_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6118 (class 0 OID 0)
+-- TOC entry 6140 (class 0 OID 0)
 -- Dependencies: 343
 -- Name: vehicle_subsidy_subsidy_id_seq; Type: SEQUENCE OWNED BY; Schema: finance; Owner: postgres
 --
@@ -910,7 +961,7 @@ CREATE SEQUENCE hr.attendance_attendance_id_seq
 ALTER SEQUENCE hr.attendance_attendance_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6120 (class 0 OID 0)
+-- TOC entry 6142 (class 0 OID 0)
 -- Dependencies: 333
 -- Name: attendance_attendance_id_seq; Type: SEQUENCE OWNED BY; Schema: hr; Owner: postgres
 --
@@ -934,7 +985,7 @@ CREATE SEQUENCE hr.salary_salary_id_seq
 ALTER SEQUENCE hr.salary_salary_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6121 (class 0 OID 0)
+-- TOC entry 6143 (class 0 OID 0)
 -- Dependencies: 335
 -- Name: salary_salary_id_seq; Type: SEQUENCE OWNED BY; Schema: hr; Owner: postgres
 --
@@ -975,7 +1026,7 @@ CREATE SEQUENCE insurance.insurance_company_insurance_company_id_seq
 ALTER SEQUENCE insurance.insurance_company_insurance_company_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6123 (class 0 OID 0)
+-- TOC entry 6145 (class 0 OID 0)
 -- Dependencies: 259
 -- Name: insurance_company_insurance_company_id_seq; Type: SEQUENCE OWNED BY; Schema: insurance; Owner: postgres
 --
@@ -1021,7 +1072,7 @@ CREATE SEQUENCE insurance.policy_policy_id_seq
 ALTER SEQUENCE insurance.policy_policy_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6125 (class 0 OID 0)
+-- TOC entry 6147 (class 0 OID 0)
 -- Dependencies: 261
 -- Name: policy_policy_id_seq; Type: SEQUENCE OWNED BY; Schema: insurance; Owner: postgres
 --
@@ -1067,7 +1118,7 @@ CREATE SEQUENCE inventory.spare_master_spare_id_seq
 ALTER SEQUENCE inventory.spare_master_spare_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6127 (class 0 OID 0)
+-- TOC entry 6149 (class 0 OID 0)
 -- Dependencies: 287
 -- Name: spare_master_spare_id_seq; Type: SEQUENCE OWNED BY; Schema: inventory; Owner: postgres
 --
@@ -1111,7 +1162,7 @@ CREATE SEQUENCE inventory.spare_serial_spare_serial_id_seq
 ALTER SEQUENCE inventory.spare_serial_spare_serial_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6129 (class 0 OID 0)
+-- TOC entry 6151 (class 0 OID 0)
 -- Dependencies: 301
 -- Name: spare_serial_spare_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: inventory; Owner: postgres
 --
@@ -1156,7 +1207,7 @@ CREATE SEQUENCE inventory.spare_stock_movement_movement_id_seq
 ALTER SEQUENCE inventory.spare_stock_movement_movement_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6131 (class 0 OID 0)
+-- TOC entry 6153 (class 0 OID 0)
 -- Dependencies: 285
 -- Name: spare_stock_movement_movement_id_seq; Type: SEQUENCE OWNED BY; Schema: inventory; Owner: postgres
 --
@@ -1202,7 +1253,7 @@ CREATE SEQUENCE inventory.vehicle_stock_movement_movement_id_seq
 ALTER SEQUENCE inventory.vehicle_stock_movement_movement_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6133 (class 0 OID 0)
+-- TOC entry 6155 (class 0 OID 0)
 -- Dependencies: 339
 -- Name: vehicle_stock_movement_movement_id_seq; Type: SEQUENCE OWNED BY; Schema: inventory; Owner: postgres
 --
@@ -1241,7 +1292,7 @@ CREATE SEQUENCE master.brand_brand_id_seq
 ALTER SEQUENCE master.brand_brand_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6135 (class 0 OID 0)
+-- TOC entry 6157 (class 0 OID 0)
 -- Dependencies: 353
 -- Name: brand_brand_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1295,7 +1346,7 @@ CREATE SEQUENCE master.customer_customer_id_seq
 ALTER SEQUENCE master.customer_customer_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6137 (class 0 OID 0)
+-- TOC entry 6159 (class 0 OID 0)
 -- Dependencies: 235
 -- Name: customer_customer_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1339,7 +1390,7 @@ CREATE SEQUENCE master.customer_document_customer_document_id_seq
 ALTER SEQUENCE master.customer_document_customer_document_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6139 (class 0 OID 0)
+-- TOC entry 6161 (class 0 OID 0)
 -- Dependencies: 238
 -- Name: customer_document_customer_document_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1383,7 +1434,7 @@ CREATE SEQUENCE master.customer_phone_customer_phone_id_seq
 ALTER SEQUENCE master.customer_phone_customer_phone_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6141 (class 0 OID 0)
+-- TOC entry 6163 (class 0 OID 0)
 -- Dependencies: 236
 -- Name: customer_phone_customer_phone_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1407,7 +1458,7 @@ CREATE SEQUENCE master.expense_category_expense_category_id_seq
 ALTER SEQUENCE master.expense_category_expense_category_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6142 (class 0 OID 0)
+-- TOC entry 6164 (class 0 OID 0)
 -- Dependencies: 325
 -- Name: expense_category_expense_category_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1447,7 +1498,7 @@ CREATE SEQUENCE master.job_card_category_job_card_category_id_seq
 ALTER SEQUENCE master.job_card_category_job_card_category_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6144 (class 0 OID 0)
+-- TOC entry 6166 (class 0 OID 0)
 -- Dependencies: 327
 -- Name: job_card_category_job_card_category_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1491,7 +1542,7 @@ CREATE SEQUENCE master.nominee_nominee_id_seq
 ALTER SEQUENCE master.nominee_nominee_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6146 (class 0 OID 0)
+-- TOC entry 6168 (class 0 OID 0)
 -- Dependencies: 347
 -- Name: nominee_nominee_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1531,12 +1582,54 @@ CREATE SEQUENCE master.payment_mode_payment_mode_id_seq
 ALTER SEQUENCE master.payment_mode_payment_mode_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6148 (class 0 OID 0)
+-- TOC entry 6170 (class 0 OID 0)
 -- Dependencies: 323
 -- Name: payment_mode_payment_mode_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
 
 ALTER SEQUENCE master.payment_mode_payment_mode_id_seq OWNED BY master.payment_mode.payment_mode_id;
+
+
+--
+-- TOC entry 369 (class 1259 OID 26747)
+-- Name: pin_reset_request; Type: TABLE; Schema: master; Owner: postgres
+--
+
+CREATE TABLE master.pin_reset_request (
+    id bigint NOT NULL,
+    staff_id bigint NOT NULL,
+    request_type character varying(50) NOT NULL,
+    status character varying(20) NOT NULL,
+    requested_at timestamp without time zone NOT NULL,
+    processed_at timestamp without time zone,
+    processed_by bigint
+);
+
+
+ALTER TABLE master.pin_reset_request OWNER TO postgres;
+
+--
+-- TOC entry 368 (class 1259 OID 26746)
+-- Name: pin_reset_request_id_seq; Type: SEQUENCE; Schema: master; Owner: postgres
+--
+
+CREATE SEQUENCE master.pin_reset_request_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE master.pin_reset_request_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 6172 (class 0 OID 0)
+-- Dependencies: 368
+-- Name: pin_reset_request_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
+--
+
+ALTER SEQUENCE master.pin_reset_request_id_seq OWNED BY master.pin_reset_request.id;
 
 
 --
@@ -1575,7 +1668,7 @@ CREATE SEQUENCE master.spare_price_history_history_id_seq
 ALTER SEQUENCE master.spare_price_history_history_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6150 (class 0 OID 0)
+-- TOC entry 6174 (class 0 OID 0)
 -- Dependencies: 363
 -- Name: spare_price_history_history_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1610,7 +1703,17 @@ CREATE TABLE master.staff (
     locked_until timestamp without time zone,
     last_pin_changed_at timestamp without time zone,
     deleted_at timestamp without time zone,
-    totp_secret character varying(100) DEFAULT NULL::character varying
+    totp_secret character varying(100) DEFAULT NULL::character varying,
+    dealer_id bigint,
+    joining_date date,
+    address_line1 text,
+    address_line2 text,
+    city character varying(100),
+    state character varying(100),
+    pincode character varying(10),
+    bank_ifsc character varying(20),
+    emergency_contact_name character varying(100),
+    emergency_contact_no character varying(15)
 );
 
 
@@ -1632,7 +1735,7 @@ CREATE SEQUENCE master.staff_staff_id_seq
 ALTER SEQUENCE master.staff_staff_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6152 (class 0 OID 0)
+-- TOC entry 6176 (class 0 OID 0)
 -- Dependencies: 303
 -- Name: staff_staff_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1702,7 +1805,7 @@ CREATE SEQUENCE master.vehicle_model_vehicle_model_id_seq
 ALTER SEQUENCE master.vehicle_model_vehicle_model_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6155 (class 0 OID 0)
+-- TOC entry 6179 (class 0 OID 0)
 -- Dependencies: 240
 -- Name: vehicle_model_vehicle_model_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1745,7 +1848,7 @@ CREATE SEQUENCE master.vehicle_price_history_history_id_seq
 ALTER SEQUENCE master.vehicle_price_history_history_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6157 (class 0 OID 0)
+-- TOC entry 6181 (class 0 OID 0)
 -- Dependencies: 365
 -- Name: vehicle_price_history_history_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1815,7 +1918,7 @@ CREATE SEQUENCE master.vendor_contact_vendor_contact_id_seq
 ALTER SEQUENCE master.vendor_contact_vendor_contact_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6160 (class 0 OID 0)
+-- TOC entry 6184 (class 0 OID 0)
 -- Dependencies: 245
 -- Name: vendor_contact_vendor_contact_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1859,7 +1962,7 @@ CREATE SEQUENCE master.vendor_document_vendor_document_id_seq
 ALTER SEQUENCE master.vendor_document_vendor_document_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6162 (class 0 OID 0)
+-- TOC entry 6186 (class 0 OID 0)
 -- Dependencies: 247
 -- Name: vendor_document_vendor_document_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1883,7 +1986,7 @@ CREATE SEQUENCE master.vendor_vendor_id_seq
 ALTER SEQUENCE master.vendor_vendor_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6163 (class 0 OID 0)
+-- TOC entry 6187 (class 0 OID 0)
 -- Dependencies: 243
 -- Name: vendor_vendor_id_seq; Type: SEQUENCE OWNED BY; Schema: master; Owner: postgres
 --
@@ -1928,7 +2031,7 @@ CREATE SEQUENCE oem.reimbursement_invoice_reimbursement_invoice_id_seq
 ALTER SEQUENCE oem.reimbursement_invoice_reimbursement_invoice_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6165 (class 0 OID 0)
+-- TOC entry 6189 (class 0 OID 0)
 -- Dependencies: 293
 -- Name: reimbursement_invoice_reimbursement_invoice_id_seq; Type: SEQUENCE OWNED BY; Schema: oem; Owner: postgres
 --
@@ -1973,7 +2076,7 @@ CREATE SEQUENCE oem.reimbursement_line_reimbursement_line_id_seq
 ALTER SEQUENCE oem.reimbursement_line_reimbursement_line_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6167 (class 0 OID 0)
+-- TOC entry 6191 (class 0 OID 0)
 -- Dependencies: 295
 -- Name: reimbursement_line_reimbursement_line_id_seq; Type: SEQUENCE OWNED BY; Schema: oem; Owner: postgres
 --
@@ -2036,7 +2139,7 @@ CREATE SEQUENCE procurement.spare_purchase_item_purchase_item_id_seq
 ALTER SEQUENCE procurement.spare_purchase_item_purchase_item_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6170 (class 0 OID 0)
+-- TOC entry 6194 (class 0 OID 0)
 -- Dependencies: 291
 -- Name: spare_purchase_item_purchase_item_id_seq; Type: SEQUENCE OWNED BY; Schema: procurement; Owner: postgres
 --
@@ -2060,7 +2163,7 @@ CREATE SEQUENCE procurement.spare_purchase_spare_purchase_id_seq
 ALTER SEQUENCE procurement.spare_purchase_spare_purchase_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6171 (class 0 OID 0)
+-- TOC entry 6195 (class 0 OID 0)
 -- Dependencies: 289
 -- Name: spare_purchase_spare_purchase_id_seq; Type: SEQUENCE OWNED BY; Schema: procurement; Owner: postgres
 --
@@ -2118,7 +2221,7 @@ CREATE SEQUENCE procurement.vehicle_purchase_detail_vehicle_purchase_detail_id_s
 ALTER SEQUENCE procurement.vehicle_purchase_detail_vehicle_purchase_detail_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6174 (class 0 OID 0)
+-- TOC entry 6198 (class 0 OID 0)
 -- Dependencies: 251
 -- Name: vehicle_purchase_detail_vehicle_purchase_detail_id_seq; Type: SEQUENCE OWNED BY; Schema: procurement; Owner: postgres
 --
@@ -2142,13 +2245,25 @@ CREATE SEQUENCE procurement.vehicle_purchase_vehicle_purchase_id_seq
 ALTER SEQUENCE procurement.vehicle_purchase_vehicle_purchase_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6175 (class 0 OID 0)
+-- TOC entry 6199 (class 0 OID 0)
 -- Dependencies: 249
 -- Name: vehicle_purchase_vehicle_purchase_id_seq; Type: SEQUENCE OWNED BY; Schema: procurement; Owner: postgres
 --
 
 ALTER SEQUENCE procurement.vehicle_purchase_vehicle_purchase_id_seq OWNED BY procurement.vehicle_purchase.vehicle_purchase_id;
 
+
+--
+-- TOC entry 367 (class 1259 OID 26739)
+-- Name: alembic_version; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.alembic_version (
+    version_num character varying(32) NOT NULL
+);
+
+
+ALTER TABLE public.alembic_version OWNER TO postgres;
 
 --
 -- TOC entry 360 (class 1259 OID 26551)
@@ -2190,7 +2305,7 @@ CREATE SEQUENCE sales.delivery_checklist_checklist_id_seq
 ALTER SEQUENCE sales.delivery_checklist_checklist_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6177 (class 0 OID 0)
+-- TOC entry 6201 (class 0 OID 0)
 -- Dependencies: 359
 -- Name: delivery_checklist_checklist_id_seq; Type: SEQUENCE OWNED BY; Schema: sales; Owner: postgres
 --
@@ -2234,7 +2349,7 @@ CREATE SEQUENCE sales.payment_receipt_receipt_id_seq
 ALTER SEQUENCE sales.payment_receipt_receipt_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6179 (class 0 OID 0)
+-- TOC entry 6203 (class 0 OID 0)
 -- Dependencies: 357
 -- Name: payment_receipt_receipt_id_seq; Type: SEQUENCE OWNED BY; Schema: sales; Owner: postgres
 --
@@ -2288,7 +2403,7 @@ CREATE SEQUENCE sales.sale_sale_id_seq
 ALTER SEQUENCE sales.sale_sale_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6181 (class 0 OID 0)
+-- TOC entry 6205 (class 0 OID 0)
 -- Dependencies: 355
 -- Name: sale_sale_id_seq; Type: SEQUENCE OWNED BY; Schema: sales; Owner: postgres
 --
@@ -2330,7 +2445,7 @@ CREATE SEQUENCE sales.service_schedule_schedule_id_seq
 ALTER SEQUENCE sales.service_schedule_schedule_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6183 (class 0 OID 0)
+-- TOC entry 6207 (class 0 OID 0)
 -- Dependencies: 361
 -- Name: service_schedule_schedule_id_seq; Type: SEQUENCE OWNED BY; Schema: sales; Owner: postgres
 --
@@ -2392,7 +2507,7 @@ CREATE SEQUENCE sales.spare_sale_detail_spare_sale_detail_id_seq
 ALTER SEQUENCE sales.spare_sale_detail_spare_sale_detail_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6186 (class 0 OID 0)
+-- TOC entry 6210 (class 0 OID 0)
 -- Dependencies: 331
 -- Name: spare_sale_detail_spare_sale_detail_id_seq; Type: SEQUENCE OWNED BY; Schema: sales; Owner: postgres
 --
@@ -2416,7 +2531,7 @@ CREATE SEQUENCE sales.spare_sale_spare_sale_id_seq
 ALTER SEQUENCE sales.spare_sale_spare_sale_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6187 (class 0 OID 0)
+-- TOC entry 6211 (class 0 OID 0)
 -- Dependencies: 329
 -- Name: spare_sale_spare_sale_id_seq; Type: SEQUENCE OWNED BY; Schema: sales; Owner: postgres
 --
@@ -2464,7 +2579,7 @@ CREATE SEQUENCE sales.vehicle_payment_vehicle_payment_id_seq
 ALTER SEQUENCE sales.vehicle_payment_vehicle_payment_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6189 (class 0 OID 0)
+-- TOC entry 6213 (class 0 OID 0)
 -- Dependencies: 257
 -- Name: vehicle_payment_vehicle_payment_id_seq; Type: SEQUENCE OWNED BY; Schema: sales; Owner: postgres
 --
@@ -2508,7 +2623,7 @@ CREATE SEQUENCE sales.vehicle_registration_vehicle_registration_id_seq
 ALTER SEQUENCE sales.vehicle_registration_vehicle_registration_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6191 (class 0 OID 0)
+-- TOC entry 6215 (class 0 OID 0)
 -- Dependencies: 317
 -- Name: vehicle_registration_vehicle_registration_id_seq; Type: SEQUENCE OWNED BY; Schema: sales; Owner: postgres
 --
@@ -2574,7 +2689,7 @@ CREATE SEQUENCE sales.vehicle_sale_finance_vehicle_sale_finance_id_seq
 ALTER SEQUENCE sales.vehicle_sale_finance_vehicle_sale_finance_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6194 (class 0 OID 0)
+-- TOC entry 6218 (class 0 OID 0)
 -- Dependencies: 255
 -- Name: vehicle_sale_finance_vehicle_sale_finance_id_seq; Type: SEQUENCE OWNED BY; Schema: sales; Owner: postgres
 --
@@ -2598,7 +2713,7 @@ CREATE SEQUENCE sales.vehicle_sale_vehicle_sale_id_seq
 ALTER SEQUENCE sales.vehicle_sale_vehicle_sale_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6195 (class 0 OID 0)
+-- TOC entry 6219 (class 0 OID 0)
 -- Dependencies: 253
 -- Name: vehicle_sale_vehicle_sale_id_seq; Type: SEQUENCE OWNED BY; Schema: sales; Owner: postgres
 --
@@ -2646,7 +2761,7 @@ CREATE SEQUENCE service.job_card_job_card_id_seq
 ALTER SEQUENCE service.job_card_job_card_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6197 (class 0 OID 0)
+-- TOC entry 6221 (class 0 OID 0)
 -- Dependencies: 263
 -- Name: job_card_job_card_id_seq; Type: SEQUENCE OWNED BY; Schema: service; Owner: postgres
 --
@@ -2686,7 +2801,7 @@ CREATE SEQUENCE service.job_labour_job_labour_id_seq
 ALTER SEQUENCE service.job_labour_job_labour_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6199 (class 0 OID 0)
+-- TOC entry 6223 (class 0 OID 0)
 -- Dependencies: 267
 -- Name: job_labour_job_labour_id_seq; Type: SEQUENCE OWNED BY; Schema: service; Owner: postgres
 --
@@ -2727,7 +2842,7 @@ CREATE SEQUENCE service.job_spare_job_spare_id_seq
 ALTER SEQUENCE service.job_spare_job_spare_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6201 (class 0 OID 0)
+-- TOC entry 6225 (class 0 OID 0)
 -- Dependencies: 273
 -- Name: job_spare_job_spare_id_seq; Type: SEQUENCE OWNED BY; Schema: service; Owner: postgres
 --
@@ -2768,7 +2883,7 @@ CREATE SEQUENCE service.job_work_item_work_item_id_seq
 ALTER SEQUENCE service.job_work_item_work_item_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6203 (class 0 OID 0)
+-- TOC entry 6227 (class 0 OID 0)
 -- Dependencies: 265
 -- Name: job_work_item_work_item_id_seq; Type: SEQUENCE OWNED BY; Schema: service; Owner: postgres
 --
@@ -2811,7 +2926,7 @@ CREATE SEQUENCE service.service_schedule_service_schedule_id_seq
 ALTER SEQUENCE service.service_schedule_service_schedule_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6205 (class 0 OID 0)
+-- TOC entry 6229 (class 0 OID 0)
 -- Dependencies: 319
 -- Name: service_schedule_service_schedule_id_seq; Type: SEQUENCE OWNED BY; Schema: service; Owner: postgres
 --
@@ -2859,7 +2974,7 @@ CREATE SEQUENCE service.vehicle_component_change_component_change_id_seq
 ALTER SEQUENCE service.vehicle_component_change_component_change_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6207 (class 0 OID 0)
+-- TOC entry 6231 (class 0 OID 0)
 -- Dependencies: 269
 -- Name: vehicle_component_change_component_change_id_seq; Type: SEQUENCE OWNED BY; Schema: service; Owner: postgres
 --
@@ -2906,7 +3021,7 @@ CREATE SEQUENCE service.vehicle_service_summary_vehicle_service_summary_id_seq
 ALTER SEQUENCE service.vehicle_service_summary_vehicle_service_summary_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6209 (class 0 OID 0)
+-- TOC entry 6233 (class 0 OID 0)
 -- Dependencies: 321
 -- Name: vehicle_service_summary_vehicle_service_summary_id_seq; Type: SEQUENCE OWNED BY; Schema: service; Owner: postgres
 --
@@ -2950,7 +3065,7 @@ CREATE SEQUENCE warranty.claim_claim_id_seq
 ALTER SEQUENCE warranty.claim_claim_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6211 (class 0 OID 0)
+-- TOC entry 6235 (class 0 OID 0)
 -- Dependencies: 275
 -- Name: claim_claim_id_seq; Type: SEQUENCE OWNED BY; Schema: warranty; Owner: postgres
 --
@@ -3008,7 +3123,7 @@ CREATE SEQUENCE warranty.inward_item_inward_item_id_seq
 ALTER SEQUENCE warranty.inward_item_inward_item_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6214 (class 0 OID 0)
+-- TOC entry 6238 (class 0 OID 0)
 -- Dependencies: 299
 -- Name: inward_item_inward_item_id_seq; Type: SEQUENCE OWNED BY; Schema: warranty; Owner: postgres
 --
@@ -3032,7 +3147,7 @@ CREATE SEQUENCE warranty.inward_warranty_inward_id_seq
 ALTER SEQUENCE warranty.inward_warranty_inward_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6215 (class 0 OID 0)
+-- TOC entry 6239 (class 0 OID 0)
 -- Dependencies: 297
 -- Name: inward_warranty_inward_id_seq; Type: SEQUENCE OWNED BY; Schema: warranty; Owner: postgres
 --
@@ -3087,7 +3202,7 @@ CREATE SEQUENCE warranty.shipment_item_shipment_item_id_seq
 ALTER SEQUENCE warranty.shipment_item_shipment_item_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6218 (class 0 OID 0)
+-- TOC entry 6242 (class 0 OID 0)
 -- Dependencies: 277
 -- Name: shipment_item_shipment_item_id_seq; Type: SEQUENCE OWNED BY; Schema: warranty; Owner: postgres
 --
@@ -3111,7 +3226,7 @@ CREATE SEQUENCE warranty.shipment_shipment_id_seq
 ALTER SEQUENCE warranty.shipment_shipment_id_seq OWNER TO postgres;
 
 --
--- TOC entry 6219 (class 0 OID 0)
+-- TOC entry 6243 (class 0 OID 0)
 -- Dependencies: 271
 -- Name: shipment_shipment_id_seq; Type: SEQUENCE OWNED BY; Schema: warranty; Owner: postgres
 --
@@ -3120,7 +3235,7 @@ ALTER SEQUENCE warranty.shipment_shipment_id_seq OWNED BY warranty.shipment.ship
 
 
 --
--- TOC entry 5287 (class 2604 OID 25392)
+-- TOC entry 5296 (class 2604 OID 26662)
 -- Name: insurance_estimate estimate_id; Type: DEFAULT; Schema: billing; Owner: postgres
 --
 
@@ -3128,7 +3243,7 @@ ALTER TABLE ONLY billing.insurance_estimate ALTER COLUMN estimate_id SET DEFAULT
 
 
 --
--- TOC entry 5280 (class 2604 OID 25334)
+-- TOC entry 5289 (class 2604 OID 26663)
 -- Name: invoice invoice_id; Type: DEFAULT; Schema: billing; Owner: postgres
 --
 
@@ -3136,7 +3251,7 @@ ALTER TABLE ONLY billing.invoice ALTER COLUMN invoice_id SET DEFAULT nextval('bi
 
 
 --
--- TOC entry 5284 (class 2604 OID 25367)
+-- TOC entry 5293 (class 2604 OID 26664)
 -- Name: invoice_line invoice_line_id; Type: DEFAULT; Schema: billing; Owner: postgres
 --
 
@@ -3144,7 +3259,7 @@ ALTER TABLE ONLY billing.invoice_line ALTER COLUMN invoice_line_id SET DEFAULT n
 
 
 --
--- TOC entry 5361 (class 2604 OID 26372)
+-- TOC entry 5370 (class 2604 OID 26665)
 -- Name: enquiry enquiry_id; Type: DEFAULT; Schema: crm; Owner: postgres
 --
 
@@ -3152,7 +3267,7 @@ ALTER TABLE ONLY crm.enquiry ALTER COLUMN enquiry_id SET DEFAULT nextval('crm.en
 
 
 --
--- TOC entry 5369 (class 2604 OID 26430)
+-- TOC entry 5378 (class 2604 OID 26666)
 -- Name: enquiry_status_master status_id; Type: DEFAULT; Schema: crm; Owner: postgres
 --
 
@@ -3160,7 +3275,7 @@ ALTER TABLE ONLY crm.enquiry_status_master ALTER COLUMN status_id SET DEFAULT ne
 
 
 --
--- TOC entry 5325 (class 2604 OID 25835)
+-- TOC entry 5334 (class 2604 OID 26667)
 -- Name: followup_schedule followup_id; Type: DEFAULT; Schema: crm; Owner: postgres
 --
 
@@ -3168,7 +3283,7 @@ ALTER TABLE ONLY crm.followup_schedule ALTER COLUMN followup_id SET DEFAULT next
 
 
 --
--- TOC entry 5317 (class 2604 OID 25749)
+-- TOC entry 5326 (class 2604 OID 26668)
 -- Name: lead lead_id; Type: DEFAULT; Schema: crm; Owner: postgres
 --
 
@@ -3176,7 +3291,7 @@ ALTER TABLE ONLY crm.lead ALTER COLUMN lead_id SET DEFAULT nextval('crm.lead_lea
 
 
 --
--- TOC entry 5323 (class 2604 OID 25807)
+-- TOC entry 5332 (class 2604 OID 26669)
 -- Name: lead_activity activity_id; Type: DEFAULT; Schema: crm; Owner: postgres
 --
 
@@ -3184,7 +3299,7 @@ ALTER TABLE ONLY crm.lead_activity ALTER COLUMN activity_id SET DEFAULT nextval(
 
 
 --
--- TOC entry 5329 (class 2604 OID 25914)
+-- TOC entry 5338 (class 2604 OID 26670)
 -- Name: lead_assignment_history assignment_id; Type: DEFAULT; Schema: crm; Owner: postgres
 --
 
@@ -3192,7 +3307,7 @@ ALTER TABLE ONLY crm.lead_assignment_history ALTER COLUMN assignment_id SET DEFA
 
 
 --
--- TOC entry 5321 (class 2604 OID 25782)
+-- TOC entry 5330 (class 2604 OID 26671)
 -- Name: lead_status_history status_history_id; Type: DEFAULT; Schema: crm; Owner: postgres
 --
 
@@ -3200,7 +3315,7 @@ ALTER TABLE ONLY crm.lead_status_history ALTER COLUMN status_history_id SET DEFA
 
 
 --
--- TOC entry 5367 (class 2604 OID 26418)
+-- TOC entry 5376 (class 2604 OID 26672)
 -- Name: lead_status_master status_id; Type: DEFAULT; Schema: crm; Owner: postgres
 --
 
@@ -3208,7 +3323,7 @@ ALTER TABLE ONLY crm.lead_status_master ALTER COLUMN status_id SET DEFAULT nextv
 
 
 --
--- TOC entry 5327 (class 2604 OID 25883)
+-- TOC entry 5336 (class 2604 OID 26673)
 -- Name: test_ride test_ride_id; Type: DEFAULT; Schema: crm; Owner: postgres
 --
 
@@ -3216,7 +3331,7 @@ ALTER TABLE ONLY crm.test_ride ALTER COLUMN test_ride_id SET DEFAULT nextval('cr
 
 
 --
--- TOC entry 5356 (class 2604 OID 26307)
+-- TOC entry 5365 (class 2604 OID 26674)
 -- Name: vehicle_loan loan_id; Type: DEFAULT; Schema: finance; Owner: postgres
 --
 
@@ -3224,7 +3339,7 @@ ALTER TABLE ONLY finance.vehicle_loan ALTER COLUMN loan_id SET DEFAULT nextval('
 
 
 --
--- TOC entry 5359 (class 2604 OID 26331)
+-- TOC entry 5368 (class 2604 OID 26675)
 -- Name: vehicle_subsidy subsidy_id; Type: DEFAULT; Schema: finance; Owner: postgres
 --
 
@@ -3232,7 +3347,7 @@ ALTER TABLE ONLY finance.vehicle_subsidy ALTER COLUMN subsidy_id SET DEFAULT nex
 
 
 --
--- TOC entry 5350 (class 2604 OID 26171)
+-- TOC entry 5359 (class 2604 OID 26676)
 -- Name: attendance attendance_id; Type: DEFAULT; Schema: hr; Owner: postgres
 --
 
@@ -3240,7 +3355,7 @@ ALTER TABLE ONLY hr.attendance ALTER COLUMN attendance_id SET DEFAULT nextval('h
 
 
 --
--- TOC entry 5352 (class 2604 OID 26197)
+-- TOC entry 5361 (class 2604 OID 26677)
 -- Name: salary salary_id; Type: DEFAULT; Schema: hr; Owner: postgres
 --
 
@@ -3248,7 +3363,7 @@ ALTER TABLE ONLY hr.salary ALTER COLUMN salary_id SET DEFAULT nextval('hr.salary
 
 
 --
--- TOC entry 5258 (class 2604 OID 25082)
+-- TOC entry 5267 (class 2604 OID 26678)
 -- Name: insurance_company insurance_company_id; Type: DEFAULT; Schema: insurance; Owner: postgres
 --
 
@@ -3256,7 +3371,7 @@ ALTER TABLE ONLY insurance.insurance_company ALTER COLUMN insurance_company_id S
 
 
 --
--- TOC entry 5261 (class 2604 OID 25097)
+-- TOC entry 5270 (class 2604 OID 26679)
 -- Name: policy policy_id; Type: DEFAULT; Schema: insurance; Owner: postgres
 --
 
@@ -3264,7 +3379,7 @@ ALTER TABLE ONLY insurance.policy ALTER COLUMN policy_id SET DEFAULT nextval('in
 
 
 --
--- TOC entry 5291 (class 2604 OID 25437)
+-- TOC entry 5300 (class 2604 OID 26680)
 -- Name: spare_master spare_id; Type: DEFAULT; Schema: inventory; Owner: postgres
 --
 
@@ -3272,7 +3387,7 @@ ALTER TABLE ONLY inventory.spare_master ALTER COLUMN spare_id SET DEFAULT nextva
 
 
 --
--- TOC entry 5309 (class 2604 OID 25600)
+-- TOC entry 5318 (class 2604 OID 26681)
 -- Name: spare_serial spare_serial_id; Type: DEFAULT; Schema: inventory; Owner: postgres
 --
 
@@ -3280,7 +3395,7 @@ ALTER TABLE ONLY inventory.spare_serial ALTER COLUMN spare_serial_id SET DEFAULT
 
 
 --
--- TOC entry 5289 (class 2604 OID 25414)
+-- TOC entry 5298 (class 2604 OID 26682)
 -- Name: spare_stock_movement movement_id; Type: DEFAULT; Schema: inventory; Owner: postgres
 --
 
@@ -3288,7 +3403,7 @@ ALTER TABLE ONLY inventory.spare_stock_movement ALTER COLUMN movement_id SET DEF
 
 
 --
--- TOC entry 5354 (class 2604 OID 26266)
+-- TOC entry 5363 (class 2604 OID 26683)
 -- Name: vehicle_stock_movement movement_id; Type: DEFAULT; Schema: inventory; Owner: postgres
 --
 
@@ -3296,7 +3411,7 @@ ALTER TABLE ONLY inventory.vehicle_stock_movement ALTER COLUMN movement_id SET D
 
 
 --
--- TOC entry 5371 (class 2604 OID 26442)
+-- TOC entry 5380 (class 2604 OID 26684)
 -- Name: brand brand_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3304,7 +3419,7 @@ ALTER TABLE ONLY master.brand ALTER COLUMN brand_id SET DEFAULT nextval('master.
 
 
 --
--- TOC entry 5223 (class 2604 OID 24714)
+-- TOC entry 5232 (class 2604 OID 26685)
 -- Name: customer customer_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3312,7 +3427,7 @@ ALTER TABLE ONLY master.customer ALTER COLUMN customer_id SET DEFAULT nextval('m
 
 
 --
--- TOC entry 5227 (class 2604 OID 24755)
+-- TOC entry 5236 (class 2604 OID 26686)
 -- Name: customer_document customer_document_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3320,7 +3435,7 @@ ALTER TABLE ONLY master.customer_document ALTER COLUMN customer_document_id SET 
 
 
 --
--- TOC entry 5224 (class 2604 OID 24732)
+-- TOC entry 5233 (class 2604 OID 26687)
 -- Name: customer_phone customer_phone_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3328,7 +3443,7 @@ ALTER TABLE ONLY master.customer_phone ALTER COLUMN customer_phone_id SET DEFAUL
 
 
 --
--- TOC entry 5340 (class 2604 OID 26048)
+-- TOC entry 5349 (class 2604 OID 26688)
 -- Name: expense_category expense_category_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3336,7 +3451,7 @@ ALTER TABLE ONLY master.expense_category ALTER COLUMN expense_category_id SET DE
 
 
 --
--- TOC entry 5343 (class 2604 OID 26068)
+-- TOC entry 5352 (class 2604 OID 26689)
 -- Name: job_card_category job_card_category_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3344,7 +3459,7 @@ ALTER TABLE ONLY master.job_card_category ALTER COLUMN job_card_category_id SET 
 
 
 --
--- TOC entry 5363 (class 2604 OID 26396)
+-- TOC entry 5372 (class 2604 OID 26690)
 -- Name: nominee nominee_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3352,7 +3467,7 @@ ALTER TABLE ONLY master.nominee ALTER COLUMN nominee_id SET DEFAULT nextval('mas
 
 
 --
--- TOC entry 5337 (class 2604 OID 26031)
+-- TOC entry 5346 (class 2604 OID 26691)
 -- Name: payment_mode payment_mode_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3360,7 +3475,15 @@ ALTER TABLE ONLY master.payment_mode ALTER COLUMN payment_mode_id SET DEFAULT ne
 
 
 --
--- TOC entry 5377 (class 2604 OID 26606)
+-- TOC entry 5394 (class 2604 OID 26750)
+-- Name: pin_reset_request id; Type: DEFAULT; Schema: master; Owner: postgres
+--
+
+ALTER TABLE ONLY master.pin_reset_request ALTER COLUMN id SET DEFAULT nextval('master.pin_reset_request_id_seq'::regclass);
+
+
+--
+-- TOC entry 5386 (class 2604 OID 26692)
 -- Name: spare_price_history history_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3368,7 +3491,7 @@ ALTER TABLE ONLY master.spare_price_history ALTER COLUMN history_id SET DEFAULT 
 
 
 --
--- TOC entry 5311 (class 2604 OID 25703)
+-- TOC entry 5320 (class 2604 OID 26693)
 -- Name: staff staff_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3376,7 +3499,7 @@ ALTER TABLE ONLY master.staff ALTER COLUMN staff_id SET DEFAULT nextval('master.
 
 
 --
--- TOC entry 5230 (class 2604 OID 24780)
+-- TOC entry 5239 (class 2604 OID 26694)
 -- Name: vehicle_model vehicle_model_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3384,7 +3507,7 @@ ALTER TABLE ONLY master.vehicle_model ALTER COLUMN vehicle_model_id SET DEFAULT 
 
 
 --
--- TOC entry 5381 (class 2604 OID 26633)
+-- TOC entry 5390 (class 2604 OID 26695)
 -- Name: vehicle_price_history history_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3392,7 +3515,7 @@ ALTER TABLE ONLY master.vehicle_price_history ALTER COLUMN history_id SET DEFAUL
 
 
 --
--- TOC entry 5235 (class 2604 OID 24867)
+-- TOC entry 5244 (class 2604 OID 26696)
 -- Name: vendor vendor_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3400,7 +3523,7 @@ ALTER TABLE ONLY master.vendor ALTER COLUMN vendor_id SET DEFAULT nextval('maste
 
 
 --
--- TOC entry 5238 (class 2604 OID 24888)
+-- TOC entry 5247 (class 2604 OID 26697)
 -- Name: vendor_contact vendor_contact_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3408,7 +3531,7 @@ ALTER TABLE ONLY master.vendor_contact ALTER COLUMN vendor_contact_id SET DEFAUL
 
 
 --
--- TOC entry 5242 (class 2604 OID 24910)
+-- TOC entry 5251 (class 2604 OID 26698)
 -- Name: vendor_document vendor_document_id; Type: DEFAULT; Schema: master; Owner: postgres
 --
 
@@ -3416,7 +3539,7 @@ ALTER TABLE ONLY master.vendor_document ALTER COLUMN vendor_document_id SET DEFA
 
 
 --
--- TOC entry 5301 (class 2604 OID 25505)
+-- TOC entry 5310 (class 2604 OID 26699)
 -- Name: reimbursement_invoice reimbursement_invoice_id; Type: DEFAULT; Schema: oem; Owner: postgres
 --
 
@@ -3424,7 +3547,7 @@ ALTER TABLE ONLY oem.reimbursement_invoice ALTER COLUMN reimbursement_invoice_id
 
 
 --
--- TOC entry 5303 (class 2604 OID 25526)
+-- TOC entry 5312 (class 2604 OID 26700)
 -- Name: reimbursement_line reimbursement_line_id; Type: DEFAULT; Schema: oem; Owner: postgres
 --
 
@@ -3432,7 +3555,7 @@ ALTER TABLE ONLY oem.reimbursement_line ALTER COLUMN reimbursement_line_id SET D
 
 
 --
--- TOC entry 5296 (class 2604 OID 25460)
+-- TOC entry 5305 (class 2604 OID 26701)
 -- Name: spare_purchase spare_purchase_id; Type: DEFAULT; Schema: procurement; Owner: postgres
 --
 
@@ -3440,7 +3563,7 @@ ALTER TABLE ONLY procurement.spare_purchase ALTER COLUMN spare_purchase_id SET D
 
 
 --
--- TOC entry 5299 (class 2604 OID 25479)
+-- TOC entry 5308 (class 2604 OID 26702)
 -- Name: spare_purchase_item purchase_item_id; Type: DEFAULT; Schema: procurement; Owner: postgres
 --
 
@@ -3448,7 +3571,7 @@ ALTER TABLE ONLY procurement.spare_purchase_item ALTER COLUMN purchase_item_id S
 
 
 --
--- TOC entry 5245 (class 2604 OID 24932)
+-- TOC entry 5254 (class 2604 OID 26703)
 -- Name: vehicle_purchase vehicle_purchase_id; Type: DEFAULT; Schema: procurement; Owner: postgres
 --
 
@@ -3456,7 +3579,7 @@ ALTER TABLE ONLY procurement.vehicle_purchase ALTER COLUMN vehicle_purchase_id S
 
 
 --
--- TOC entry 5248 (class 2604 OID 24952)
+-- TOC entry 5257 (class 2604 OID 26704)
 -- Name: vehicle_purchase_detail vehicle_purchase_detail_id; Type: DEFAULT; Schema: procurement; Owner: postgres
 --
 
@@ -3464,7 +3587,7 @@ ALTER TABLE ONLY procurement.vehicle_purchase_detail ALTER COLUMN vehicle_purcha
 
 
 --
--- TOC entry 5375 (class 2604 OID 26554)
+-- TOC entry 5384 (class 2604 OID 26705)
 -- Name: delivery_checklist checklist_id; Type: DEFAULT; Schema: sales; Owner: postgres
 --
 
@@ -3472,7 +3595,7 @@ ALTER TABLE ONLY sales.delivery_checklist ALTER COLUMN checklist_id SET DEFAULT 
 
 
 --
--- TOC entry 5374 (class 2604 OID 26530)
+-- TOC entry 5383 (class 2604 OID 26706)
 -- Name: payment_receipt receipt_id; Type: DEFAULT; Schema: sales; Owner: postgres
 --
 
@@ -3480,7 +3603,7 @@ ALTER TABLE ONLY sales.payment_receipt ALTER COLUMN receipt_id SET DEFAULT nextv
 
 
 --
--- TOC entry 5372 (class 2604 OID 26478)
+-- TOC entry 5381 (class 2604 OID 26707)
 -- Name: sale sale_id; Type: DEFAULT; Schema: sales; Owner: postgres
 --
 
@@ -3488,7 +3611,7 @@ ALTER TABLE ONLY sales.sale ALTER COLUMN sale_id SET DEFAULT nextval('sales.sale
 
 
 --
--- TOC entry 5376 (class 2604 OID 26577)
+-- TOC entry 5385 (class 2604 OID 26708)
 -- Name: service_schedule schedule_id; Type: DEFAULT; Schema: sales; Owner: postgres
 --
 
@@ -3496,7 +3619,7 @@ ALTER TABLE ONLY sales.service_schedule ALTER COLUMN schedule_id SET DEFAULT nex
 
 
 --
--- TOC entry 5346 (class 2604 OID 26117)
+-- TOC entry 5355 (class 2604 OID 26709)
 -- Name: spare_sale spare_sale_id; Type: DEFAULT; Schema: sales; Owner: postgres
 --
 
@@ -3504,7 +3627,7 @@ ALTER TABLE ONLY sales.spare_sale ALTER COLUMN spare_sale_id SET DEFAULT nextval
 
 
 --
--- TOC entry 5348 (class 2604 OID 26141)
+-- TOC entry 5357 (class 2604 OID 26710)
 -- Name: spare_sale_detail spare_sale_detail_id; Type: DEFAULT; Schema: sales; Owner: postgres
 --
 
@@ -3512,7 +3635,7 @@ ALTER TABLE ONLY sales.spare_sale_detail ALTER COLUMN spare_sale_detail_id SET D
 
 
 --
--- TOC entry 5256 (class 2604 OID 25047)
+-- TOC entry 5265 (class 2604 OID 26711)
 -- Name: vehicle_payment vehicle_payment_id; Type: DEFAULT; Schema: sales; Owner: postgres
 --
 
@@ -3520,7 +3643,7 @@ ALTER TABLE ONLY sales.vehicle_payment ALTER COLUMN vehicle_payment_id SET DEFAU
 
 
 --
--- TOC entry 5331 (class 2604 OID 25961)
+-- TOC entry 5340 (class 2604 OID 26712)
 -- Name: vehicle_registration vehicle_registration_id; Type: DEFAULT; Schema: sales; Owner: postgres
 --
 
@@ -3528,7 +3651,7 @@ ALTER TABLE ONLY sales.vehicle_registration ALTER COLUMN vehicle_registration_id
 
 
 --
--- TOC entry 5250 (class 2604 OID 24976)
+-- TOC entry 5259 (class 2604 OID 26713)
 -- Name: vehicle_sale vehicle_sale_id; Type: DEFAULT; Schema: sales; Owner: postgres
 --
 
@@ -3536,7 +3659,7 @@ ALTER TABLE ONLY sales.vehicle_sale ALTER COLUMN vehicle_sale_id SET DEFAULT nex
 
 
 --
--- TOC entry 5254 (class 2604 OID 25030)
+-- TOC entry 5263 (class 2604 OID 26714)
 -- Name: vehicle_sale_finance vehicle_sale_finance_id; Type: DEFAULT; Schema: sales; Owner: postgres
 --
 
@@ -3544,7 +3667,7 @@ ALTER TABLE ONLY sales.vehicle_sale_finance ALTER COLUMN vehicle_sale_finance_id
 
 
 --
--- TOC entry 5264 (class 2604 OID 25133)
+-- TOC entry 5273 (class 2604 OID 26715)
 -- Name: job_card job_card_id; Type: DEFAULT; Schema: service; Owner: postgres
 --
 
@@ -3552,7 +3675,7 @@ ALTER TABLE ONLY service.job_card ALTER COLUMN job_card_id SET DEFAULT nextval('
 
 
 --
--- TOC entry 5268 (class 2604 OID 25182)
+-- TOC entry 5277 (class 2604 OID 26716)
 -- Name: job_labour job_labour_id; Type: DEFAULT; Schema: service; Owner: postgres
 --
 
@@ -3560,7 +3683,7 @@ ALTER TABLE ONLY service.job_labour ALTER COLUMN job_labour_id SET DEFAULT nextv
 
 
 --
--- TOC entry 5274 (class 2604 OID 25274)
+-- TOC entry 5283 (class 2604 OID 26717)
 -- Name: job_spare job_spare_id; Type: DEFAULT; Schema: service; Owner: postgres
 --
 
@@ -3568,7 +3691,7 @@ ALTER TABLE ONLY service.job_spare ALTER COLUMN job_spare_id SET DEFAULT nextval
 
 
 --
--- TOC entry 5266 (class 2604 OID 25162)
+-- TOC entry 5275 (class 2604 OID 26718)
 -- Name: job_work_item work_item_id; Type: DEFAULT; Schema: service; Owner: postgres
 --
 
@@ -3576,7 +3699,7 @@ ALTER TABLE ONLY service.job_work_item ALTER COLUMN work_item_id SET DEFAULT nex
 
 
 --
--- TOC entry 5333 (class 2604 OID 25983)
+-- TOC entry 5342 (class 2604 OID 26719)
 -- Name: service_schedule service_schedule_id; Type: DEFAULT; Schema: service; Owner: postgres
 --
 
@@ -3584,7 +3707,7 @@ ALTER TABLE ONLY service.service_schedule ALTER COLUMN service_schedule_id SET D
 
 
 --
--- TOC entry 5270 (class 2604 OID 25202)
+-- TOC entry 5279 (class 2604 OID 26720)
 -- Name: vehicle_component_change component_change_id; Type: DEFAULT; Schema: service; Owner: postgres
 --
 
@@ -3592,7 +3715,7 @@ ALTER TABLE ONLY service.vehicle_component_change ALTER COLUMN component_change_
 
 
 --
--- TOC entry 5335 (class 2604 OID 26004)
+-- TOC entry 5344 (class 2604 OID 26721)
 -- Name: vehicle_service_summary vehicle_service_summary_id; Type: DEFAULT; Schema: service; Owner: postgres
 --
 
@@ -3600,7 +3723,7 @@ ALTER TABLE ONLY service.vehicle_service_summary ALTER COLUMN vehicle_service_su
 
 
 --
--- TOC entry 5277 (class 2604 OID 25293)
+-- TOC entry 5286 (class 2604 OID 26722)
 -- Name: claim claim_id; Type: DEFAULT; Schema: warranty; Owner: postgres
 --
 
@@ -3608,7 +3731,7 @@ ALTER TABLE ONLY warranty.claim ALTER COLUMN claim_id SET DEFAULT nextval('warra
 
 
 --
--- TOC entry 5305 (class 2604 OID 25560)
+-- TOC entry 5314 (class 2604 OID 26723)
 -- Name: inward warranty_inward_id; Type: DEFAULT; Schema: warranty; Owner: postgres
 --
 
@@ -3616,7 +3739,7 @@ ALTER TABLE ONLY warranty.inward ALTER COLUMN warranty_inward_id SET DEFAULT nex
 
 
 --
--- TOC entry 5307 (class 2604 OID 25576)
+-- TOC entry 5316 (class 2604 OID 26724)
 -- Name: inward_item inward_item_id; Type: DEFAULT; Schema: warranty; Owner: postgres
 --
 
@@ -3624,7 +3747,7 @@ ALTER TABLE ONLY warranty.inward_item ALTER COLUMN inward_item_id SET DEFAULT ne
 
 
 --
--- TOC entry 5272 (class 2604 OID 25259)
+-- TOC entry 5281 (class 2604 OID 26725)
 -- Name: shipment shipment_id; Type: DEFAULT; Schema: warranty; Owner: postgres
 --
 
@@ -3632,7 +3755,7 @@ ALTER TABLE ONLY warranty.shipment ALTER COLUMN shipment_id SET DEFAULT nextval(
 
 
 --
--- TOC entry 5279 (class 2604 OID 25311)
+-- TOC entry 5288 (class 2604 OID 26726)
 -- Name: shipment_item shipment_item_id; Type: DEFAULT; Schema: warranty; Owner: postgres
 --
 
@@ -3640,718 +3763,606 @@ ALTER TABLE ONLY warranty.shipment_item ALTER COLUMN shipment_item_id SET DEFAUL
 
 
 --
--- TOC entry 5989 (class 0 OID 25389)
+-- TOC entry 6006 (class 0 OID 25389)
 -- Dependencies: 284
 -- Data for Name: insurance_estimate; Type: TABLE DATA; Schema: billing; Owner: postgres
 --
 
-COPY billing.insurance_estimate (estimate_id, job_card_id, estimate_amount, approval_status, approved_amount, remarks, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5985 (class 0 OID 25331)
+-- TOC entry 6002 (class 0 OID 25331)
 -- Dependencies: 280
 -- Data for Name: invoice; Type: TABLE DATA; Schema: billing; Owner: postgres
 --
 
-COPY billing.invoice (invoice_id, invoice_number, invoice_date, invoice_type, invoice_status, customer_id, job_card_id, total_amount, finalized_at, remarks, created_at, is_locked) FROM stdin;
-\.
 
 
 --
--- TOC entry 5987 (class 0 OID 25364)
+-- TOC entry 6004 (class 0 OID 25364)
 -- Dependencies: 282
 -- Data for Name: invoice_line; Type: TABLE DATA; Schema: billing; Owner: postgres
 --
 
-COPY billing.invoice_line (invoice_line_id, invoice_id, line_type, description, quantity, rate, amount, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5939 (class 0 OID 24697)
+-- TOC entry 5956 (class 0 OID 24697)
 -- Dependencies: 234
 -- Data for Name: message_log; Type: TABLE DATA; Schema: communication; Owner: postgres
 --
 
-COPY communication.message_log  FROM stdin;
-\.
 
 
 --
--- TOC entry 5938 (class 0 OID 24694)
+-- TOC entry 5955 (class 0 OID 24694)
 -- Dependencies: 233
 -- Data for Name: reminder; Type: TABLE DATA; Schema: communication; Owner: postgres
 --
 
-COPY communication.reminder  FROM stdin;
-\.
 
 
 --
--- TOC entry 6049 (class 0 OID 26369)
+-- TOC entry 6066 (class 0 OID 26369)
 -- Dependencies: 346
 -- Data for Name: enquiry; Type: TABLE DATA; Schema: crm; Owner: postgres
 --
 
-COPY crm.enquiry (enquiry_id, lead_id, enquiry_source, owner_staff_id, last_followup_date, last_message_date, remarks, created_at, enquiry_status_id, deleted_at, created_by_staff_id) FROM stdin;
-\.
 
 
 --
--- TOC entry 6055 (class 0 OID 26427)
+-- TOC entry 6072 (class 0 OID 26427)
 -- Dependencies: 352
 -- Data for Name: enquiry_status_master; Type: TABLE DATA; Schema: crm; Owner: postgres
 --
 
-COPY crm.enquiry_status_master (status_id, status_name, display_order) FROM stdin;
-1	ACTIVE	1
-2	INACTIVE	2
-3	CONVERTED	3
-4	LOST	4
-\.
+INSERT INTO crm.enquiry_status_master VALUES (1, 'ACTIVE', 1) ON CONFLICT DO NOTHING;
+INSERT INTO crm.enquiry_status_master VALUES (2, 'INACTIVE', 2) ON CONFLICT DO NOTHING;
+INSERT INTO crm.enquiry_status_master VALUES (3, 'CONVERTED', 3) ON CONFLICT DO NOTHING;
+INSERT INTO crm.enquiry_status_master VALUES (4, 'LOST', 4) ON CONFLICT DO NOTHING;
 
 
 --
--- TOC entry 6017 (class 0 OID 25832)
+-- TOC entry 6034 (class 0 OID 25832)
 -- Dependencies: 312
 -- Data for Name: followup_schedule; Type: TABLE DATA; Schema: crm; Owner: postgres
 --
 
-COPY crm.followup_schedule (followup_id, lead_id, scheduled_date, assigned_staff_id, followup_status, completed_at, remarks, created_at, deleted_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6011 (class 0 OID 25746)
+-- TOC entry 6028 (class 0 OID 25746)
 -- Dependencies: 306
 -- Data for Name: lead; Type: TABLE DATA; Schema: crm; Owner: postgres
 --
 
-COPY crm.lead (lead_id, customer_id, vehicle_model_id, lead_source, owner_staff_id, expected_purchase_date, remarks, created_at, name, phone, email, lead_status_id, deleted_at, created_by_staff_id) FROM stdin;
-\.
 
 
 --
--- TOC entry 6015 (class 0 OID 25804)
+-- TOC entry 6032 (class 0 OID 25804)
 -- Dependencies: 310
 -- Data for Name: lead_activity; Type: TABLE DATA; Schema: crm; Owner: postgres
 --
 
-COPY crm.lead_activity (activity_id, lead_id, activity_type, activity_time, performed_by_staff_id, outcome, next_action_date, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6021 (class 0 OID 25911)
+-- TOC entry 6038 (class 0 OID 25911)
 -- Dependencies: 316
 -- Data for Name: lead_assignment_history; Type: TABLE DATA; Schema: crm; Owner: postgres
 --
 
-COPY crm.lead_assignment_history (assignment_id, lead_id, old_staff_id, new_staff_id, changed_by_staff_id, changed_at, remarks) FROM stdin;
-\.
 
 
 --
--- TOC entry 6013 (class 0 OID 25779)
+-- TOC entry 6030 (class 0 OID 25779)
 -- Dependencies: 308
 -- Data for Name: lead_status_history; Type: TABLE DATA; Schema: crm; Owner: postgres
 --
 
-COPY crm.lead_status_history (status_history_id, lead_id, old_status, new_status, changed_by_staff_id, changed_at, remarks) FROM stdin;
-\.
 
 
 --
--- TOC entry 6053 (class 0 OID 26415)
+-- TOC entry 6070 (class 0 OID 26415)
 -- Dependencies: 350
 -- Data for Name: lead_status_master; Type: TABLE DATA; Schema: crm; Owner: postgres
 --
 
-COPY crm.lead_status_master (status_id, status_name, display_order) FROM stdin;
-1	NEW	1
-2	HOT	2
-3	WARM	3
-4	COLD	4
-5	CONVERTED	5
-6	LOST	6
-7	DROPPED	7
-\.
+INSERT INTO crm.lead_status_master VALUES (1, 'NEW', 1) ON CONFLICT DO NOTHING;
+INSERT INTO crm.lead_status_master VALUES (2, 'HOT', 2) ON CONFLICT DO NOTHING;
+INSERT INTO crm.lead_status_master VALUES (3, 'WARM', 3) ON CONFLICT DO NOTHING;
+INSERT INTO crm.lead_status_master VALUES (4, 'COLD', 4) ON CONFLICT DO NOTHING;
+INSERT INTO crm.lead_status_master VALUES (5, 'CONVERTED', 5) ON CONFLICT DO NOTHING;
+INSERT INTO crm.lead_status_master VALUES (6, 'LOST', 6) ON CONFLICT DO NOTHING;
+INSERT INTO crm.lead_status_master VALUES (7, 'DROPPED', 7) ON CONFLICT DO NOTHING;
 
 
 --
--- TOC entry 6019 (class 0 OID 25880)
+-- TOC entry 6036 (class 0 OID 25880)
 -- Dependencies: 314
 -- Data for Name: test_ride; Type: TABLE DATA; Schema: crm; Owner: postgres
 --
 
-COPY crm.test_ride (test_ride_id, lead_id, vehicle_model_id, test_ride_date, staff_id, customer_feedback, created_at, deleted_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6045 (class 0 OID 26304)
+-- TOC entry 6062 (class 0 OID 26304)
 -- Dependencies: 342
 -- Data for Name: vehicle_loan; Type: TABLE DATA; Schema: finance; Owner: postgres
 --
 
-COPY finance.vehicle_loan (loan_id, sale_id, financer_name, financer_type, loan_amount, down_payment, approval_status, financer_ref_no, approval_date, remarks, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6047 (class 0 OID 26328)
+-- TOC entry 6064 (class 0 OID 26328)
 -- Dependencies: 344
 -- Data for Name: vehicle_subsidy; Type: TABLE DATA; Schema: finance; Owner: postgres
 --
 
-COPY finance.vehicle_subsidy (subsidy_id, chassis_no, subsidy_customer_id, portal_name, application_status, docs_uploaded, approval_date, remarks) FROM stdin;
-\.
 
 
 --
--- TOC entry 6039 (class 0 OID 26168)
+-- TOC entry 6056 (class 0 OID 26168)
 -- Dependencies: 334
 -- Data for Name: attendance; Type: TABLE DATA; Schema: hr; Owner: postgres
 --
 
-COPY hr.attendance (attendance_id, staff_id, attendance_date, attendance_status, in_time, out_time, remarks, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6041 (class 0 OID 26194)
+-- TOC entry 6058 (class 0 OID 26194)
 -- Dependencies: 336
 -- Data for Name: salary; Type: TABLE DATA; Schema: hr; Owner: postgres
 --
 
-COPY hr.salary (salary_id, staff_id, salary_month, gross_amount, payment_date, remarks, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5965 (class 0 OID 25079)
+-- TOC entry 5982 (class 0 OID 25079)
 -- Dependencies: 260
 -- Data for Name: insurance_company; Type: TABLE DATA; Schema: insurance; Owner: postgres
 --
 
-COPY insurance.insurance_company (insurance_company_id, company_name, contact_phone, contact_email, is_active, created_at) FROM stdin;
-1	ICICI Lombard	18002661122	support@icicilombard.com	t	2026-01-23 22:10:30.208459
-2	HDFC ERGO	18002670000	support@hdfcergo.com	t	2026-01-23 22:10:30.208459
-3	Bajaj Allianz	18002090144	support@bajajallianz.co.in	t	2026-01-23 22:10:30.208459
-\.
+INSERT INTO insurance.insurance_company VALUES (1, 'ICICI Lombard', '18002661122', 'support@icicilombard.com', true, '2026-01-23 22:10:30.208459') ON CONFLICT DO NOTHING;
+INSERT INTO insurance.insurance_company VALUES (2, 'HDFC ERGO', '18002670000', 'support@hdfcergo.com', true, '2026-01-23 22:10:30.208459') ON CONFLICT DO NOTHING;
+INSERT INTO insurance.insurance_company VALUES (3, 'Bajaj Allianz', '18002090144', 'support@bajajallianz.co.in', true, '2026-01-23 22:10:30.208459') ON CONFLICT DO NOTHING;
 
 
 --
--- TOC entry 5967 (class 0 OID 25094)
+-- TOC entry 5984 (class 0 OID 25094)
 -- Dependencies: 262
 -- Data for Name: policy; Type: TABLE DATA; Schema: insurance; Owner: postgres
 --
 
-COPY insurance.policy (policy_id, vehicle_sale_id, chassis_no, insurance_company_id, policy_number, policy_start_date, policy_end_date, premium_amount, is_active, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5993 (class 0 OID 25434)
+-- TOC entry 6010 (class 0 OID 25434)
 -- Dependencies: 288
 -- Data for Name: spare_master; Type: TABLE DATA; Schema: inventory; Owner: postgres
 --
 
-COPY inventory.spare_master (spare_id, part_code, description, dealer_landing_price, dealer_margin_percent, gst_percentage, is_active, created_at, is_temporary, is_verified) FROM stdin;
-\.
 
 
 --
--- TOC entry 6007 (class 0 OID 25597)
+-- TOC entry 6024 (class 0 OID 25597)
 -- Dependencies: 302
 -- Data for Name: spare_serial; Type: TABLE DATA; Schema: inventory; Owner: postgres
 --
 
-COPY inventory.spare_serial (spare_serial_id, spare_id, serial_no, status, source_type, source_item_id, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5991 (class 0 OID 25411)
+-- TOC entry 6008 (class 0 OID 25411)
 -- Dependencies: 286
 -- Data for Name: spare_stock_movement; Type: TABLE DATA; Schema: inventory; Owner: postgres
 --
 
-COPY inventory.spare_stock_movement (movement_id, movement_type, quantity, rate, reference_table, reference_id, remarks, created_at, spare_id) FROM stdin;
-\.
 
 
 --
--- TOC entry 6043 (class 0 OID 26263)
+-- TOC entry 6060 (class 0 OID 26263)
 -- Dependencies: 340
 -- Data for Name: vehicle_stock_movement; Type: TABLE DATA; Schema: inventory; Owner: postgres
 --
 
-COPY inventory.vehicle_stock_movement (movement_id, chassis_no, movement_type, from_location, to_location, reference_type, reference_id, movement_datetime, remarks) FROM stdin;
-\.
 
 
 --
--- TOC entry 6057 (class 0 OID 26439)
+-- TOC entry 6074 (class 0 OID 26439)
 -- Dependencies: 354
 -- Data for Name: brand; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.brand (brand_id, brand_name, deleted_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5937 (class 0 OID 24595)
+-- TOC entry 5954 (class 0 OID 24595)
 -- Dependencies: 232
 -- Data for Name: customer; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.customer (customer_type, name, guardian_name, primary_phone, email, address_line1, address_line2, city, state, pincode, aadhaar_no, pan_no, gstin, created_at, is_active, customer_id, lead_reference_id, deleted_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5944 (class 0 OID 24752)
+-- TOC entry 5961 (class 0 OID 24752)
 -- Dependencies: 239
 -- Data for Name: customer_document; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.customer_document (customer_document_id, customer_id, document_type, document_number, file_path, file_name, mime_type, is_active, uploaded_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5942 (class 0 OID 24729)
+-- TOC entry 5959 (class 0 OID 24729)
 -- Dependencies: 237
 -- Data for Name: customer_phone; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.customer_phone (customer_phone_id, customer_id, phone_number, phone_type, is_active, created_at, contact_name, contact_relation) FROM stdin;
-\.
 
 
 --
--- TOC entry 6031 (class 0 OID 26045)
+-- TOC entry 6048 (class 0 OID 26045)
 -- Dependencies: 326
 -- Data for Name: expense_category; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.expense_category (expense_category_id, category_name, parent_category_id, is_active, created_at) FROM stdin;
-1	SALARY	\N	t	2026-01-23 22:08:44.093883
-2	RENT	\N	t	2026-01-23 22:08:44.093883
-3	ELECTRICITY	\N	t	2026-01-23 22:08:44.093883
-4	INTERNET	\N	t	2026-01-23 22:08:44.093883
-5	OFFICE_EXPENSE	\N	t	2026-01-23 22:08:44.093883
-\.
+INSERT INTO master.expense_category VALUES (1, 'SALARY', NULL, true, '2026-01-23 22:08:44.093883') ON CONFLICT DO NOTHING;
+INSERT INTO master.expense_category VALUES (2, 'RENT', NULL, true, '2026-01-23 22:08:44.093883') ON CONFLICT DO NOTHING;
+INSERT INTO master.expense_category VALUES (3, 'ELECTRICITY', NULL, true, '2026-01-23 22:08:44.093883') ON CONFLICT DO NOTHING;
+INSERT INTO master.expense_category VALUES (4, 'INTERNET', NULL, true, '2026-01-23 22:08:44.093883') ON CONFLICT DO NOTHING;
+INSERT INTO master.expense_category VALUES (5, 'OFFICE_EXPENSE', NULL, true, '2026-01-23 22:08:44.093883') ON CONFLICT DO NOTHING;
 
 
 --
--- TOC entry 6033 (class 0 OID 26065)
+-- TOC entry 6050 (class 0 OID 26065)
 -- Dependencies: 328
 -- Data for Name: job_card_category; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.job_card_category (job_card_category_id, category_code, display_name, is_active, created_at) FROM stdin;
-1	FREE	Free Service	t	2026-01-23 22:08:51.721562
-2	PAID	Paid Service	t	2026-01-23 22:08:51.721562
-3	WARRANTY	Warranty	t	2026-01-23 22:08:51.721562
-4	INSURANCE	Insurance	t	2026-01-23 22:08:51.721562
-5	MIXED	Mixed Service	t	2026-01-23 22:08:51.721562
-\.
+INSERT INTO master.job_card_category VALUES (1, 'FREE', 'Free Service', true, '2026-01-23 22:08:51.721562') ON CONFLICT DO NOTHING;
+INSERT INTO master.job_card_category VALUES (2, 'PAID', 'Paid Service', true, '2026-01-23 22:08:51.721562') ON CONFLICT DO NOTHING;
+INSERT INTO master.job_card_category VALUES (3, 'WARRANTY', 'Warranty', true, '2026-01-23 22:08:51.721562') ON CONFLICT DO NOTHING;
+INSERT INTO master.job_card_category VALUES (4, 'INSURANCE', 'Insurance', true, '2026-01-23 22:08:51.721562') ON CONFLICT DO NOTHING;
+INSERT INTO master.job_card_category VALUES (5, 'MIXED', 'Mixed Service', true, '2026-01-23 22:08:51.721562') ON CONFLICT DO NOTHING;
 
 
 --
--- TOC entry 6051 (class 0 OID 26393)
+-- TOC entry 6068 (class 0 OID 26393)
 -- Dependencies: 348
 -- Data for Name: nominee; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.nominee (nominee_id, customer_id, nominee_name, nominee_dob, relation, is_primary, is_active, created_at, deleted_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6029 (class 0 OID 26028)
+-- TOC entry 6046 (class 0 OID 26028)
 -- Dependencies: 324
 -- Data for Name: payment_mode; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.payment_mode (payment_mode_id, mode_code, display_name, is_active, created_at) FROM stdin;
-1	CASH	Cash	t	2026-01-23 22:08:32.676865
-2	UPI	UPI / QR	t	2026-01-23 22:08:32.676865
-3	CARD	Debit / Credit Card	t	2026-01-23 22:08:32.676865
-4	BANK_TRANSFER	Bank Transfer	t	2026-01-23 22:08:32.676865
-5	FINANCE	Finance	t	2026-01-23 22:08:32.676865
-\.
+INSERT INTO master.payment_mode VALUES (1, 'CASH', 'Cash', true, '2026-01-23 22:08:32.676865') ON CONFLICT DO NOTHING;
+INSERT INTO master.payment_mode VALUES (2, 'UPI', 'UPI / QR', true, '2026-01-23 22:08:32.676865') ON CONFLICT DO NOTHING;
+INSERT INTO master.payment_mode VALUES (3, 'CARD', 'Debit / Credit Card', true, '2026-01-23 22:08:32.676865') ON CONFLICT DO NOTHING;
+INSERT INTO master.payment_mode VALUES (4, 'BANK_TRANSFER', 'Bank Transfer', true, '2026-01-23 22:08:32.676865') ON CONFLICT DO NOTHING;
+INSERT INTO master.payment_mode VALUES (5, 'FINANCE', 'Finance', true, '2026-01-23 22:08:32.676865') ON CONFLICT DO NOTHING;
 
 
 --
--- TOC entry 6067 (class 0 OID 26603)
+-- TOC entry 6089 (class 0 OID 26747)
+-- Dependencies: 369
+-- Data for Name: pin_reset_request; Type: TABLE DATA; Schema: master; Owner: postgres
+--
+
+INSERT INTO master.pin_reset_request VALUES (1, 3, 'STAFF_FORGOT_PIN', 'APPROVED', '2026-02-12 15:37:40.369494', NULL, NULL) ON CONFLICT DO NOTHING;
+INSERT INTO master.pin_reset_request VALUES (2, 3, 'STAFF_FORGOT_PIN', 'APPROVED', '2026-02-12 16:08:06.095421', NULL, NULL) ON CONFLICT DO NOTHING;
+INSERT INTO master.pin_reset_request VALUES (3, 3, 'STAFF_FORGOT_PIN', 'APPROVED', '2026-02-12 16:11:08.23802', NULL, NULL) ON CONFLICT DO NOTHING;
+INSERT INTO master.pin_reset_request VALUES (4, 3, 'STAFF_FORGOT_PIN', 'APPROVED', '2026-02-12 16:17:18.29892', NULL, NULL) ON CONFLICT DO NOTHING;
+INSERT INTO master.pin_reset_request VALUES (5, 3, 'STAFF_FORGOT_PIN', 'APPROVED', '2026-02-12 16:22:59.33325', NULL, NULL) ON CONFLICT DO NOTHING;
+INSERT INTO master.pin_reset_request VALUES (6, 3, 'STAFF_FORGOT_PIN', 'APPROVED', '2026-02-12 16:24:33.264426', NULL, NULL) ON CONFLICT DO NOTHING;
+
+
+--
+-- TOC entry 6084 (class 0 OID 26603)
 -- Dependencies: 364
 -- Data for Name: spare_price_history; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.spare_price_history (history_id, spare_id, price, margin, effective_from, effective_to, is_active, created_by, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6009 (class 0 OID 25700)
+-- TOC entry 6026 (class 0 OID 25700)
 -- Dependencies: 304
 -- Data for Name: staff; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.staff (staff_id, full_name, mobile_no, email, designation, is_active, joined_date, created_at, aadhaar_no, pan_no, bank_account_no, bank_name, ifsc_code, pin_hash, upi_id, is_pin_reset_required, failed_attempts, last_failed_at, locked_until, last_pin_changed_at, deleted_at, totp_secret) FROM stdin;
-3	Test Staff One	9876543210	teststaff1@gmail.com	STAFF	t	2026-01-27	2026-01-28 23:02:00.083443	123412341234	\N	\N	\N	\N	$argon2id$v=19$m=65536,t=3,p=4$vJey1trbey9lDGEspXQuBQ$Bmkf2CPVSZ97nDFGpQM7rsnV4L1j3l9VgOPM6QgQ19A	teststaff@upi	f	0	\N	\N	2026-01-30 22:45:37.351051	\N	\N
-2	System Admin	9999999999	admin@showroom.local	ADMIN	t	2026-01-23	2026-01-23 22:14:28.121998	000000000000	AAAAA0000A	000000000000	N/A	N/A	$argon2id$v=19$m=65536,t=3,p=4$V0opxZjz3lvr3ZtTypkTog$GKfm6WwitMWsAnWSonePkX8VNp5rORkV6PG/Fd2+uyY	\N	f	0	\N	\N	2026-01-30 22:07:14.36094	\N	\N
-\.
+INSERT INTO master.staff VALUES (2, 'System Admin', '9999999999', 'admin@showroom.local', 'ADMIN', true, '2026-01-23', '2026-01-23 22:14:28.121998', '000000000000', 'AAAAA0000A', '000000000000', 'N/A', 'N/A', '$argon2id$v=19$m=65536,t=3,p=4$ppSScg4BIISQ0prznjOmdA$34IDd4/LK6kzqQuxFp+hG4hKCFA9ER9aGzmFgLB7x2Q', NULL, false, 0, NULL, NULL, '2026-02-12 15:35:20.687219', NULL, 'VF76TIUUOS5ABZVVAKIDXBG6HVF7X5HQ', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) ON CONFLICT DO NOTHING;
+INSERT INTO master.staff VALUES (5, 'Dealer 1', '9874598745', 'dealer1@gmail.com', 'DEALER', true, '2026-02-12', '2026-02-12 09:22:00.746065', '123456781234', '', '', '', '', '$argon2id$v=19$m=65536,t=3,p=4$5hwDAMA4hzDGWOt9b8259w$+ZtmHs/hTcaMi+pLVlu2g5DO3lviTOxAZNOWDDKCXLM', '', false, 0, NULL, NULL, '2026-02-12 15:39:43.04558', NULL, 'TTRDXCXIEAYVQIKZ6EL5RUWN4PBQXJMU', NULL, NULL, '', NULL, '', '', '', NULL, '', '') ON CONFLICT DO NOTHING;
+INSERT INTO master.staff VALUES (3, 'Test Staff One', '9876543210', 'teststaff1@gmail.com', 'STAFF', true, '2026-01-27', '2026-01-28 23:02:00.083443', '123412341234', NULL, NULL, NULL, NULL, '$argon2id$v=19$m=65536,t=3,p=4$aE2pde4955wzpnRujbHW2g$A6Tu1Jj0N5Xx9K3sW8Lr+cF2zLwmIVzrOdP6aB72PT8', 'teststaff@upi', true, 0, NULL, NULL, '2026-02-12 16:26:26.345562', NULL, NULL, 5, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) ON CONFLICT DO NOTHING;
 
 
 --
--- TOC entry 5947 (class 0 OID 24794)
+-- TOC entry 5964 (class 0 OID 24794)
 -- Dependencies: 242
 -- Data for Name: vehicle; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.vehicle (chassis_no, vehicle_model_id, motor_serial_no, convertor_serial_no, charger_serial_no, controller_serial_no, battery_serial_no, date_of_manufacture, current_status, created_at, deleted_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5946 (class 0 OID 24777)
+-- TOC entry 5963 (class 0 OID 24777)
 -- Dependencies: 241
 -- Data for Name: vehicle_model; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.vehicle_model (vehicle_model_id, model_name, material_number, colour, battery_type, laden_weight, unladen_weight, hsn_code, is_active, created_at, deleted_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6069 (class 0 OID 26630)
+-- TOC entry 6086 (class 0 OID 26630)
 -- Dependencies: 366
 -- Data for Name: vehicle_price_history; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.vehicle_price_history (history_id, vehicle_model_id, price, effective_from, effective_to, is_active, created_by, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5949 (class 0 OID 24864)
+-- TOC entry 5966 (class 0 OID 24864)
 -- Dependencies: 244
 -- Data for Name: vendor; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.vendor (vendor_id, vendor_name, vendor_type, gstin, pan_no, address_line1, address_line2, city, state, pincode, is_active, created_at, deleted_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5951 (class 0 OID 24885)
+-- TOC entry 5968 (class 0 OID 24885)
 -- Dependencies: 246
 -- Data for Name: vendor_contact; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.vendor_contact (vendor_contact_id, vendor_id, contact_name, designation, department, phone, email, is_primary, is_active, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5953 (class 0 OID 24907)
+-- TOC entry 5970 (class 0 OID 24907)
 -- Dependencies: 248
 -- Data for Name: vendor_document; Type: TABLE DATA; Schema: master; Owner: postgres
 --
 
-COPY master.vendor_document (vendor_document_id, vendor_id, document_type, document_number, file_path, file_name, mime_type, is_active, uploaded_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5999 (class 0 OID 25502)
+-- TOC entry 6016 (class 0 OID 25502)
 -- Dependencies: 294
 -- Data for Name: reimbursement_invoice; Type: TABLE DATA; Schema: oem; Owner: postgres
 --
 
-COPY oem.reimbursement_invoice (reimbursement_invoice_id, oem_invoice_no, invoice_date, period_start_date, period_end_date, total_claim_amount, status, remarks, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6001 (class 0 OID 25523)
+-- TOC entry 6018 (class 0 OID 25523)
 -- Dependencies: 296
 -- Data for Name: reimbursement_line; Type: TABLE DATA; Schema: oem; Owner: postgres
 --
 
-COPY oem.reimbursement_line (reimbursement_line_id, reimbursement_invoice_id, job_card_id, job_labour_id, claim_type, claim_amount, created_at, vehicle_count) FROM stdin;
-\.
 
 
 --
--- TOC entry 5995 (class 0 OID 25457)
+-- TOC entry 6012 (class 0 OID 25457)
 -- Dependencies: 290
 -- Data for Name: spare_purchase; Type: TABLE DATA; Schema: procurement; Owner: postgres
 --
 
-COPY procurement.spare_purchase (spare_purchase_id, vendor_id, vendor_invoice_no, vendor_invoice_date, purchase_date, remarks, created_at, include_in_accounting) FROM stdin;
-\.
 
 
 --
--- TOC entry 5997 (class 0 OID 25476)
+-- TOC entry 6014 (class 0 OID 25476)
 -- Dependencies: 292
 -- Data for Name: spare_purchase_item; Type: TABLE DATA; Schema: procurement; Owner: postgres
 --
 
-COPY procurement.spare_purchase_item (purchase_item_id, spare_purchase_id, spare_id, quantity, unit_cost, gst_percentage, total_cost, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5955 (class 0 OID 24929)
+-- TOC entry 5972 (class 0 OID 24929)
 -- Dependencies: 250
 -- Data for Name: vehicle_purchase; Type: TABLE DATA; Schema: procurement; Owner: postgres
 --
 
-COPY procurement.vehicle_purchase (vehicle_purchase_id, vendor_id, invoice_number, invoice_date, invoice_amount, created_at, include_in_accounting) FROM stdin;
-\.
 
 
 --
--- TOC entry 5957 (class 0 OID 24949)
+-- TOC entry 5974 (class 0 OID 24949)
 -- Dependencies: 252
 -- Data for Name: vehicle_purchase_detail; Type: TABLE DATA; Schema: procurement; Owner: postgres
 --
 
-COPY procurement.vehicle_purchase_detail (vehicle_purchase_detail_id, vehicle_purchase_id, chassis_no, cost_price, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6063 (class 0 OID 26551)
+-- TOC entry 6087 (class 0 OID 26739)
+-- Dependencies: 367
+-- Data for Name: alembic_version; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.alembic_version VALUES ('37956117aba9') ON CONFLICT DO NOTHING;
+
+
+--
+-- TOC entry 6080 (class 0 OID 26551)
 -- Dependencies: 360
 -- Data for Name: delivery_checklist; Type: TABLE DATA; Schema: sales; Owner: postgres
 --
 
-COPY sales.delivery_checklist (checklist_id, sale_id, insurance_completed, subsidy_completed, rto_completed, celex_plate_ordered, celex_subsidy_completed, plate_fixation_date, updated_at, insurance_details, subsidy_details, rto_details, celex_details) FROM stdin;
-\.
 
 
 --
--- TOC entry 6061 (class 0 OID 26527)
+-- TOC entry 6078 (class 0 OID 26527)
 -- Dependencies: 358
 -- Data for Name: payment_receipt; Type: TABLE DATA; Schema: sales; Owner: postgres
 --
 
-COPY sales.payment_receipt (receipt_id, sale_id, amount, payment_mode, transaction_ref, receipt_date, created_by_staff_id, created_at, deleted_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6059 (class 0 OID 26475)
+-- TOC entry 6076 (class 0 OID 26475)
 -- Dependencies: 356
 -- Data for Name: sale; Type: TABLE DATA; Schema: sales; Owner: postgres
 --
 
-COPY sales.sale (sale_id, lead_id, customer_id, chassis_no, sale_date, total_amount, sale_status, invoice_number, pay_receipt_number, delivery_challan_number, is_invoice_generated, is_receipt_generated, is_challan_generated, is_insurance_generated, remarks, created_by_staff_id, created_at, deleted_at, is_service_schedule_generated) FROM stdin;
-\.
 
 
 --
--- TOC entry 6065 (class 0 OID 26574)
+-- TOC entry 6082 (class 0 OID 26574)
 -- Dependencies: 362
 -- Data for Name: service_schedule; Type: TABLE DATA; Schema: sales; Owner: postgres
 --
 
-COPY sales.service_schedule (schedule_id, sale_id, service_number, service_type, due_date, status, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6035 (class 0 OID 26114)
+-- TOC entry 6052 (class 0 OID 26114)
 -- Dependencies: 330
 -- Data for Name: spare_sale; Type: TABLE DATA; Schema: sales; Owner: postgres
 --
 
-COPY sales.spare_sale (spare_sale_id, sale_date, customer_id, job_card_id, total_amount, remarks, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6037 (class 0 OID 26138)
+-- TOC entry 6054 (class 0 OID 26138)
 -- Dependencies: 332
 -- Data for Name: spare_sale_detail; Type: TABLE DATA; Schema: sales; Owner: postgres
 --
 
-COPY sales.spare_sale_detail (spare_sale_detail_id, spare_sale_id, spare_id, quantity, rate, amount, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5963 (class 0 OID 25044)
+-- TOC entry 5980 (class 0 OID 25044)
 -- Dependencies: 258
 -- Data for Name: vehicle_payment; Type: TABLE DATA; Schema: sales; Owner: postgres
 --
 
-COPY sales.vehicle_payment (vehicle_payment_id, customer_id, chassis_no, payment_context, payment_mode, payment_amount, payment_date, reference_no, remarks, vehicle_sale_id, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6023 (class 0 OID 25958)
+-- TOC entry 6040 (class 0 OID 25958)
 -- Dependencies: 318
 -- Data for Name: vehicle_registration; Type: TABLE DATA; Schema: sales; Owner: postgres
 --
 
-COPY sales.vehicle_registration (vehicle_registration_id, vehicle_sale_id, registration_no, number_plate_status, front_plate_image, rear_plate_image, created_at, updated_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5959 (class 0 OID 24973)
+-- TOC entry 5976 (class 0 OID 24973)
 -- Dependencies: 254
 -- Data for Name: vehicle_sale; Type: TABLE DATA; Schema: sales; Owner: postgres
 --
 
-COPY sales.vehicle_sale (vehicle_sale_id, invoice_number, invoice_date, delivery_challan_no, delivery_challan_date, customer_id, chassis_no, sale_price, discount_amount, is_financed, sale_channel, created_at, lead_id) FROM stdin;
-\.
 
 
 --
--- TOC entry 5961 (class 0 OID 25027)
+-- TOC entry 5978 (class 0 OID 25027)
 -- Dependencies: 256
 -- Data for Name: vehicle_sale_finance; Type: TABLE DATA; Schema: sales; Owner: postgres
 --
 
-COPY sales.vehicle_sale_finance (vehicle_sale_finance_id, vehicle_sale_id, financer_name, loan_amount, down_payment, finance_reference_no, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5969 (class 0 OID 25130)
+-- TOC entry 5986 (class 0 OID 25130)
 -- Dependencies: 264
 -- Data for Name: job_card; Type: TABLE DATA; Schema: service; Owner: postgres
 --
 
-COPY service.job_card (job_card_id, job_card_no, chassis_no, customer_id, in_datetime, out_datetime, opening_km, next_service_date, next_service_km, remarks, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5973 (class 0 OID 25179)
+-- TOC entry 5990 (class 0 OID 25179)
 -- Dependencies: 268
 -- Data for Name: job_labour; Type: TABLE DATA; Schema: service; Owner: postgres
 --
 
-COPY service.job_labour (job_labour_id, work_item_id, description, labour_amount, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5979 (class 0 OID 25271)
+-- TOC entry 5996 (class 0 OID 25271)
 -- Dependencies: 274
 -- Data for Name: job_spare; Type: TABLE DATA; Schema: service; Owner: postgres
 --
 
-COPY service.job_spare (job_spare_id, work_item_id, quantity, rate, created_at, spare_id) FROM stdin;
-\.
 
 
 --
--- TOC entry 5971 (class 0 OID 25159)
+-- TOC entry 5988 (class 0 OID 25159)
 -- Dependencies: 266
 -- Data for Name: job_work_item; Type: TABLE DATA; Schema: service; Owner: postgres
 --
 
-COPY service.job_work_item (work_item_id, job_card_id, work_type, description, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6025 (class 0 OID 25980)
+-- TOC entry 6042 (class 0 OID 25980)
 -- Dependencies: 320
 -- Data for Name: service_schedule; Type: TABLE DATA; Schema: service; Owner: postgres
 --
 
-COPY service.service_schedule (service_schedule_id, vehicle_model_id, service_number, month_interval, km_interval, service_type, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5975 (class 0 OID 25199)
+-- TOC entry 5992 (class 0 OID 25199)
 -- Dependencies: 270
 -- Data for Name: vehicle_component_change; Type: TABLE DATA; Schema: service; Owner: postgres
 --
 
-COPY service.vehicle_component_change (component_change_id, job_card_id, chassis_no, component_type, old_serial_no, new_serial_no, replacement_reason, change_date, remarks, created_at, new_spare_serial_id) FROM stdin;
-\.
 
 
 --
--- TOC entry 6027 (class 0 OID 26001)
+-- TOC entry 6044 (class 0 OID 26001)
 -- Dependencies: 322
 -- Data for Name: vehicle_service_summary; Type: TABLE DATA; Schema: service; Owner: postgres
 --
 
-COPY service.vehicle_service_summary (vehicle_service_summary_id, vehicle_sale_id, last_job_card_id, last_service_no, last_service_date, last_service_km, next_service_no, next_due_date, next_due_km, due_status, updated_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5981 (class 0 OID 25290)
+-- TOC entry 5998 (class 0 OID 25290)
 -- Dependencies: 276
 -- Data for Name: claim; Type: TABLE DATA; Schema: warranty; Owner: postgres
 --
 
-COPY warranty.claim (claim_id, job_spare_id, claim_status, portal_ref_no, approval_date, created_at, so_number, remarks) FROM stdin;
-\.
 
 
 --
--- TOC entry 6003 (class 0 OID 25557)
+-- TOC entry 6020 (class 0 OID 25557)
 -- Dependencies: 298
 -- Data for Name: inward; Type: TABLE DATA; Schema: warranty; Owner: postgres
 --
 
-COPY warranty.inward (warranty_inward_id, oem_invoice_no, oem_invoice_date, remarks, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 6005 (class 0 OID 25573)
+-- TOC entry 6022 (class 0 OID 25573)
 -- Dependencies: 300
 -- Data for Name: inward_item; Type: TABLE DATA; Schema: warranty; Owner: postgres
 --
 
-COPY warranty.inward_item (inward_item_id, warranty_inward_id, spare_id, quantity, unit_cost, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5977 (class 0 OID 25256)
+-- TOC entry 5994 (class 0 OID 25256)
 -- Dependencies: 272
 -- Data for Name: shipment; Type: TABLE DATA; Schema: warranty; Owner: postgres
 --
 
-COPY warranty.shipment (shipment_id, courier_name, docket_no, dispatch_date, received_date, created_at) FROM stdin;
-\.
 
 
 --
--- TOC entry 5983 (class 0 OID 25308)
+-- TOC entry 6000 (class 0 OID 25308)
 -- Dependencies: 278
 -- Data for Name: shipment_item; Type: TABLE DATA; Schema: warranty; Owner: postgres
 --
 
-COPY warranty.shipment_item (shipment_item_id, shipment_id, claim_id) FROM stdin;
-\.
 
 
 --
--- TOC entry 6220 (class 0 OID 0)
+-- TOC entry 6244 (class 0 OID 0)
 -- Dependencies: 283
 -- Name: insurance_estimate_estimate_id_seq; Type: SEQUENCE SET; Schema: billing; Owner: postgres
 --
@@ -4360,7 +4371,7 @@ SELECT pg_catalog.setval('billing.insurance_estimate_estimate_id_seq', 1, false)
 
 
 --
--- TOC entry 6221 (class 0 OID 0)
+-- TOC entry 6245 (class 0 OID 0)
 -- Dependencies: 279
 -- Name: invoice_invoice_id_seq; Type: SEQUENCE SET; Schema: billing; Owner: postgres
 --
@@ -4369,7 +4380,7 @@ SELECT pg_catalog.setval('billing.invoice_invoice_id_seq', 1, false);
 
 
 --
--- TOC entry 6222 (class 0 OID 0)
+-- TOC entry 6246 (class 0 OID 0)
 -- Dependencies: 281
 -- Name: invoice_line_invoice_line_id_seq; Type: SEQUENCE SET; Schema: billing; Owner: postgres
 --
@@ -4378,7 +4389,7 @@ SELECT pg_catalog.setval('billing.invoice_line_invoice_line_id_seq', 1, false);
 
 
 --
--- TOC entry 6223 (class 0 OID 0)
+-- TOC entry 6247 (class 0 OID 0)
 -- Dependencies: 345
 -- Name: enquiry_enquiry_id_seq; Type: SEQUENCE SET; Schema: crm; Owner: postgres
 --
@@ -4387,7 +4398,7 @@ SELECT pg_catalog.setval('crm.enquiry_enquiry_id_seq', 1, false);
 
 
 --
--- TOC entry 6224 (class 0 OID 0)
+-- TOC entry 6248 (class 0 OID 0)
 -- Dependencies: 351
 -- Name: enquiry_status_master_status_id_seq; Type: SEQUENCE SET; Schema: crm; Owner: postgres
 --
@@ -4396,7 +4407,7 @@ SELECT pg_catalog.setval('crm.enquiry_status_master_status_id_seq', 4, true);
 
 
 --
--- TOC entry 6225 (class 0 OID 0)
+-- TOC entry 6249 (class 0 OID 0)
 -- Dependencies: 311
 -- Name: followup_schedule_followup_id_seq; Type: SEQUENCE SET; Schema: crm; Owner: postgres
 --
@@ -4405,7 +4416,7 @@ SELECT pg_catalog.setval('crm.followup_schedule_followup_id_seq', 1, false);
 
 
 --
--- TOC entry 6226 (class 0 OID 0)
+-- TOC entry 6250 (class 0 OID 0)
 -- Dependencies: 309
 -- Name: lead_activity_activity_id_seq; Type: SEQUENCE SET; Schema: crm; Owner: postgres
 --
@@ -4414,7 +4425,7 @@ SELECT pg_catalog.setval('crm.lead_activity_activity_id_seq', 1, false);
 
 
 --
--- TOC entry 6227 (class 0 OID 0)
+-- TOC entry 6251 (class 0 OID 0)
 -- Dependencies: 315
 -- Name: lead_assignment_history_assignment_id_seq; Type: SEQUENCE SET; Schema: crm; Owner: postgres
 --
@@ -4423,7 +4434,7 @@ SELECT pg_catalog.setval('crm.lead_assignment_history_assignment_id_seq', 1, fal
 
 
 --
--- TOC entry 6228 (class 0 OID 0)
+-- TOC entry 6252 (class 0 OID 0)
 -- Dependencies: 305
 -- Name: lead_lead_id_seq; Type: SEQUENCE SET; Schema: crm; Owner: postgres
 --
@@ -4432,7 +4443,7 @@ SELECT pg_catalog.setval('crm.lead_lead_id_seq', 1, false);
 
 
 --
--- TOC entry 6229 (class 0 OID 0)
+-- TOC entry 6253 (class 0 OID 0)
 -- Dependencies: 307
 -- Name: lead_status_history_status_history_id_seq; Type: SEQUENCE SET; Schema: crm; Owner: postgres
 --
@@ -4441,7 +4452,7 @@ SELECT pg_catalog.setval('crm.lead_status_history_status_history_id_seq', 1, fal
 
 
 --
--- TOC entry 6230 (class 0 OID 0)
+-- TOC entry 6254 (class 0 OID 0)
 -- Dependencies: 349
 -- Name: lead_status_master_status_id_seq; Type: SEQUENCE SET; Schema: crm; Owner: postgres
 --
@@ -4450,7 +4461,7 @@ SELECT pg_catalog.setval('crm.lead_status_master_status_id_seq', 7, true);
 
 
 --
--- TOC entry 6231 (class 0 OID 0)
+-- TOC entry 6255 (class 0 OID 0)
 -- Dependencies: 313
 -- Name: test_ride_test_ride_id_seq; Type: SEQUENCE SET; Schema: crm; Owner: postgres
 --
@@ -4459,7 +4470,7 @@ SELECT pg_catalog.setval('crm.test_ride_test_ride_id_seq', 1, false);
 
 
 --
--- TOC entry 6232 (class 0 OID 0)
+-- TOC entry 6256 (class 0 OID 0)
 -- Dependencies: 341
 -- Name: vehicle_loan_loan_id_seq; Type: SEQUENCE SET; Schema: finance; Owner: postgres
 --
@@ -4468,7 +4479,7 @@ SELECT pg_catalog.setval('finance.vehicle_loan_loan_id_seq', 1, false);
 
 
 --
--- TOC entry 6233 (class 0 OID 0)
+-- TOC entry 6257 (class 0 OID 0)
 -- Dependencies: 343
 -- Name: vehicle_subsidy_subsidy_id_seq; Type: SEQUENCE SET; Schema: finance; Owner: postgres
 --
@@ -4477,7 +4488,7 @@ SELECT pg_catalog.setval('finance.vehicle_subsidy_subsidy_id_seq', 1, false);
 
 
 --
--- TOC entry 6234 (class 0 OID 0)
+-- TOC entry 6258 (class 0 OID 0)
 -- Dependencies: 333
 -- Name: attendance_attendance_id_seq; Type: SEQUENCE SET; Schema: hr; Owner: postgres
 --
@@ -4486,7 +4497,7 @@ SELECT pg_catalog.setval('hr.attendance_attendance_id_seq', 1, false);
 
 
 --
--- TOC entry 6235 (class 0 OID 0)
+-- TOC entry 6259 (class 0 OID 0)
 -- Dependencies: 335
 -- Name: salary_salary_id_seq; Type: SEQUENCE SET; Schema: hr; Owner: postgres
 --
@@ -4495,7 +4506,7 @@ SELECT pg_catalog.setval('hr.salary_salary_id_seq', 1, false);
 
 
 --
--- TOC entry 6236 (class 0 OID 0)
+-- TOC entry 6260 (class 0 OID 0)
 -- Dependencies: 259
 -- Name: insurance_company_insurance_company_id_seq; Type: SEQUENCE SET; Schema: insurance; Owner: postgres
 --
@@ -4504,7 +4515,7 @@ SELECT pg_catalog.setval('insurance.insurance_company_insurance_company_id_seq',
 
 
 --
--- TOC entry 6237 (class 0 OID 0)
+-- TOC entry 6261 (class 0 OID 0)
 -- Dependencies: 261
 -- Name: policy_policy_id_seq; Type: SEQUENCE SET; Schema: insurance; Owner: postgres
 --
@@ -4513,7 +4524,7 @@ SELECT pg_catalog.setval('insurance.policy_policy_id_seq', 1, false);
 
 
 --
--- TOC entry 6238 (class 0 OID 0)
+-- TOC entry 6262 (class 0 OID 0)
 -- Dependencies: 287
 -- Name: spare_master_spare_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: postgres
 --
@@ -4522,7 +4533,7 @@ SELECT pg_catalog.setval('inventory.spare_master_spare_id_seq', 1, false);
 
 
 --
--- TOC entry 6239 (class 0 OID 0)
+-- TOC entry 6263 (class 0 OID 0)
 -- Dependencies: 301
 -- Name: spare_serial_spare_serial_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: postgres
 --
@@ -4531,7 +4542,7 @@ SELECT pg_catalog.setval('inventory.spare_serial_spare_serial_id_seq', 1, false)
 
 
 --
--- TOC entry 6240 (class 0 OID 0)
+-- TOC entry 6264 (class 0 OID 0)
 -- Dependencies: 285
 -- Name: spare_stock_movement_movement_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: postgres
 --
@@ -4540,7 +4551,7 @@ SELECT pg_catalog.setval('inventory.spare_stock_movement_movement_id_seq', 1, fa
 
 
 --
--- TOC entry 6241 (class 0 OID 0)
+-- TOC entry 6265 (class 0 OID 0)
 -- Dependencies: 339
 -- Name: vehicle_stock_movement_movement_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: postgres
 --
@@ -4549,7 +4560,7 @@ SELECT pg_catalog.setval('inventory.vehicle_stock_movement_movement_id_seq', 1, 
 
 
 --
--- TOC entry 6242 (class 0 OID 0)
+-- TOC entry 6266 (class 0 OID 0)
 -- Dependencies: 353
 -- Name: brand_brand_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4558,7 +4569,7 @@ SELECT pg_catalog.setval('master.brand_brand_id_seq', 1, false);
 
 
 --
--- TOC entry 6243 (class 0 OID 0)
+-- TOC entry 6267 (class 0 OID 0)
 -- Dependencies: 235
 -- Name: customer_customer_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4567,7 +4578,7 @@ SELECT pg_catalog.setval('master.customer_customer_id_seq', 1, false);
 
 
 --
--- TOC entry 6244 (class 0 OID 0)
+-- TOC entry 6268 (class 0 OID 0)
 -- Dependencies: 238
 -- Name: customer_document_customer_document_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4576,7 +4587,7 @@ SELECT pg_catalog.setval('master.customer_document_customer_document_id_seq', 1,
 
 
 --
--- TOC entry 6245 (class 0 OID 0)
+-- TOC entry 6269 (class 0 OID 0)
 -- Dependencies: 236
 -- Name: customer_phone_customer_phone_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4585,7 +4596,7 @@ SELECT pg_catalog.setval('master.customer_phone_customer_phone_id_seq', 1, false
 
 
 --
--- TOC entry 6246 (class 0 OID 0)
+-- TOC entry 6270 (class 0 OID 0)
 -- Dependencies: 325
 -- Name: expense_category_expense_category_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4594,7 +4605,7 @@ SELECT pg_catalog.setval('master.expense_category_expense_category_id_seq', 5, t
 
 
 --
--- TOC entry 6247 (class 0 OID 0)
+-- TOC entry 6271 (class 0 OID 0)
 -- Dependencies: 327
 -- Name: job_card_category_job_card_category_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4603,7 +4614,7 @@ SELECT pg_catalog.setval('master.job_card_category_job_card_category_id_seq', 5,
 
 
 --
--- TOC entry 6248 (class 0 OID 0)
+-- TOC entry 6272 (class 0 OID 0)
 -- Dependencies: 347
 -- Name: nominee_nominee_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4612,7 +4623,7 @@ SELECT pg_catalog.setval('master.nominee_nominee_id_seq', 1, false);
 
 
 --
--- TOC entry 6249 (class 0 OID 0)
+-- TOC entry 6273 (class 0 OID 0)
 -- Dependencies: 323
 -- Name: payment_mode_payment_mode_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4621,7 +4632,16 @@ SELECT pg_catalog.setval('master.payment_mode_payment_mode_id_seq', 5, true);
 
 
 --
--- TOC entry 6250 (class 0 OID 0)
+-- TOC entry 6274 (class 0 OID 0)
+-- Dependencies: 368
+-- Name: pin_reset_request_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
+--
+
+SELECT pg_catalog.setval('master.pin_reset_request_id_seq', 6, true);
+
+
+--
+-- TOC entry 6275 (class 0 OID 0)
 -- Dependencies: 363
 -- Name: spare_price_history_history_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4630,16 +4650,16 @@ SELECT pg_catalog.setval('master.spare_price_history_history_id_seq', 1, false);
 
 
 --
--- TOC entry 6251 (class 0 OID 0)
+-- TOC entry 6276 (class 0 OID 0)
 -- Dependencies: 303
 -- Name: staff_staff_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
 
-SELECT pg_catalog.setval('master.staff_staff_id_seq', 3, true);
+SELECT pg_catalog.setval('master.staff_staff_id_seq', 5, true);
 
 
 --
--- TOC entry 6252 (class 0 OID 0)
+-- TOC entry 6277 (class 0 OID 0)
 -- Dependencies: 240
 -- Name: vehicle_model_vehicle_model_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4648,7 +4668,7 @@ SELECT pg_catalog.setval('master.vehicle_model_vehicle_model_id_seq', 1, false);
 
 
 --
--- TOC entry 6253 (class 0 OID 0)
+-- TOC entry 6278 (class 0 OID 0)
 -- Dependencies: 365
 -- Name: vehicle_price_history_history_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4657,7 +4677,7 @@ SELECT pg_catalog.setval('master.vehicle_price_history_history_id_seq', 1, false
 
 
 --
--- TOC entry 6254 (class 0 OID 0)
+-- TOC entry 6279 (class 0 OID 0)
 -- Dependencies: 245
 -- Name: vendor_contact_vendor_contact_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4666,7 +4686,7 @@ SELECT pg_catalog.setval('master.vendor_contact_vendor_contact_id_seq', 1, false
 
 
 --
--- TOC entry 6255 (class 0 OID 0)
+-- TOC entry 6280 (class 0 OID 0)
 -- Dependencies: 247
 -- Name: vendor_document_vendor_document_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4675,7 +4695,7 @@ SELECT pg_catalog.setval('master.vendor_document_vendor_document_id_seq', 1, fal
 
 
 --
--- TOC entry 6256 (class 0 OID 0)
+-- TOC entry 6281 (class 0 OID 0)
 -- Dependencies: 243
 -- Name: vendor_vendor_id_seq; Type: SEQUENCE SET; Schema: master; Owner: postgres
 --
@@ -4684,7 +4704,7 @@ SELECT pg_catalog.setval('master.vendor_vendor_id_seq', 1, false);
 
 
 --
--- TOC entry 6257 (class 0 OID 0)
+-- TOC entry 6282 (class 0 OID 0)
 -- Dependencies: 293
 -- Name: reimbursement_invoice_reimbursement_invoice_id_seq; Type: SEQUENCE SET; Schema: oem; Owner: postgres
 --
@@ -4693,7 +4713,7 @@ SELECT pg_catalog.setval('oem.reimbursement_invoice_reimbursement_invoice_id_seq
 
 
 --
--- TOC entry 6258 (class 0 OID 0)
+-- TOC entry 6283 (class 0 OID 0)
 -- Dependencies: 295
 -- Name: reimbursement_line_reimbursement_line_id_seq; Type: SEQUENCE SET; Schema: oem; Owner: postgres
 --
@@ -4702,7 +4722,7 @@ SELECT pg_catalog.setval('oem.reimbursement_line_reimbursement_line_id_seq', 1, 
 
 
 --
--- TOC entry 6259 (class 0 OID 0)
+-- TOC entry 6284 (class 0 OID 0)
 -- Dependencies: 291
 -- Name: spare_purchase_item_purchase_item_id_seq; Type: SEQUENCE SET; Schema: procurement; Owner: postgres
 --
@@ -4711,7 +4731,7 @@ SELECT pg_catalog.setval('procurement.spare_purchase_item_purchase_item_id_seq',
 
 
 --
--- TOC entry 6260 (class 0 OID 0)
+-- TOC entry 6285 (class 0 OID 0)
 -- Dependencies: 289
 -- Name: spare_purchase_spare_purchase_id_seq; Type: SEQUENCE SET; Schema: procurement; Owner: postgres
 --
@@ -4720,7 +4740,7 @@ SELECT pg_catalog.setval('procurement.spare_purchase_spare_purchase_id_seq', 1, 
 
 
 --
--- TOC entry 6261 (class 0 OID 0)
+-- TOC entry 6286 (class 0 OID 0)
 -- Dependencies: 251
 -- Name: vehicle_purchase_detail_vehicle_purchase_detail_id_seq; Type: SEQUENCE SET; Schema: procurement; Owner: postgres
 --
@@ -4729,7 +4749,7 @@ SELECT pg_catalog.setval('procurement.vehicle_purchase_detail_vehicle_purchase_d
 
 
 --
--- TOC entry 6262 (class 0 OID 0)
+-- TOC entry 6287 (class 0 OID 0)
 -- Dependencies: 249
 -- Name: vehicle_purchase_vehicle_purchase_id_seq; Type: SEQUENCE SET; Schema: procurement; Owner: postgres
 --
@@ -4738,7 +4758,7 @@ SELECT pg_catalog.setval('procurement.vehicle_purchase_vehicle_purchase_id_seq',
 
 
 --
--- TOC entry 6263 (class 0 OID 0)
+-- TOC entry 6288 (class 0 OID 0)
 -- Dependencies: 359
 -- Name: delivery_checklist_checklist_id_seq; Type: SEQUENCE SET; Schema: sales; Owner: postgres
 --
@@ -4747,7 +4767,7 @@ SELECT pg_catalog.setval('sales.delivery_checklist_checklist_id_seq', 1, false);
 
 
 --
--- TOC entry 6264 (class 0 OID 0)
+-- TOC entry 6289 (class 0 OID 0)
 -- Dependencies: 357
 -- Name: payment_receipt_receipt_id_seq; Type: SEQUENCE SET; Schema: sales; Owner: postgres
 --
@@ -4756,7 +4776,7 @@ SELECT pg_catalog.setval('sales.payment_receipt_receipt_id_seq', 1, false);
 
 
 --
--- TOC entry 6265 (class 0 OID 0)
+-- TOC entry 6290 (class 0 OID 0)
 -- Dependencies: 355
 -- Name: sale_sale_id_seq; Type: SEQUENCE SET; Schema: sales; Owner: postgres
 --
@@ -4765,7 +4785,7 @@ SELECT pg_catalog.setval('sales.sale_sale_id_seq', 1, false);
 
 
 --
--- TOC entry 6266 (class 0 OID 0)
+-- TOC entry 6291 (class 0 OID 0)
 -- Dependencies: 361
 -- Name: service_schedule_schedule_id_seq; Type: SEQUENCE SET; Schema: sales; Owner: postgres
 --
@@ -4774,7 +4794,7 @@ SELECT pg_catalog.setval('sales.service_schedule_schedule_id_seq', 1, false);
 
 
 --
--- TOC entry 6267 (class 0 OID 0)
+-- TOC entry 6292 (class 0 OID 0)
 -- Dependencies: 331
 -- Name: spare_sale_detail_spare_sale_detail_id_seq; Type: SEQUENCE SET; Schema: sales; Owner: postgres
 --
@@ -4783,7 +4803,7 @@ SELECT pg_catalog.setval('sales.spare_sale_detail_spare_sale_detail_id_seq', 1, 
 
 
 --
--- TOC entry 6268 (class 0 OID 0)
+-- TOC entry 6293 (class 0 OID 0)
 -- Dependencies: 329
 -- Name: spare_sale_spare_sale_id_seq; Type: SEQUENCE SET; Schema: sales; Owner: postgres
 --
@@ -4792,7 +4812,7 @@ SELECT pg_catalog.setval('sales.spare_sale_spare_sale_id_seq', 1, false);
 
 
 --
--- TOC entry 6269 (class 0 OID 0)
+-- TOC entry 6294 (class 0 OID 0)
 -- Dependencies: 257
 -- Name: vehicle_payment_vehicle_payment_id_seq; Type: SEQUENCE SET; Schema: sales; Owner: postgres
 --
@@ -4801,7 +4821,7 @@ SELECT pg_catalog.setval('sales.vehicle_payment_vehicle_payment_id_seq', 1, fals
 
 
 --
--- TOC entry 6270 (class 0 OID 0)
+-- TOC entry 6295 (class 0 OID 0)
 -- Dependencies: 317
 -- Name: vehicle_registration_vehicle_registration_id_seq; Type: SEQUENCE SET; Schema: sales; Owner: postgres
 --
@@ -4810,7 +4830,7 @@ SELECT pg_catalog.setval('sales.vehicle_registration_vehicle_registration_id_seq
 
 
 --
--- TOC entry 6271 (class 0 OID 0)
+-- TOC entry 6296 (class 0 OID 0)
 -- Dependencies: 255
 -- Name: vehicle_sale_finance_vehicle_sale_finance_id_seq; Type: SEQUENCE SET; Schema: sales; Owner: postgres
 --
@@ -4819,7 +4839,7 @@ SELECT pg_catalog.setval('sales.vehicle_sale_finance_vehicle_sale_finance_id_seq
 
 
 --
--- TOC entry 6272 (class 0 OID 0)
+-- TOC entry 6297 (class 0 OID 0)
 -- Dependencies: 253
 -- Name: vehicle_sale_vehicle_sale_id_seq; Type: SEQUENCE SET; Schema: sales; Owner: postgres
 --
@@ -4828,7 +4848,7 @@ SELECT pg_catalog.setval('sales.vehicle_sale_vehicle_sale_id_seq', 1, false);
 
 
 --
--- TOC entry 6273 (class 0 OID 0)
+-- TOC entry 6298 (class 0 OID 0)
 -- Dependencies: 263
 -- Name: job_card_job_card_id_seq; Type: SEQUENCE SET; Schema: service; Owner: postgres
 --
@@ -4837,7 +4857,7 @@ SELECT pg_catalog.setval('service.job_card_job_card_id_seq', 1, false);
 
 
 --
--- TOC entry 6274 (class 0 OID 0)
+-- TOC entry 6299 (class 0 OID 0)
 -- Dependencies: 267
 -- Name: job_labour_job_labour_id_seq; Type: SEQUENCE SET; Schema: service; Owner: postgres
 --
@@ -4846,7 +4866,7 @@ SELECT pg_catalog.setval('service.job_labour_job_labour_id_seq', 1, false);
 
 
 --
--- TOC entry 6275 (class 0 OID 0)
+-- TOC entry 6300 (class 0 OID 0)
 -- Dependencies: 273
 -- Name: job_spare_job_spare_id_seq; Type: SEQUENCE SET; Schema: service; Owner: postgres
 --
@@ -4855,7 +4875,7 @@ SELECT pg_catalog.setval('service.job_spare_job_spare_id_seq', 1, false);
 
 
 --
--- TOC entry 6276 (class 0 OID 0)
+-- TOC entry 6301 (class 0 OID 0)
 -- Dependencies: 265
 -- Name: job_work_item_work_item_id_seq; Type: SEQUENCE SET; Schema: service; Owner: postgres
 --
@@ -4864,7 +4884,7 @@ SELECT pg_catalog.setval('service.job_work_item_work_item_id_seq', 1, false);
 
 
 --
--- TOC entry 6277 (class 0 OID 0)
+-- TOC entry 6302 (class 0 OID 0)
 -- Dependencies: 319
 -- Name: service_schedule_service_schedule_id_seq; Type: SEQUENCE SET; Schema: service; Owner: postgres
 --
@@ -4873,7 +4893,7 @@ SELECT pg_catalog.setval('service.service_schedule_service_schedule_id_seq', 1, 
 
 
 --
--- TOC entry 6278 (class 0 OID 0)
+-- TOC entry 6303 (class 0 OID 0)
 -- Dependencies: 269
 -- Name: vehicle_component_change_component_change_id_seq; Type: SEQUENCE SET; Schema: service; Owner: postgres
 --
@@ -4882,7 +4902,7 @@ SELECT pg_catalog.setval('service.vehicle_component_change_component_change_id_s
 
 
 --
--- TOC entry 6279 (class 0 OID 0)
+-- TOC entry 6304 (class 0 OID 0)
 -- Dependencies: 321
 -- Name: vehicle_service_summary_vehicle_service_summary_id_seq; Type: SEQUENCE SET; Schema: service; Owner: postgres
 --
@@ -4891,7 +4911,7 @@ SELECT pg_catalog.setval('service.vehicle_service_summary_vehicle_service_summar
 
 
 --
--- TOC entry 6280 (class 0 OID 0)
+-- TOC entry 6305 (class 0 OID 0)
 -- Dependencies: 275
 -- Name: claim_claim_id_seq; Type: SEQUENCE SET; Schema: warranty; Owner: postgres
 --
@@ -4900,7 +4920,7 @@ SELECT pg_catalog.setval('warranty.claim_claim_id_seq', 1, false);
 
 
 --
--- TOC entry 6281 (class 0 OID 0)
+-- TOC entry 6306 (class 0 OID 0)
 -- Dependencies: 299
 -- Name: inward_item_inward_item_id_seq; Type: SEQUENCE SET; Schema: warranty; Owner: postgres
 --
@@ -4909,7 +4929,7 @@ SELECT pg_catalog.setval('warranty.inward_item_inward_item_id_seq', 1, false);
 
 
 --
--- TOC entry 6282 (class 0 OID 0)
+-- TOC entry 6307 (class 0 OID 0)
 -- Dependencies: 297
 -- Name: inward_warranty_inward_id_seq; Type: SEQUENCE SET; Schema: warranty; Owner: postgres
 --
@@ -4918,7 +4938,7 @@ SELECT pg_catalog.setval('warranty.inward_warranty_inward_id_seq', 1, false);
 
 
 --
--- TOC entry 6283 (class 0 OID 0)
+-- TOC entry 6308 (class 0 OID 0)
 -- Dependencies: 277
 -- Name: shipment_item_shipment_item_id_seq; Type: SEQUENCE SET; Schema: warranty; Owner: postgres
 --
@@ -4927,7 +4947,7 @@ SELECT pg_catalog.setval('warranty.shipment_item_shipment_item_id_seq', 1, false
 
 
 --
--- TOC entry 6284 (class 0 OID 0)
+-- TOC entry 6309 (class 0 OID 0)
 -- Dependencies: 271
 -- Name: shipment_shipment_id_seq; Type: SEQUENCE SET; Schema: warranty; Owner: postgres
 --
@@ -4936,7 +4956,7 @@ SELECT pg_catalog.setval('warranty.shipment_shipment_id_seq', 1, false);
 
 
 --
--- TOC entry 5539 (class 2606 OID 25403)
+-- TOC entry 5549 (class 2606 OID 25403)
 -- Name: insurance_estimate insurance_estimate_pkey; Type: CONSTRAINT; Schema: billing; Owner: postgres
 --
 
@@ -4945,7 +4965,7 @@ ALTER TABLE ONLY billing.insurance_estimate
 
 
 --
--- TOC entry 5537 (class 2606 OID 25382)
+-- TOC entry 5547 (class 2606 OID 25382)
 -- Name: invoice_line invoice_line_pkey; Type: CONSTRAINT; Schema: billing; Owner: postgres
 --
 
@@ -4954,7 +4974,7 @@ ALTER TABLE ONLY billing.invoice_line
 
 
 --
--- TOC entry 5533 (class 2606 OID 25350)
+-- TOC entry 5543 (class 2606 OID 25350)
 -- Name: invoice invoice_pkey; Type: CONSTRAINT; Schema: billing; Owner: postgres
 --
 
@@ -4963,7 +4983,7 @@ ALTER TABLE ONLY billing.invoice
 
 
 --
--- TOC entry 5535 (class 2606 OID 25352)
+-- TOC entry 5545 (class 2606 OID 25352)
 -- Name: invoice uq_billing_invoice_no; Type: CONSTRAINT; Schema: billing; Owner: postgres
 --
 
@@ -4972,7 +4992,7 @@ ALTER TABLE ONLY billing.invoice
 
 
 --
--- TOC entry 5653 (class 2606 OID 26385)
+-- TOC entry 5663 (class 2606 OID 26385)
 -- Name: enquiry enquiry_pkey; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -4981,7 +5001,7 @@ ALTER TABLE ONLY crm.enquiry
 
 
 --
--- TOC entry 5663 (class 2606 OID 26435)
+-- TOC entry 5673 (class 2606 OID 26435)
 -- Name: enquiry_status_master enquiry_status_master_pkey; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -4990,7 +5010,7 @@ ALTER TABLE ONLY crm.enquiry_status_master
 
 
 --
--- TOC entry 5665 (class 2606 OID 26437)
+-- TOC entry 5675 (class 2606 OID 26437)
 -- Name: enquiry_status_master enquiry_status_master_status_name_key; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -4999,7 +5019,7 @@ ALTER TABLE ONLY crm.enquiry_status_master
 
 
 --
--- TOC entry 5588 (class 2606 OID 25847)
+-- TOC entry 5598 (class 2606 OID 25847)
 -- Name: followup_schedule followup_schedule_pkey; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -5008,7 +5028,7 @@ ALTER TABLE ONLY crm.followup_schedule
 
 
 --
--- TOC entry 5586 (class 2606 OID 25819)
+-- TOC entry 5596 (class 2606 OID 25819)
 -- Name: lead_activity lead_activity_pkey; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -5017,7 +5037,7 @@ ALTER TABLE ONLY crm.lead_activity
 
 
 --
--- TOC entry 5595 (class 2606 OID 25924)
+-- TOC entry 5605 (class 2606 OID 25924)
 -- Name: lead_assignment_history lead_assignment_history_pkey; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -5026,7 +5046,7 @@ ALTER TABLE ONLY crm.lead_assignment_history
 
 
 --
--- TOC entry 5582 (class 2606 OID 25762)
+-- TOC entry 5592 (class 2606 OID 25762)
 -- Name: lead lead_pkey; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -5035,7 +5055,7 @@ ALTER TABLE ONLY crm.lead
 
 
 --
--- TOC entry 5584 (class 2606 OID 25792)
+-- TOC entry 5594 (class 2606 OID 25792)
 -- Name: lead_status_history lead_status_history_pkey; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -5044,7 +5064,7 @@ ALTER TABLE ONLY crm.lead_status_history
 
 
 --
--- TOC entry 5659 (class 2606 OID 26423)
+-- TOC entry 5669 (class 2606 OID 26423)
 -- Name: lead_status_master lead_status_master_pkey; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -5053,7 +5073,7 @@ ALTER TABLE ONLY crm.lead_status_master
 
 
 --
--- TOC entry 5661 (class 2606 OID 26425)
+-- TOC entry 5671 (class 2606 OID 26425)
 -- Name: lead_status_master lead_status_master_status_name_key; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -5062,7 +5082,7 @@ ALTER TABLE ONLY crm.lead_status_master
 
 
 --
--- TOC entry 5593 (class 2606 OID 25894)
+-- TOC entry 5603 (class 2606 OID 25894)
 -- Name: test_ride test_ride_pkey; Type: CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -5071,7 +5091,7 @@ ALTER TABLE ONLY crm.test_ride
 
 
 --
--- TOC entry 5645 (class 2606 OID 26321)
+-- TOC entry 5655 (class 2606 OID 26321)
 -- Name: vehicle_loan uq_one_loan_per_sale; Type: CONSTRAINT; Schema: finance; Owner: postgres
 --
 
@@ -5080,7 +5100,7 @@ ALTER TABLE ONLY finance.vehicle_loan
 
 
 --
--- TOC entry 5649 (class 2606 OID 26342)
+-- TOC entry 5659 (class 2606 OID 26342)
 -- Name: vehicle_subsidy uq_one_subsidy_per_vehicle; Type: CONSTRAINT; Schema: finance; Owner: postgres
 --
 
@@ -5089,7 +5109,7 @@ ALTER TABLE ONLY finance.vehicle_subsidy
 
 
 --
--- TOC entry 5647 (class 2606 OID 26319)
+-- TOC entry 5657 (class 2606 OID 26319)
 -- Name: vehicle_loan vehicle_loan_pkey; Type: CONSTRAINT; Schema: finance; Owner: postgres
 --
 
@@ -5098,7 +5118,7 @@ ALTER TABLE ONLY finance.vehicle_loan
 
 
 --
--- TOC entry 5651 (class 2606 OID 26340)
+-- TOC entry 5661 (class 2606 OID 26340)
 -- Name: vehicle_subsidy vehicle_subsidy_pkey; Type: CONSTRAINT; Schema: finance; Owner: postgres
 --
 
@@ -5107,7 +5127,7 @@ ALTER TABLE ONLY finance.vehicle_subsidy
 
 
 --
--- TOC entry 5629 (class 2606 OID 26183)
+-- TOC entry 5639 (class 2606 OID 26183)
 -- Name: attendance attendance_pkey; Type: CONSTRAINT; Schema: hr; Owner: postgres
 --
 
@@ -5116,7 +5136,7 @@ ALTER TABLE ONLY hr.attendance
 
 
 --
--- TOC entry 5635 (class 2606 OID 26208)
+-- TOC entry 5645 (class 2606 OID 26208)
 -- Name: salary salary_pkey; Type: CONSTRAINT; Schema: hr; Owner: postgres
 --
 
@@ -5125,7 +5145,7 @@ ALTER TABLE ONLY hr.salary
 
 
 --
--- TOC entry 5633 (class 2606 OID 26185)
+-- TOC entry 5643 (class 2606 OID 26185)
 -- Name: attendance uq_staff_attendance_date; Type: CONSTRAINT; Schema: hr; Owner: postgres
 --
 
@@ -5134,7 +5154,7 @@ ALTER TABLE ONLY hr.attendance
 
 
 --
--- TOC entry 5637 (class 2606 OID 26210)
+-- TOC entry 5647 (class 2606 OID 26210)
 -- Name: salary uq_staff_salary_month; Type: CONSTRAINT; Schema: hr; Owner: postgres
 --
 
@@ -5143,7 +5163,7 @@ ALTER TABLE ONLY hr.salary
 
 
 --
--- TOC entry 5488 (class 2606 OID 25090)
+-- TOC entry 5498 (class 2606 OID 25090)
 -- Name: insurance_company insurance_company_pkey; Type: CONSTRAINT; Schema: insurance; Owner: postgres
 --
 
@@ -5152,7 +5172,7 @@ ALTER TABLE ONLY insurance.insurance_company
 
 
 --
--- TOC entry 5494 (class 2606 OID 25110)
+-- TOC entry 5504 (class 2606 OID 25110)
 -- Name: policy policy_pkey; Type: CONSTRAINT; Schema: insurance; Owner: postgres
 --
 
@@ -5161,7 +5181,7 @@ ALTER TABLE ONLY insurance.policy
 
 
 --
--- TOC entry 5490 (class 2606 OID 25092)
+-- TOC entry 5500 (class 2606 OID 25092)
 -- Name: insurance_company uq_insurance_company_name; Type: CONSTRAINT; Schema: insurance; Owner: postgres
 --
 
@@ -5170,7 +5190,7 @@ ALTER TABLE ONLY insurance.insurance_company
 
 
 --
--- TOC entry 5497 (class 2606 OID 25112)
+-- TOC entry 5507 (class 2606 OID 25112)
 -- Name: policy uq_policy_number; Type: CONSTRAINT; Schema: insurance; Owner: postgres
 --
 
@@ -5179,7 +5199,7 @@ ALTER TABLE ONLY insurance.policy
 
 
 --
--- TOC entry 5544 (class 2606 OID 25452)
+-- TOC entry 5554 (class 2606 OID 25452)
 -- Name: spare_master spare_master_pkey; Type: CONSTRAINT; Schema: inventory; Owner: postgres
 --
 
@@ -5188,7 +5208,7 @@ ALTER TABLE ONLY inventory.spare_master
 
 
 --
--- TOC entry 5566 (class 2606 OID 25612)
+-- TOC entry 5576 (class 2606 OID 25612)
 -- Name: spare_serial spare_serial_pkey; Type: CONSTRAINT; Schema: inventory; Owner: postgres
 --
 
@@ -5197,7 +5217,7 @@ ALTER TABLE ONLY inventory.spare_serial
 
 
 --
--- TOC entry 5542 (class 2606 OID 25425)
+-- TOC entry 5552 (class 2606 OID 25425)
 -- Name: spare_stock_movement spare_stock_movement_pkey; Type: CONSTRAINT; Schema: inventory; Owner: postgres
 --
 
@@ -5206,7 +5226,7 @@ ALTER TABLE ONLY inventory.spare_stock_movement
 
 
 --
--- TOC entry 5546 (class 2606 OID 25454)
+-- TOC entry 5556 (class 2606 OID 25454)
 -- Name: spare_master uq_spare_part_code; Type: CONSTRAINT; Schema: inventory; Owner: postgres
 --
 
@@ -5215,7 +5235,7 @@ ALTER TABLE ONLY inventory.spare_master
 
 
 --
--- TOC entry 5568 (class 2606 OID 25614)
+-- TOC entry 5578 (class 2606 OID 25614)
 -- Name: spare_serial uq_spare_serial; Type: CONSTRAINT; Schema: inventory; Owner: postgres
 --
 
@@ -5224,7 +5244,7 @@ ALTER TABLE ONLY inventory.spare_serial
 
 
 --
--- TOC entry 5643 (class 2606 OID 26275)
+-- TOC entry 5653 (class 2606 OID 26275)
 -- Name: vehicle_stock_movement vehicle_stock_movement_pkey; Type: CONSTRAINT; Schema: inventory; Owner: postgres
 --
 
@@ -5233,7 +5253,7 @@ ALTER TABLE ONLY inventory.vehicle_stock_movement
 
 
 --
--- TOC entry 5667 (class 2606 OID 26448)
+-- TOC entry 5677 (class 2606 OID 26448)
 -- Name: brand brand_brand_name_key; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5242,7 +5262,7 @@ ALTER TABLE ONLY master.brand
 
 
 --
--- TOC entry 5669 (class 2606 OID 26446)
+-- TOC entry 5679 (class 2606 OID 26446)
 -- Name: brand brand_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5251,7 +5271,7 @@ ALTER TABLE ONLY master.brand
 
 
 --
--- TOC entry 5443 (class 2606 OID 24767)
+-- TOC entry 5453 (class 2606 OID 24767)
 -- Name: customer_document customer_document_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5260,7 +5280,7 @@ ALTER TABLE ONLY master.customer_document
 
 
 --
--- TOC entry 5439 (class 2606 OID 24743)
+-- TOC entry 5449 (class 2606 OID 24743)
 -- Name: customer_phone customer_phone_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5269,7 +5289,7 @@ ALTER TABLE ONLY master.customer_phone
 
 
 --
--- TOC entry 5428 (class 2606 OID 24717)
+-- TOC entry 5438 (class 2606 OID 24717)
 -- Name: customer customer_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5278,7 +5298,7 @@ ALTER TABLE ONLY master.customer
 
 
 --
--- TOC entry 5614 (class 2606 OID 26058)
+-- TOC entry 5624 (class 2606 OID 26058)
 -- Name: expense_category expense_category_category_name_key; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5287,7 +5307,7 @@ ALTER TABLE ONLY master.expense_category
 
 
 --
--- TOC entry 5616 (class 2606 OID 26056)
+-- TOC entry 5626 (class 2606 OID 26056)
 -- Name: expense_category expense_category_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5296,7 +5316,7 @@ ALTER TABLE ONLY master.expense_category
 
 
 --
--- TOC entry 5618 (class 2606 OID 26079)
+-- TOC entry 5628 (class 2606 OID 26079)
 -- Name: job_card_category job_card_category_category_code_key; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5305,7 +5325,7 @@ ALTER TABLE ONLY master.job_card_category
 
 
 --
--- TOC entry 5620 (class 2606 OID 26077)
+-- TOC entry 5630 (class 2606 OID 26077)
 -- Name: job_card_category job_card_category_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5314,7 +5334,7 @@ ALTER TABLE ONLY master.job_card_category
 
 
 --
--- TOC entry 5657 (class 2606 OID 26407)
+-- TOC entry 5667 (class 2606 OID 26407)
 -- Name: nominee nominee_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5323,7 +5343,7 @@ ALTER TABLE ONLY master.nominee
 
 
 --
--- TOC entry 5610 (class 2606 OID 26042)
+-- TOC entry 5620 (class 2606 OID 26042)
 -- Name: payment_mode payment_mode_mode_code_key; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5332,7 +5352,7 @@ ALTER TABLE ONLY master.payment_mode
 
 
 --
--- TOC entry 5612 (class 2606 OID 26040)
+-- TOC entry 5622 (class 2606 OID 26040)
 -- Name: payment_mode payment_mode_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5341,7 +5361,16 @@ ALTER TABLE ONLY master.payment_mode
 
 
 --
--- TOC entry 5692 (class 2606 OID 26618)
+-- TOC entry 5709 (class 2606 OID 26757)
+-- Name: pin_reset_request pin_reset_request_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
+--
+
+ALTER TABLE ONLY master.pin_reset_request
+    ADD CONSTRAINT pin_reset_request_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 5702 (class 2606 OID 26618)
 -- Name: spare_price_history spare_price_history_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5350,7 +5379,7 @@ ALTER TABLE ONLY master.spare_price_history
 
 
 --
--- TOC entry 5571 (class 2606 OID 25712)
+-- TOC entry 5581 (class 2606 OID 25712)
 -- Name: staff staff_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5359,7 +5388,7 @@ ALTER TABLE ONLY master.staff
 
 
 --
--- TOC entry 5431 (class 2606 OID 24708)
+-- TOC entry 5441 (class 2606 OID 24708)
 -- Name: customer uq_customer_aadhaar; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5368,7 +5397,7 @@ ALTER TABLE ONLY master.customer
 
 
 --
--- TOC entry 5433 (class 2606 OID 24712)
+-- TOC entry 5443 (class 2606 OID 24712)
 -- Name: customer uq_customer_gstin; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5377,7 +5406,7 @@ ALTER TABLE ONLY master.customer
 
 
 --
--- TOC entry 5435 (class 2606 OID 24710)
+-- TOC entry 5445 (class 2606 OID 24710)
 -- Name: customer uq_customer_pan; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5386,7 +5415,7 @@ ALTER TABLE ONLY master.customer
 
 
 --
--- TOC entry 5441 (class 2606 OID 24745)
+-- TOC entry 5451 (class 2606 OID 24745)
 -- Name: customer_phone uq_customer_phone_number; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5395,7 +5424,7 @@ ALTER TABLE ONLY master.customer_phone
 
 
 --
--- TOC entry 5437 (class 2606 OID 24706)
+-- TOC entry 5447 (class 2606 OID 24706)
 -- Name: customer uq_customer_primary_phone; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5404,7 +5433,7 @@ ALTER TABLE ONLY master.customer
 
 
 --
--- TOC entry 5573 (class 2606 OID 25717)
+-- TOC entry 5583 (class 2606 OID 25717)
 -- Name: staff uq_staff_aadhaar; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5413,7 +5442,7 @@ ALTER TABLE ONLY master.staff
 
 
 --
--- TOC entry 5575 (class 2606 OID 25714)
+-- TOC entry 5585 (class 2606 OID 25714)
 -- Name: staff uq_staff_mobile; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5422,7 +5451,7 @@ ALTER TABLE ONLY master.staff
 
 
 --
--- TOC entry 5577 (class 2606 OID 25719)
+-- TOC entry 5587 (class 2606 OID 25719)
 -- Name: staff uq_staff_pan; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5431,7 +5460,7 @@ ALTER TABLE ONLY master.staff
 
 
 --
--- TOC entry 5579 (class 2606 OID 26248)
+-- TOC entry 5589 (class 2606 OID 26248)
 -- Name: staff uq_staff_upi; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5440,7 +5469,7 @@ ALTER TABLE ONLY master.staff
 
 
 --
--- TOC entry 5447 (class 2606 OID 24793)
+-- TOC entry 5457 (class 2606 OID 24793)
 -- Name: vehicle_model uq_vehicle_model_material; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5449,7 +5478,7 @@ ALTER TABLE ONLY master.vehicle_model
 
 
 --
--- TOC entry 5453 (class 2606 OID 24881)
+-- TOC entry 5463 (class 2606 OID 24881)
 -- Name: vendor uq_vendor_gstin; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5458,7 +5487,7 @@ ALTER TABLE ONLY master.vendor
 
 
 --
--- TOC entry 5455 (class 2606 OID 24883)
+-- TOC entry 5465 (class 2606 OID 24883)
 -- Name: vendor uq_vendor_pan; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5467,7 +5496,7 @@ ALTER TABLE ONLY master.vendor
 
 
 --
--- TOC entry 5449 (class 2606 OID 24791)
+-- TOC entry 5459 (class 2606 OID 24791)
 -- Name: vehicle_model vehicle_model_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5476,7 +5505,7 @@ ALTER TABLE ONLY master.vehicle_model
 
 
 --
--- TOC entry 5451 (class 2606 OID 24807)
+-- TOC entry 5461 (class 2606 OID 24807)
 -- Name: vehicle vehicle_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5485,7 +5514,7 @@ ALTER TABLE ONLY master.vehicle
 
 
 --
--- TOC entry 5695 (class 2606 OID 26644)
+-- TOC entry 5705 (class 2606 OID 26644)
 -- Name: vehicle_price_history vehicle_price_history_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5494,7 +5523,7 @@ ALTER TABLE ONLY master.vehicle_price_history
 
 
 --
--- TOC entry 5459 (class 2606 OID 24900)
+-- TOC entry 5469 (class 2606 OID 24900)
 -- Name: vendor_contact vendor_contact_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5503,7 +5532,7 @@ ALTER TABLE ONLY master.vendor_contact
 
 
 --
--- TOC entry 5461 (class 2606 OID 24922)
+-- TOC entry 5471 (class 2606 OID 24922)
 -- Name: vendor_document vendor_document_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5512,7 +5541,7 @@ ALTER TABLE ONLY master.vendor_document
 
 
 --
--- TOC entry 5457 (class 2606 OID 24879)
+-- TOC entry 5467 (class 2606 OID 24879)
 -- Name: vendor vendor_pkey; Type: CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -5521,7 +5550,7 @@ ALTER TABLE ONLY master.vendor
 
 
 --
--- TOC entry 5552 (class 2606 OID 25519)
+-- TOC entry 5562 (class 2606 OID 25519)
 -- Name: reimbursement_invoice reimbursement_invoice_pkey; Type: CONSTRAINT; Schema: oem; Owner: postgres
 --
 
@@ -5530,7 +5559,7 @@ ALTER TABLE ONLY oem.reimbursement_invoice
 
 
 --
--- TOC entry 5556 (class 2606 OID 25537)
+-- TOC entry 5566 (class 2606 OID 25537)
 -- Name: reimbursement_line reimbursement_line_pkey; Type: CONSTRAINT; Schema: oem; Owner: postgres
 --
 
@@ -5539,7 +5568,7 @@ ALTER TABLE ONLY oem.reimbursement_line
 
 
 --
--- TOC entry 5558 (class 2606 OID 25539)
+-- TOC entry 5568 (class 2606 OID 25539)
 -- Name: reimbursement_line uq_labour_claimed_once; Type: CONSTRAINT; Schema: oem; Owner: postgres
 --
 
@@ -5548,7 +5577,7 @@ ALTER TABLE ONLY oem.reimbursement_line
 
 
 --
--- TOC entry 5554 (class 2606 OID 25521)
+-- TOC entry 5564 (class 2606 OID 25521)
 -- Name: reimbursement_invoice uq_oem_invoice_no; Type: CONSTRAINT; Schema: oem; Owner: postgres
 --
 
@@ -5557,7 +5586,7 @@ ALTER TABLE ONLY oem.reimbursement_invoice
 
 
 --
--- TOC entry 5550 (class 2606 OID 25489)
+-- TOC entry 5560 (class 2606 OID 25489)
 -- Name: spare_purchase_item spare_purchase_item_pkey; Type: CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -5566,7 +5595,7 @@ ALTER TABLE ONLY procurement.spare_purchase_item
 
 
 --
--- TOC entry 5548 (class 2606 OID 25469)
+-- TOC entry 5558 (class 2606 OID 25469)
 -- Name: spare_purchase spare_purchase_pkey; Type: CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -5575,7 +5604,7 @@ ALTER TABLE ONLY procurement.spare_purchase
 
 
 --
--- TOC entry 5467 (class 2606 OID 24961)
+-- TOC entry 5477 (class 2606 OID 24961)
 -- Name: vehicle_purchase_detail uq_vehicle_purchase_detail_chassis; Type: CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -5584,7 +5613,7 @@ ALTER TABLE ONLY procurement.vehicle_purchase_detail
 
 
 --
--- TOC entry 5463 (class 2606 OID 24942)
+-- TOC entry 5473 (class 2606 OID 24942)
 -- Name: vehicle_purchase uq_vehicle_purchase_invoice; Type: CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -5593,7 +5622,7 @@ ALTER TABLE ONLY procurement.vehicle_purchase
 
 
 --
--- TOC entry 5469 (class 2606 OID 24959)
+-- TOC entry 5479 (class 2606 OID 24959)
 -- Name: vehicle_purchase_detail vehicle_purchase_detail_pkey; Type: CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -5602,7 +5631,7 @@ ALTER TABLE ONLY procurement.vehicle_purchase_detail
 
 
 --
--- TOC entry 5465 (class 2606 OID 24940)
+-- TOC entry 5475 (class 2606 OID 24940)
 -- Name: vehicle_purchase vehicle_purchase_pkey; Type: CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -5611,7 +5640,16 @@ ALTER TABLE ONLY procurement.vehicle_purchase
 
 
 --
--- TOC entry 5685 (class 2606 OID 26564)
+-- TOC entry 5707 (class 2606 OID 26744)
+-- Name: alembic_version alembic_version_pkc; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.alembic_version
+    ADD CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num);
+
+
+--
+-- TOC entry 5695 (class 2606 OID 26564)
 -- Name: delivery_checklist delivery_checklist_pkey; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5620,7 +5658,7 @@ ALTER TABLE ONLY sales.delivery_checklist
 
 
 --
--- TOC entry 5687 (class 2606 OID 26566)
+-- TOC entry 5697 (class 2606 OID 26566)
 -- Name: delivery_checklist delivery_checklist_sale_id_key; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5629,7 +5667,7 @@ ALTER TABLE ONLY sales.delivery_checklist
 
 
 --
--- TOC entry 5683 (class 2606 OID 26539)
+-- TOC entry 5693 (class 2606 OID 26539)
 -- Name: payment_receipt payment_receipt_pkey; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5638,7 +5676,7 @@ ALTER TABLE ONLY sales.payment_receipt
 
 
 --
--- TOC entry 5673 (class 2606 OID 26499)
+-- TOC entry 5683 (class 2606 OID 26499)
 -- Name: sale sale_chassis_no_key; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5647,7 +5685,7 @@ ALTER TABLE ONLY sales.sale
 
 
 --
--- TOC entry 5675 (class 2606 OID 26503)
+-- TOC entry 5685 (class 2606 OID 26503)
 -- Name: sale sale_delivery_challan_number_key; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5656,7 +5694,7 @@ ALTER TABLE ONLY sales.sale
 
 
 --
--- TOC entry 5677 (class 2606 OID 26501)
+-- TOC entry 5687 (class 2606 OID 26501)
 -- Name: sale sale_invoice_number_key; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5665,7 +5703,7 @@ ALTER TABLE ONLY sales.sale
 
 
 --
--- TOC entry 5679 (class 2606 OID 26497)
+-- TOC entry 5689 (class 2606 OID 26497)
 -- Name: sale sale_lead_id_key; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5674,7 +5712,7 @@ ALTER TABLE ONLY sales.sale
 
 
 --
--- TOC entry 5681 (class 2606 OID 26495)
+-- TOC entry 5691 (class 2606 OID 26495)
 -- Name: sale sale_pkey; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5683,7 +5721,7 @@ ALTER TABLE ONLY sales.sale
 
 
 --
--- TOC entry 5689 (class 2606 OID 26586)
+-- TOC entry 5699 (class 2606 OID 26586)
 -- Name: service_schedule service_schedule_pkey; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5692,7 +5730,7 @@ ALTER TABLE ONLY sales.service_schedule
 
 
 --
--- TOC entry 5627 (class 2606 OID 26153)
+-- TOC entry 5637 (class 2606 OID 26153)
 -- Name: spare_sale_detail spare_sale_detail_pkey; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5701,7 +5739,7 @@ ALTER TABLE ONLY sales.spare_sale_detail
 
 
 --
--- TOC entry 5624 (class 2606 OID 26126)
+-- TOC entry 5634 (class 2606 OID 26126)
 -- Name: spare_sale spare_sale_pkey; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5710,7 +5748,7 @@ ALTER TABLE ONLY sales.spare_sale
 
 
 --
--- TOC entry 5473 (class 2606 OID 24994)
+-- TOC entry 5483 (class 2606 OID 24994)
 -- Name: vehicle_sale uq_sale_challan; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5719,7 +5757,7 @@ ALTER TABLE ONLY sales.vehicle_sale
 
 
 --
--- TOC entry 5475 (class 2606 OID 24996)
+-- TOC entry 5485 (class 2606 OID 24996)
 -- Name: vehicle_sale uq_sale_chassis; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5728,7 +5766,7 @@ ALTER TABLE ONLY sales.vehicle_sale
 
 
 --
--- TOC entry 5477 (class 2606 OID 24992)
+-- TOC entry 5487 (class 2606 OID 24992)
 -- Name: vehicle_sale uq_sale_invoice; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5737,7 +5775,7 @@ ALTER TABLE ONLY sales.vehicle_sale
 
 
 --
--- TOC entry 5597 (class 2606 OID 25973)
+-- TOC entry 5607 (class 2606 OID 25973)
 -- Name: vehicle_registration uq_vehicle_sale_registration; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5746,7 +5784,7 @@ ALTER TABLE ONLY sales.vehicle_registration
 
 
 --
--- TOC entry 5486 (class 2606 OID 25060)
+-- TOC entry 5496 (class 2606 OID 25060)
 -- Name: vehicle_payment vehicle_payment_pkey; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5755,7 +5793,7 @@ ALTER TABLE ONLY sales.vehicle_payment
 
 
 --
--- TOC entry 5599 (class 2606 OID 25971)
+-- TOC entry 5609 (class 2606 OID 25971)
 -- Name: vehicle_registration vehicle_registration_pkey; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5764,7 +5802,7 @@ ALTER TABLE ONLY sales.vehicle_registration
 
 
 --
--- TOC entry 5482 (class 2606 OID 25037)
+-- TOC entry 5492 (class 2606 OID 25037)
 -- Name: vehicle_sale_finance vehicle_sale_finance_pkey; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5773,7 +5811,7 @@ ALTER TABLE ONLY sales.vehicle_sale_finance
 
 
 --
--- TOC entry 5480 (class 2606 OID 24990)
+-- TOC entry 5490 (class 2606 OID 24990)
 -- Name: vehicle_sale vehicle_sale_pkey; Type: CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -5782,7 +5820,7 @@ ALTER TABLE ONLY sales.vehicle_sale
 
 
 --
--- TOC entry 5501 (class 2606 OID 25145)
+-- TOC entry 5511 (class 2606 OID 25145)
 -- Name: job_card job_card_pkey; Type: CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -5791,7 +5829,7 @@ ALTER TABLE ONLY service.job_card
 
 
 --
--- TOC entry 5509 (class 2606 OID 25192)
+-- TOC entry 5519 (class 2606 OID 25192)
 -- Name: job_labour job_labour_pkey; Type: CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -5800,7 +5838,7 @@ ALTER TABLE ONLY service.job_labour
 
 
 --
--- TOC entry 5518 (class 2606 OID 25283)
+-- TOC entry 5528 (class 2606 OID 25283)
 -- Name: job_spare job_spare_pkey; Type: CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -5809,7 +5847,7 @@ ALTER TABLE ONLY service.job_spare
 
 
 --
--- TOC entry 5507 (class 2606 OID 25172)
+-- TOC entry 5517 (class 2606 OID 25172)
 -- Name: job_work_item job_work_item_pkey; Type: CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -5818,7 +5856,7 @@ ALTER TABLE ONLY service.job_work_item
 
 
 --
--- TOC entry 5601 (class 2606 OID 25992)
+-- TOC entry 5611 (class 2606 OID 25992)
 -- Name: service_schedule service_schedule_pkey; Type: CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -5827,7 +5865,7 @@ ALTER TABLE ONLY service.service_schedule
 
 
 --
--- TOC entry 5503 (class 2606 OID 25147)
+-- TOC entry 5513 (class 2606 OID 25147)
 -- Name: job_card uq_job_card_no; Type: CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -5836,7 +5874,7 @@ ALTER TABLE ONLY service.job_card
 
 
 --
--- TOC entry 5603 (class 2606 OID 25994)
+-- TOC entry 5613 (class 2606 OID 25994)
 -- Name: service_schedule uq_variant_service; Type: CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -5845,7 +5883,7 @@ ALTER TABLE ONLY service.service_schedule
 
 
 --
--- TOC entry 5606 (class 2606 OID 26015)
+-- TOC entry 5616 (class 2606 OID 26015)
 -- Name: vehicle_service_summary uq_vehicle_service; Type: CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -5854,7 +5892,7 @@ ALTER TABLE ONLY service.vehicle_service_summary
 
 
 --
--- TOC entry 5511 (class 2606 OID 25218)
+-- TOC entry 5521 (class 2606 OID 25218)
 -- Name: vehicle_component_change vehicle_component_change_pkey; Type: CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -5863,7 +5901,7 @@ ALTER TABLE ONLY service.vehicle_component_change
 
 
 --
--- TOC entry 5608 (class 2606 OID 26013)
+-- TOC entry 5618 (class 2606 OID 26013)
 -- Name: vehicle_service_summary vehicle_service_summary_pkey; Type: CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -5872,7 +5910,7 @@ ALTER TABLE ONLY service.vehicle_service_summary
 
 
 --
--- TOC entry 5520 (class 2606 OID 25301)
+-- TOC entry 5530 (class 2606 OID 25301)
 -- Name: claim claim_pkey; Type: CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -5881,7 +5919,7 @@ ALTER TABLE ONLY warranty.claim
 
 
 --
--- TOC entry 5564 (class 2606 OID 25585)
+-- TOC entry 5574 (class 2606 OID 25585)
 -- Name: inward_item inward_item_pkey; Type: CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -5890,7 +5928,7 @@ ALTER TABLE ONLY warranty.inward_item
 
 
 --
--- TOC entry 5560 (class 2606 OID 25569)
+-- TOC entry 5570 (class 2606 OID 25569)
 -- Name: inward inward_pkey; Type: CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -5899,7 +5937,7 @@ ALTER TABLE ONLY warranty.inward
 
 
 --
--- TOC entry 5526 (class 2606 OID 25316)
+-- TOC entry 5536 (class 2606 OID 25316)
 -- Name: shipment_item shipment_item_pkey; Type: CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -5908,7 +5946,7 @@ ALTER TABLE ONLY warranty.shipment_item
 
 
 --
--- TOC entry 5513 (class 2606 OID 25267)
+-- TOC entry 5523 (class 2606 OID 25267)
 -- Name: shipment shipment_pkey; Type: CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -5917,7 +5955,7 @@ ALTER TABLE ONLY warranty.shipment
 
 
 --
--- TOC entry 5528 (class 2606 OID 25318)
+-- TOC entry 5538 (class 2606 OID 25318)
 -- Name: shipment_item uq_claim_single_shipment; Type: CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -5926,7 +5964,7 @@ ALTER TABLE ONLY warranty.shipment_item
 
 
 --
--- TOC entry 5515 (class 2606 OID 25269)
+-- TOC entry 5525 (class 2606 OID 25269)
 -- Name: shipment uq_warranty_docket; Type: CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -5935,7 +5973,7 @@ ALTER TABLE ONLY warranty.shipment
 
 
 --
--- TOC entry 5562 (class 2606 OID 25571)
+-- TOC entry 5572 (class 2606 OID 25571)
 -- Name: inward uq_warranty_oem_invoice; Type: CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -5944,7 +5982,7 @@ ALTER TABLE ONLY warranty.inward
 
 
 --
--- TOC entry 5524 (class 2606 OID 25429)
+-- TOC entry 5534 (class 2606 OID 25429)
 -- Name: claim uq_warranty_so; Type: CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -5953,7 +5991,7 @@ ALTER TABLE ONLY warranty.claim
 
 
 --
--- TOC entry 5529 (class 1259 OID 26100)
+-- TOC entry 5539 (class 1259 OID 26100)
 -- Name: idx_billing_invoice_date; Type: INDEX; Schema: billing; Owner: postgres
 --
 
@@ -5961,7 +5999,7 @@ CREATE INDEX idx_billing_invoice_date ON billing.invoice USING btree (invoice_da
 
 
 --
--- TOC entry 5530 (class 1259 OID 26098)
+-- TOC entry 5540 (class 1259 OID 26098)
 -- Name: idx_billing_invoice_status; Type: INDEX; Schema: billing; Owner: postgres
 --
 
@@ -5969,7 +6007,7 @@ CREATE INDEX idx_billing_invoice_status ON billing.invoice USING btree (invoice_
 
 
 --
--- TOC entry 5531 (class 1259 OID 26099)
+-- TOC entry 5541 (class 1259 OID 26099)
 -- Name: idx_billing_invoice_type; Type: INDEX; Schema: billing; Owner: postgres
 --
 
@@ -5977,7 +6015,7 @@ CREATE INDEX idx_billing_invoice_type ON billing.invoice USING btree (invoice_ty
 
 
 --
--- TOC entry 5589 (class 1259 OID 26229)
+-- TOC entry 5599 (class 1259 OID 26229)
 -- Name: idx_crm_followup_alerts; Type: INDEX; Schema: crm; Owner: postgres
 --
 
@@ -5985,7 +6023,7 @@ CREATE INDEX idx_crm_followup_alerts ON crm.followup_schedule USING btree (sched
 
 
 --
--- TOC entry 5580 (class 1259 OID 26107)
+-- TOC entry 5590 (class 1259 OID 26107)
 -- Name: idx_crm_lead_created; Type: INDEX; Schema: crm; Owner: postgres
 --
 
@@ -5993,7 +6031,7 @@ CREATE INDEX idx_crm_lead_created ON crm.lead USING btree (created_at);
 
 
 --
--- TOC entry 5654 (class 1259 OID 26391)
+-- TOC entry 5664 (class 1259 OID 26391)
 -- Name: idx_enquiry_created; Type: INDEX; Schema: crm; Owner: postgres
 --
 
@@ -6001,7 +6039,7 @@ CREATE INDEX idx_enquiry_created ON crm.enquiry USING btree (created_at);
 
 
 --
--- TOC entry 5590 (class 1259 OID 26108)
+-- TOC entry 5600 (class 1259 OID 26108)
 -- Name: idx_followup_schedule_date; Type: INDEX; Schema: crm; Owner: postgres
 --
 
@@ -6009,7 +6047,7 @@ CREATE INDEX idx_followup_schedule_date ON crm.followup_schedule USING btree (sc
 
 
 --
--- TOC entry 5591 (class 1259 OID 26109)
+-- TOC entry 5601 (class 1259 OID 26109)
 -- Name: idx_followup_schedule_status; Type: INDEX; Schema: crm; Owner: postgres
 --
 
@@ -6017,7 +6055,7 @@ CREATE INDEX idx_followup_schedule_status ON crm.followup_schedule USING btree (
 
 
 --
--- TOC entry 5630 (class 1259 OID 26191)
+-- TOC entry 5640 (class 1259 OID 26191)
 -- Name: idx_attendance_date; Type: INDEX; Schema: hr; Owner: postgres
 --
 
@@ -6025,7 +6063,7 @@ CREATE INDEX idx_attendance_date ON hr.attendance USING btree (attendance_date);
 
 
 --
--- TOC entry 5631 (class 1259 OID 26192)
+-- TOC entry 5641 (class 1259 OID 26192)
 -- Name: idx_attendance_staff; Type: INDEX; Schema: hr; Owner: postgres
 --
 
@@ -6033,7 +6071,7 @@ CREATE INDEX idx_attendance_staff ON hr.attendance USING btree (staff_id);
 
 
 --
--- TOC entry 5491 (class 1259 OID 26233)
+-- TOC entry 5501 (class 1259 OID 26233)
 -- Name: idx_insurance_active_policy_expiry; Type: INDEX; Schema: insurance; Owner: postgres
 --
 
@@ -6041,7 +6079,7 @@ CREATE INDEX idx_insurance_active_policy_expiry ON insurance.policy USING btree 
 
 
 --
--- TOC entry 5492 (class 1259 OID 26105)
+-- TOC entry 5502 (class 1259 OID 26105)
 -- Name: idx_insurance_policy_expiry; Type: INDEX; Schema: insurance; Owner: postgres
 --
 
@@ -6049,7 +6087,7 @@ CREATE INDEX idx_insurance_policy_expiry ON insurance.policy USING btree (policy
 
 
 --
--- TOC entry 5495 (class 1259 OID 25128)
+-- TOC entry 5505 (class 1259 OID 25128)
 -- Name: uq_active_policy_per_vehicle; Type: INDEX; Schema: insurance; Owner: postgres
 --
 
@@ -6057,7 +6095,7 @@ CREATE UNIQUE INDEX uq_active_policy_per_vehicle ON insurance.policy USING btree
 
 
 --
--- TOC entry 5540 (class 1259 OID 26086)
+-- TOC entry 5550 (class 1259 OID 26086)
 -- Name: idx_spare_stock_movement_spare; Type: INDEX; Schema: inventory; Owner: postgres
 --
 
@@ -6065,7 +6103,7 @@ CREATE INDEX idx_spare_stock_movement_spare ON inventory.spare_stock_movement US
 
 
 --
--- TOC entry 5638 (class 1259 OID 26281)
+-- TOC entry 5648 (class 1259 OID 26281)
 -- Name: idx_vehicle_movement_chassis; Type: INDEX; Schema: inventory; Owner: postgres
 --
 
@@ -6073,7 +6111,7 @@ CREATE INDEX idx_vehicle_movement_chassis ON inventory.vehicle_stock_movement US
 
 
 --
--- TOC entry 5639 (class 1259 OID 26283)
+-- TOC entry 5649 (class 1259 OID 26283)
 -- Name: idx_vehicle_movement_datetime; Type: INDEX; Schema: inventory; Owner: postgres
 --
 
@@ -6081,7 +6119,7 @@ CREATE INDEX idx_vehicle_movement_datetime ON inventory.vehicle_stock_movement U
 
 
 --
--- TOC entry 5640 (class 1259 OID 26282)
+-- TOC entry 5650 (class 1259 OID 26282)
 -- Name: idx_vehicle_movement_type; Type: INDEX; Schema: inventory; Owner: postgres
 --
 
@@ -6089,7 +6127,7 @@ CREATE INDEX idx_vehicle_movement_type ON inventory.vehicle_stock_movement USING
 
 
 --
--- TOC entry 5641 (class 1259 OID 26351)
+-- TOC entry 5651 (class 1259 OID 26351)
 -- Name: uq_active_vehicle_allocation; Type: INDEX; Schema: inventory; Owner: postgres
 --
 
@@ -6097,7 +6135,7 @@ CREATE UNIQUE INDEX uq_active_vehicle_allocation ON inventory.vehicle_stock_move
 
 
 --
--- TOC entry 5429 (class 1259 OID 26367)
+-- TOC entry 5439 (class 1259 OID 26367)
 -- Name: idx_customer_created; Type: INDEX; Schema: master; Owner: postgres
 --
 
@@ -6105,7 +6143,7 @@ CREATE INDEX idx_customer_created ON master.customer USING btree (created_at);
 
 
 --
--- TOC entry 5444 (class 1259 OID 24773)
+-- TOC entry 5454 (class 1259 OID 24773)
 -- Name: idx_customer_document_customer; Type: INDEX; Schema: master; Owner: postgres
 --
 
@@ -6113,7 +6151,7 @@ CREATE INDEX idx_customer_document_customer ON master.customer_document USING bt
 
 
 --
--- TOC entry 5445 (class 1259 OID 24774)
+-- TOC entry 5455 (class 1259 OID 24774)
 -- Name: idx_customer_document_type; Type: INDEX; Schema: master; Owner: postgres
 --
 
@@ -6121,7 +6159,7 @@ CREATE INDEX idx_customer_document_type ON master.customer_document USING btree 
 
 
 --
--- TOC entry 5655 (class 1259 OID 26413)
+-- TOC entry 5665 (class 1259 OID 26413)
 -- Name: idx_nominee_customer; Type: INDEX; Schema: master; Owner: postgres
 --
 
@@ -6129,7 +6167,7 @@ CREATE INDEX idx_nominee_customer ON master.nominee USING btree (customer_id);
 
 
 --
--- TOC entry 5690 (class 1259 OID 26655)
+-- TOC entry 5700 (class 1259 OID 26655)
 -- Name: idx_spare_price_history_spare; Type: INDEX; Schema: master; Owner: postgres
 --
 
@@ -6137,7 +6175,7 @@ CREATE INDEX idx_spare_price_history_spare ON master.spare_price_history USING b
 
 
 --
--- TOC entry 5569 (class 1259 OID 26254)
+-- TOC entry 5579 (class 1259 OID 26254)
 -- Name: idx_staff_active_lock; Type: INDEX; Schema: master; Owner: postgres
 --
 
@@ -6145,7 +6183,7 @@ CREATE INDEX idx_staff_active_lock ON master.staff USING btree (staff_id, is_act
 
 
 --
--- TOC entry 5693 (class 1259 OID 26656)
+-- TOC entry 5703 (class 1259 OID 26656)
 -- Name: idx_vehicle_price_history_model; Type: INDEX; Schema: master; Owner: postgres
 --
 
@@ -6153,7 +6191,7 @@ CREATE INDEX idx_vehicle_price_history_model ON master.vehicle_price_history USI
 
 
 --
--- TOC entry 5670 (class 1259 OID 26524)
+-- TOC entry 5680 (class 1259 OID 26524)
 -- Name: idx_sale_customer; Type: INDEX; Schema: sales; Owner: postgres
 --
 
@@ -6161,7 +6199,7 @@ CREATE INDEX idx_sale_customer ON sales.sale USING btree (customer_id);
 
 
 --
--- TOC entry 5671 (class 1259 OID 26525)
+-- TOC entry 5681 (class 1259 OID 26525)
 -- Name: idx_sale_lead; Type: INDEX; Schema: sales; Owner: postgres
 --
 
@@ -6169,7 +6207,7 @@ CREATE INDEX idx_sale_lead ON sales.sale USING btree (lead_id);
 
 
 --
--- TOC entry 5621 (class 1259 OID 26165)
+-- TOC entry 5631 (class 1259 OID 26165)
 -- Name: idx_spare_sale_customer; Type: INDEX; Schema: sales; Owner: postgres
 --
 
@@ -6177,7 +6215,7 @@ CREATE INDEX idx_spare_sale_customer ON sales.spare_sale USING btree (customer_i
 
 
 --
--- TOC entry 5622 (class 1259 OID 26164)
+-- TOC entry 5632 (class 1259 OID 26164)
 -- Name: idx_spare_sale_date; Type: INDEX; Schema: sales; Owner: postgres
 --
 
@@ -6185,7 +6223,7 @@ CREATE INDEX idx_spare_sale_date ON sales.spare_sale USING btree (sale_date);
 
 
 --
--- TOC entry 5625 (class 1259 OID 26166)
+-- TOC entry 5635 (class 1259 OID 26166)
 -- Name: idx_spare_sale_detail_spare; Type: INDEX; Schema: sales; Owner: postgres
 --
 
@@ -6193,7 +6231,7 @@ CREATE INDEX idx_spare_sale_detail_spare ON sales.spare_sale_detail USING btree 
 
 
 --
--- TOC entry 5483 (class 1259 OID 26097)
+-- TOC entry 5493 (class 1259 OID 26097)
 -- Name: idx_vehicle_payment_context; Type: INDEX; Schema: sales; Owner: postgres
 --
 
@@ -6201,7 +6239,7 @@ CREATE INDEX idx_vehicle_payment_context ON sales.vehicle_payment USING btree (p
 
 
 --
--- TOC entry 5484 (class 1259 OID 26096)
+-- TOC entry 5494 (class 1259 OID 26096)
 -- Name: idx_vehicle_payment_date; Type: INDEX; Schema: sales; Owner: postgres
 --
 
@@ -6209,7 +6247,7 @@ CREATE INDEX idx_vehicle_payment_date ON sales.vehicle_payment USING btree (paym
 
 
 --
--- TOC entry 5470 (class 1259 OID 26094)
+-- TOC entry 5480 (class 1259 OID 26094)
 -- Name: idx_vehicle_sale_created_at; Type: INDEX; Schema: sales; Owner: postgres
 --
 
@@ -6217,7 +6255,7 @@ CREATE INDEX idx_vehicle_sale_created_at ON sales.vehicle_sale USING btree (crea
 
 
 --
--- TOC entry 5471 (class 1259 OID 26095)
+-- TOC entry 5481 (class 1259 OID 26095)
 -- Name: idx_vehicle_sale_is_financed; Type: INDEX; Schema: sales; Owner: postgres
 --
 
@@ -6225,7 +6263,7 @@ CREATE INDEX idx_vehicle_sale_is_financed ON sales.vehicle_sale USING btree (is_
 
 
 --
--- TOC entry 5478 (class 1259 OID 26261)
+-- TOC entry 5488 (class 1259 OID 26261)
 -- Name: uq_vehicle_sale_lead; Type: INDEX; Schema: sales; Owner: postgres
 --
 
@@ -6233,7 +6271,7 @@ CREATE UNIQUE INDEX uq_vehicle_sale_lead ON sales.vehicle_sale USING btree (lead
 
 
 --
--- TOC entry 5498 (class 1259 OID 26101)
+-- TOC entry 5508 (class 1259 OID 26101)
 -- Name: idx_job_card_in_datetime; Type: INDEX; Schema: service; Owner: postgres
 --
 
@@ -6241,7 +6279,7 @@ CREATE INDEX idx_job_card_in_datetime ON service.job_card USING btree (in_dateti
 
 
 --
--- TOC entry 5499 (class 1259 OID 26102)
+-- TOC entry 5509 (class 1259 OID 26102)
 -- Name: idx_job_card_out_datetime; Type: INDEX; Schema: service; Owner: postgres
 --
 
@@ -6249,7 +6287,7 @@ CREATE INDEX idx_job_card_out_datetime ON service.job_card USING btree (out_date
 
 
 --
--- TOC entry 5516 (class 1259 OID 26093)
+-- TOC entry 5526 (class 1259 OID 26093)
 -- Name: idx_job_spare_spare; Type: INDEX; Schema: service; Owner: postgres
 --
 
@@ -6257,7 +6295,7 @@ CREATE INDEX idx_job_spare_spare ON service.job_spare USING btree (spare_id);
 
 
 --
--- TOC entry 5505 (class 1259 OID 26103)
+-- TOC entry 5515 (class 1259 OID 26103)
 -- Name: idx_job_work_item_type; Type: INDEX; Schema: service; Owner: postgres
 --
 
@@ -6265,7 +6303,7 @@ CREATE INDEX idx_job_work_item_type ON service.job_work_item USING btree (work_t
 
 
 --
--- TOC entry 5604 (class 1259 OID 26227)
+-- TOC entry 5614 (class 1259 OID 26227)
 -- Name: idx_service_due_alert; Type: INDEX; Schema: service; Owner: postgres
 --
 
@@ -6273,7 +6311,7 @@ CREATE INDEX idx_service_due_alert ON service.vehicle_service_summary USING btre
 
 
 --
--- TOC entry 5504 (class 1259 OID 26357)
+-- TOC entry 5514 (class 1259 OID 26357)
 -- Name: uq_open_job_per_vehicle; Type: INDEX; Schema: service; Owner: postgres
 --
 
@@ -6281,7 +6319,7 @@ CREATE UNIQUE INDEX uq_open_job_per_vehicle ON service.job_card USING btree (cha
 
 
 --
--- TOC entry 5521 (class 1259 OID 26104)
+-- TOC entry 5531 (class 1259 OID 26104)
 -- Name: idx_warranty_claim_status; Type: INDEX; Schema: warranty; Owner: postgres
 --
 
@@ -6289,7 +6327,7 @@ CREATE INDEX idx_warranty_claim_status ON warranty.claim USING btree (claim_stat
 
 
 --
--- TOC entry 5522 (class 1259 OID 26228)
+-- TOC entry 5532 (class 1259 OID 26228)
 -- Name: idx_warranty_pending; Type: INDEX; Schema: warranty; Owner: postgres
 --
 
@@ -6297,7 +6335,7 @@ CREATE INDEX idx_warranty_pending ON warranty.claim USING btree (created_at) WHE
 
 
 --
--- TOC entry 5730 (class 2606 OID 25404)
+-- TOC entry 5744 (class 2606 OID 25404)
 -- Name: insurance_estimate fk_estimate_job; Type: FK CONSTRAINT; Schema: billing; Owner: postgres
 --
 
@@ -6306,7 +6344,7 @@ ALTER TABLE ONLY billing.insurance_estimate
 
 
 --
--- TOC entry 5727 (class 2606 OID 25353)
+-- TOC entry 5741 (class 2606 OID 25353)
 -- Name: invoice fk_invoice_customer; Type: FK CONSTRAINT; Schema: billing; Owner: postgres
 --
 
@@ -6315,7 +6353,7 @@ ALTER TABLE ONLY billing.invoice
 
 
 --
--- TOC entry 5728 (class 2606 OID 25358)
+-- TOC entry 5742 (class 2606 OID 25358)
 -- Name: invoice fk_invoice_job; Type: FK CONSTRAINT; Schema: billing; Owner: postgres
 --
 
@@ -6324,7 +6362,7 @@ ALTER TABLE ONLY billing.invoice
 
 
 --
--- TOC entry 5729 (class 2606 OID 25383)
+-- TOC entry 5743 (class 2606 OID 25383)
 -- Name: invoice_line fk_invoice_line_invoice; Type: FK CONSTRAINT; Schema: billing; Owner: postgres
 --
 
@@ -6333,7 +6371,7 @@ ALTER TABLE ONLY billing.invoice_line
 
 
 --
--- TOC entry 5772 (class 2606 OID 26386)
+-- TOC entry 5787 (class 2606 OID 26386)
 -- Name: enquiry enquiry_lead_id_fkey; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6342,7 +6380,7 @@ ALTER TABLE ONLY crm.enquiry
 
 
 --
--- TOC entry 5748 (class 2606 OID 25820)
+-- TOC entry 5763 (class 2606 OID 25820)
 -- Name: lead_activity fk_activity_lead; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6351,7 +6389,7 @@ ALTER TABLE ONLY crm.lead_activity
 
 
 --
--- TOC entry 5749 (class 2606 OID 25825)
+-- TOC entry 5764 (class 2606 OID 25825)
 -- Name: lead_activity fk_activity_staff; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6360,7 +6398,7 @@ ALTER TABLE ONLY crm.lead_activity
 
 
 --
--- TOC entry 5755 (class 2606 OID 25925)
+-- TOC entry 5770 (class 2606 OID 25925)
 -- Name: lead_assignment_history fk_assignment_lead; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6369,7 +6407,7 @@ ALTER TABLE ONLY crm.lead_assignment_history
 
 
 --
--- TOC entry 5756 (class 2606 OID 25935)
+-- TOC entry 5771 (class 2606 OID 25935)
 -- Name: lead_assignment_history fk_assignment_new; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6378,7 +6416,7 @@ ALTER TABLE ONLY crm.lead_assignment_history
 
 
 --
--- TOC entry 5757 (class 2606 OID 25930)
+-- TOC entry 5772 (class 2606 OID 25930)
 -- Name: lead_assignment_history fk_assignment_old; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6387,7 +6425,7 @@ ALTER TABLE ONLY crm.lead_assignment_history
 
 
 --
--- TOC entry 5773 (class 2606 OID 26469)
+-- TOC entry 5788 (class 2606 OID 26469)
 -- Name: enquiry fk_enquiry_created_by; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6396,7 +6434,7 @@ ALTER TABLE ONLY crm.enquiry
 
 
 --
--- TOC entry 5774 (class 2606 OID 26456)
+-- TOC entry 5789 (class 2606 OID 26456)
 -- Name: enquiry fk_enquiry_status; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6405,7 +6443,7 @@ ALTER TABLE ONLY crm.enquiry
 
 
 --
--- TOC entry 5750 (class 2606 OID 25848)
+-- TOC entry 5765 (class 2606 OID 25848)
 -- Name: followup_schedule fk_followup_lead; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6414,7 +6452,7 @@ ALTER TABLE ONLY crm.followup_schedule
 
 
 --
--- TOC entry 5751 (class 2606 OID 25853)
+-- TOC entry 5766 (class 2606 OID 25853)
 -- Name: followup_schedule fk_followup_staff; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6423,7 +6461,7 @@ ALTER TABLE ONLY crm.followup_schedule
 
 
 --
--- TOC entry 5741 (class 2606 OID 26463)
+-- TOC entry 5756 (class 2606 OID 26463)
 -- Name: lead fk_lead_created_by; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6432,7 +6470,7 @@ ALTER TABLE ONLY crm.lead
 
 
 --
--- TOC entry 5742 (class 2606 OID 25763)
+-- TOC entry 5757 (class 2606 OID 25763)
 -- Name: lead fk_lead_customer; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6441,7 +6479,7 @@ ALTER TABLE ONLY crm.lead
 
 
 --
--- TOC entry 5743 (class 2606 OID 25773)
+-- TOC entry 5758 (class 2606 OID 25773)
 -- Name: lead fk_lead_owner; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6450,7 +6488,7 @@ ALTER TABLE ONLY crm.lead
 
 
 --
--- TOC entry 5744 (class 2606 OID 26450)
+-- TOC entry 5759 (class 2606 OID 26450)
 -- Name: lead fk_lead_status; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6459,7 +6497,7 @@ ALTER TABLE ONLY crm.lead
 
 
 --
--- TOC entry 5745 (class 2606 OID 25768)
+-- TOC entry 5760 (class 2606 OID 25768)
 -- Name: lead fk_lead_vehicle_model; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6468,7 +6506,7 @@ ALTER TABLE ONLY crm.lead
 
 
 --
--- TOC entry 5746 (class 2606 OID 25793)
+-- TOC entry 5761 (class 2606 OID 25793)
 -- Name: lead_status_history fk_status_lead; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6477,7 +6515,7 @@ ALTER TABLE ONLY crm.lead_status_history
 
 
 --
--- TOC entry 5747 (class 2606 OID 25798)
+-- TOC entry 5762 (class 2606 OID 25798)
 -- Name: lead_status_history fk_status_staff; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6486,7 +6524,7 @@ ALTER TABLE ONLY crm.lead_status_history
 
 
 --
--- TOC entry 5752 (class 2606 OID 25895)
+-- TOC entry 5767 (class 2606 OID 25895)
 -- Name: test_ride fk_test_ride_lead; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6495,7 +6533,7 @@ ALTER TABLE ONLY crm.test_ride
 
 
 --
--- TOC entry 5753 (class 2606 OID 25905)
+-- TOC entry 5768 (class 2606 OID 25905)
 -- Name: test_ride fk_test_ride_staff; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6504,7 +6542,7 @@ ALTER TABLE ONLY crm.test_ride
 
 
 --
--- TOC entry 5754 (class 2606 OID 25900)
+-- TOC entry 5769 (class 2606 OID 25900)
 -- Name: test_ride fk_test_ride_vehicle; Type: FK CONSTRAINT; Schema: crm; Owner: postgres
 --
 
@@ -6513,7 +6551,7 @@ ALTER TABLE ONLY crm.test_ride
 
 
 --
--- TOC entry 5771 (class 2606 OID 26343)
+-- TOC entry 5786 (class 2606 OID 26343)
 -- Name: vehicle_subsidy fk_subsidy_vehicle; Type: FK CONSTRAINT; Schema: finance; Owner: postgres
 --
 
@@ -6522,7 +6560,7 @@ ALTER TABLE ONLY finance.vehicle_subsidy
 
 
 --
--- TOC entry 5770 (class 2606 OID 26322)
+-- TOC entry 5785 (class 2606 OID 26322)
 -- Name: vehicle_loan fk_vehicle_loan_sale; Type: FK CONSTRAINT; Schema: finance; Owner: postgres
 --
 
@@ -6531,7 +6569,7 @@ ALTER TABLE ONLY finance.vehicle_loan
 
 
 --
--- TOC entry 5767 (class 2606 OID 26186)
+-- TOC entry 5782 (class 2606 OID 26186)
 -- Name: attendance fk_attendance_staff; Type: FK CONSTRAINT; Schema: hr; Owner: postgres
 --
 
@@ -6540,7 +6578,7 @@ ALTER TABLE ONLY hr.attendance
 
 
 --
--- TOC entry 5768 (class 2606 OID 26211)
+-- TOC entry 5783 (class 2606 OID 26211)
 -- Name: salary fk_salary_staff; Type: FK CONSTRAINT; Schema: hr; Owner: postgres
 --
 
@@ -6549,7 +6587,7 @@ ALTER TABLE ONLY hr.salary
 
 
 --
--- TOC entry 5712 (class 2606 OID 25123)
+-- TOC entry 5726 (class 2606 OID 25123)
 -- Name: policy fk_policy_insurer; Type: FK CONSTRAINT; Schema: insurance; Owner: postgres
 --
 
@@ -6558,7 +6596,7 @@ ALTER TABLE ONLY insurance.policy
 
 
 --
--- TOC entry 5713 (class 2606 OID 25113)
+-- TOC entry 5727 (class 2606 OID 25113)
 -- Name: policy fk_policy_sale; Type: FK CONSTRAINT; Schema: insurance; Owner: postgres
 --
 
@@ -6567,7 +6605,7 @@ ALTER TABLE ONLY insurance.policy
 
 
 --
--- TOC entry 5714 (class 2606 OID 25118)
+-- TOC entry 5728 (class 2606 OID 25118)
 -- Name: policy fk_policy_vehicle; Type: FK CONSTRAINT; Schema: insurance; Owner: postgres
 --
 
@@ -6576,7 +6614,7 @@ ALTER TABLE ONLY insurance.policy
 
 
 --
--- TOC entry 5740 (class 2606 OID 25615)
+-- TOC entry 5754 (class 2606 OID 25615)
 -- Name: spare_serial fk_spare_serial_spare; Type: FK CONSTRAINT; Schema: inventory; Owner: postgres
 --
 
@@ -6585,7 +6623,7 @@ ALTER TABLE ONLY inventory.spare_serial
 
 
 --
--- TOC entry 5731 (class 2606 OID 26080)
+-- TOC entry 5745 (class 2606 OID 26080)
 -- Name: spare_stock_movement fk_spare_stock_movement_spare; Type: FK CONSTRAINT; Schema: inventory; Owner: postgres
 --
 
@@ -6594,7 +6632,7 @@ ALTER TABLE ONLY inventory.spare_stock_movement
 
 
 --
--- TOC entry 5769 (class 2606 OID 26276)
+-- TOC entry 5784 (class 2606 OID 26276)
 -- Name: vehicle_stock_movement fk_vehicle_movement_vehicle; Type: FK CONSTRAINT; Schema: inventory; Owner: postgres
 --
 
@@ -6603,7 +6641,7 @@ ALTER TABLE ONLY inventory.vehicle_stock_movement
 
 
 --
--- TOC entry 5696 (class 2606 OID 26362)
+-- TOC entry 5710 (class 2606 OID 26362)
 -- Name: customer customer_lead_reference_id_fkey; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6612,7 +6650,7 @@ ALTER TABLE ONLY master.customer
 
 
 --
--- TOC entry 5698 (class 2606 OID 24768)
+-- TOC entry 5712 (class 2606 OID 24768)
 -- Name: customer_document fk_customer_document_customer; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6621,7 +6659,7 @@ ALTER TABLE ONLY master.customer_document
 
 
 --
--- TOC entry 5697 (class 2606 OID 24746)
+-- TOC entry 5711 (class 2606 OID 24746)
 -- Name: customer_phone fk_customer_phone_customer; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6630,7 +6668,7 @@ ALTER TABLE ONLY master.customer_phone
 
 
 --
--- TOC entry 5762 (class 2606 OID 26059)
+-- TOC entry 5777 (class 2606 OID 26059)
 -- Name: expense_category fk_expense_parent; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6639,7 +6677,7 @@ ALTER TABLE ONLY master.expense_category
 
 
 --
--- TOC entry 5699 (class 2606 OID 24808)
+-- TOC entry 5713 (class 2606 OID 24808)
 -- Name: vehicle fk_vehicle_model; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6648,7 +6686,7 @@ ALTER TABLE ONLY master.vehicle
 
 
 --
--- TOC entry 5700 (class 2606 OID 24901)
+-- TOC entry 5714 (class 2606 OID 24901)
 -- Name: vendor_contact fk_vendor_contact_vendor; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6657,7 +6695,7 @@ ALTER TABLE ONLY master.vendor_contact
 
 
 --
--- TOC entry 5701 (class 2606 OID 24923)
+-- TOC entry 5715 (class 2606 OID 24923)
 -- Name: vendor_document fk_vendor_document_vendor; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6666,7 +6704,7 @@ ALTER TABLE ONLY master.vendor_document
 
 
 --
--- TOC entry 5775 (class 2606 OID 26408)
+-- TOC entry 5790 (class 2606 OID 26408)
 -- Name: nominee nominee_customer_id_fkey; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6675,7 +6713,25 @@ ALTER TABLE ONLY master.nominee
 
 
 --
--- TOC entry 5784 (class 2606 OID 26624)
+-- TOC entry 5803 (class 2606 OID 26758)
+-- Name: pin_reset_request pin_reset_request_processed_by_fkey; Type: FK CONSTRAINT; Schema: master; Owner: postgres
+--
+
+ALTER TABLE ONLY master.pin_reset_request
+    ADD CONSTRAINT pin_reset_request_processed_by_fkey FOREIGN KEY (processed_by) REFERENCES master.staff(staff_id);
+
+
+--
+-- TOC entry 5804 (class 2606 OID 26763)
+-- Name: pin_reset_request pin_reset_request_staff_id_fkey; Type: FK CONSTRAINT; Schema: master; Owner: postgres
+--
+
+ALTER TABLE ONLY master.pin_reset_request
+    ADD CONSTRAINT pin_reset_request_staff_id_fkey FOREIGN KEY (staff_id) REFERENCES master.staff(staff_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 5799 (class 2606 OID 26624)
 -- Name: spare_price_history spare_price_history_created_by_fkey; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6684,7 +6740,7 @@ ALTER TABLE ONLY master.spare_price_history
 
 
 --
--- TOC entry 5785 (class 2606 OID 26619)
+-- TOC entry 5800 (class 2606 OID 26619)
 -- Name: spare_price_history spare_price_history_spare_id_fkey; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6693,7 +6749,16 @@ ALTER TABLE ONLY master.spare_price_history
 
 
 --
--- TOC entry 5786 (class 2606 OID 26650)
+-- TOC entry 5755 (class 2606 OID 26657)
+-- Name: staff staff_dealer_id_fkey; Type: FK CONSTRAINT; Schema: master; Owner: postgres
+--
+
+ALTER TABLE ONLY master.staff
+    ADD CONSTRAINT staff_dealer_id_fkey FOREIGN KEY (dealer_id) REFERENCES master.staff(staff_id);
+
+
+--
+-- TOC entry 5801 (class 2606 OID 26650)
 -- Name: vehicle_price_history vehicle_price_history_created_by_fkey; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6702,7 +6767,7 @@ ALTER TABLE ONLY master.vehicle_price_history
 
 
 --
--- TOC entry 5787 (class 2606 OID 26645)
+-- TOC entry 5802 (class 2606 OID 26645)
 -- Name: vehicle_price_history vehicle_price_history_vehicle_model_id_fkey; Type: FK CONSTRAINT; Schema: master; Owner: postgres
 --
 
@@ -6711,7 +6776,7 @@ ALTER TABLE ONLY master.vehicle_price_history
 
 
 --
--- TOC entry 5735 (class 2606 OID 25540)
+-- TOC entry 5749 (class 2606 OID 25540)
 -- Name: reimbursement_line fk_reim_line_invoice; Type: FK CONSTRAINT; Schema: oem; Owner: postgres
 --
 
@@ -6720,7 +6785,7 @@ ALTER TABLE ONLY oem.reimbursement_line
 
 
 --
--- TOC entry 5736 (class 2606 OID 25545)
+-- TOC entry 5750 (class 2606 OID 25545)
 -- Name: reimbursement_line fk_reim_line_job; Type: FK CONSTRAINT; Schema: oem; Owner: postgres
 --
 
@@ -6729,7 +6794,7 @@ ALTER TABLE ONLY oem.reimbursement_line
 
 
 --
--- TOC entry 5737 (class 2606 OID 25550)
+-- TOC entry 5751 (class 2606 OID 25550)
 -- Name: reimbursement_line fk_reim_line_labour; Type: FK CONSTRAINT; Schema: oem; Owner: postgres
 --
 
@@ -6738,7 +6803,7 @@ ALTER TABLE ONLY oem.reimbursement_line
 
 
 --
--- TOC entry 5733 (class 2606 OID 25490)
+-- TOC entry 5747 (class 2606 OID 25490)
 -- Name: spare_purchase_item fk_purchase_item_purchase; Type: FK CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -6747,7 +6812,7 @@ ALTER TABLE ONLY procurement.spare_purchase_item
 
 
 --
--- TOC entry 5734 (class 2606 OID 25495)
+-- TOC entry 5748 (class 2606 OID 25495)
 -- Name: spare_purchase_item fk_purchase_item_spare; Type: FK CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -6756,7 +6821,7 @@ ALTER TABLE ONLY procurement.spare_purchase_item
 
 
 --
--- TOC entry 5732 (class 2606 OID 25470)
+-- TOC entry 5746 (class 2606 OID 25470)
 -- Name: spare_purchase fk_spare_purchase_vendor; Type: FK CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -6765,7 +6830,7 @@ ALTER TABLE ONLY procurement.spare_purchase
 
 
 --
--- TOC entry 5703 (class 2606 OID 24962)
+-- TOC entry 5717 (class 2606 OID 24962)
 -- Name: vehicle_purchase_detail fk_vehicle_purchase_detail_purchase; Type: FK CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -6774,7 +6839,7 @@ ALTER TABLE ONLY procurement.vehicle_purchase_detail
 
 
 --
--- TOC entry 5704 (class 2606 OID 24967)
+-- TOC entry 5718 (class 2606 OID 24967)
 -- Name: vehicle_purchase_detail fk_vehicle_purchase_detail_vehicle; Type: FK CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -6783,7 +6848,7 @@ ALTER TABLE ONLY procurement.vehicle_purchase_detail
 
 
 --
--- TOC entry 5702 (class 2606 OID 24943)
+-- TOC entry 5716 (class 2606 OID 24943)
 -- Name: vehicle_purchase fk_vehicle_purchase_vendor; Type: FK CONSTRAINT; Schema: procurement; Owner: postgres
 --
 
@@ -6792,7 +6857,7 @@ ALTER TABLE ONLY procurement.vehicle_purchase
 
 
 --
--- TOC entry 5782 (class 2606 OID 26567)
+-- TOC entry 5797 (class 2606 OID 26567)
 -- Name: delivery_checklist delivery_checklist_sale_id_fkey; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6801,7 +6866,7 @@ ALTER TABLE ONLY sales.delivery_checklist
 
 
 --
--- TOC entry 5709 (class 2606 OID 25061)
+-- TOC entry 5723 (class 2606 OID 25061)
 -- Name: vehicle_payment fk_payment_customer; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6810,7 +6875,7 @@ ALTER TABLE ONLY sales.vehicle_payment
 
 
 --
--- TOC entry 5710 (class 2606 OID 25071)
+-- TOC entry 5724 (class 2606 OID 25071)
 -- Name: vehicle_payment fk_payment_sale; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6819,7 +6884,7 @@ ALTER TABLE ONLY sales.vehicle_payment
 
 
 --
--- TOC entry 5711 (class 2606 OID 25066)
+-- TOC entry 5725 (class 2606 OID 25066)
 -- Name: vehicle_payment fk_payment_vehicle; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6828,7 +6893,7 @@ ALTER TABLE ONLY sales.vehicle_payment
 
 
 --
--- TOC entry 5758 (class 2606 OID 25974)
+-- TOC entry 5773 (class 2606 OID 25974)
 -- Name: vehicle_registration fk_registration_vehicle_sale; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6837,7 +6902,7 @@ ALTER TABLE ONLY sales.vehicle_registration
 
 
 --
--- TOC entry 5705 (class 2606 OID 24997)
+-- TOC entry 5719 (class 2606 OID 24997)
 -- Name: vehicle_sale fk_sale_customer; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6846,7 +6911,7 @@ ALTER TABLE ONLY sales.vehicle_sale
 
 
 --
--- TOC entry 5708 (class 2606 OID 25038)
+-- TOC entry 5722 (class 2606 OID 25038)
 -- Name: vehicle_sale_finance fk_sale_finance_sale; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6855,7 +6920,7 @@ ALTER TABLE ONLY sales.vehicle_sale_finance
 
 
 --
--- TOC entry 5706 (class 2606 OID 25002)
+-- TOC entry 5720 (class 2606 OID 25002)
 -- Name: vehicle_sale fk_sale_vehicle; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6864,7 +6929,7 @@ ALTER TABLE ONLY sales.vehicle_sale
 
 
 --
--- TOC entry 5763 (class 2606 OID 26127)
+-- TOC entry 5778 (class 2606 OID 26127)
 -- Name: spare_sale fk_spare_sale_customer; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6873,7 +6938,7 @@ ALTER TABLE ONLY sales.spare_sale
 
 
 --
--- TOC entry 5765 (class 2606 OID 26154)
+-- TOC entry 5780 (class 2606 OID 26154)
 -- Name: spare_sale_detail fk_spare_sale_detail_sale; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6882,7 +6947,7 @@ ALTER TABLE ONLY sales.spare_sale_detail
 
 
 --
--- TOC entry 5766 (class 2606 OID 26159)
+-- TOC entry 5781 (class 2606 OID 26159)
 -- Name: spare_sale_detail fk_spare_sale_detail_spare; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6891,7 +6956,7 @@ ALTER TABLE ONLY sales.spare_sale_detail
 
 
 --
--- TOC entry 5764 (class 2606 OID 26132)
+-- TOC entry 5779 (class 2606 OID 26132)
 -- Name: spare_sale fk_spare_sale_job_card; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6900,7 +6965,7 @@ ALTER TABLE ONLY sales.spare_sale
 
 
 --
--- TOC entry 5707 (class 2606 OID 26256)
+-- TOC entry 5721 (class 2606 OID 26256)
 -- Name: vehicle_sale fk_vehicle_sale_lead; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6909,7 +6974,7 @@ ALTER TABLE ONLY sales.vehicle_sale
 
 
 --
--- TOC entry 5780 (class 2606 OID 26545)
+-- TOC entry 5795 (class 2606 OID 26545)
 -- Name: payment_receipt payment_receipt_created_by_staff_id_fkey; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6918,7 +6983,7 @@ ALTER TABLE ONLY sales.payment_receipt
 
 
 --
--- TOC entry 5781 (class 2606 OID 26540)
+-- TOC entry 5796 (class 2606 OID 26540)
 -- Name: payment_receipt payment_receipt_sale_id_fkey; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6927,7 +6992,7 @@ ALTER TABLE ONLY sales.payment_receipt
 
 
 --
--- TOC entry 5776 (class 2606 OID 26514)
+-- TOC entry 5791 (class 2606 OID 26514)
 -- Name: sale sale_chassis_no_fkey; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6936,7 +7001,7 @@ ALTER TABLE ONLY sales.sale
 
 
 --
--- TOC entry 5777 (class 2606 OID 26519)
+-- TOC entry 5792 (class 2606 OID 26519)
 -- Name: sale sale_created_by_staff_id_fkey; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6945,7 +7010,7 @@ ALTER TABLE ONLY sales.sale
 
 
 --
--- TOC entry 5778 (class 2606 OID 26509)
+-- TOC entry 5793 (class 2606 OID 26509)
 -- Name: sale sale_customer_id_fkey; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6954,7 +7019,7 @@ ALTER TABLE ONLY sales.sale
 
 
 --
--- TOC entry 5779 (class 2606 OID 26504)
+-- TOC entry 5794 (class 2606 OID 26504)
 -- Name: sale sale_lead_id_fkey; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6963,7 +7028,7 @@ ALTER TABLE ONLY sales.sale
 
 
 --
--- TOC entry 5783 (class 2606 OID 26587)
+-- TOC entry 5798 (class 2606 OID 26587)
 -- Name: service_schedule service_schedule_sale_id_fkey; Type: FK CONSTRAINT; Schema: sales; Owner: postgres
 --
 
@@ -6972,7 +7037,7 @@ ALTER TABLE ONLY sales.service_schedule
 
 
 --
--- TOC entry 5719 (class 2606 OID 25219)
+-- TOC entry 5733 (class 2606 OID 25219)
 -- Name: vehicle_component_change fk_component_job; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -6981,7 +7046,7 @@ ALTER TABLE ONLY service.vehicle_component_change
 
 
 --
--- TOC entry 5720 (class 2606 OID 25620)
+-- TOC entry 5734 (class 2606 OID 25620)
 -- Name: vehicle_component_change fk_component_new_serial; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -6990,7 +7055,7 @@ ALTER TABLE ONLY service.vehicle_component_change
 
 
 --
--- TOC entry 5721 (class 2606 OID 25224)
+-- TOC entry 5735 (class 2606 OID 25224)
 -- Name: vehicle_component_change fk_component_vehicle; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -6999,7 +7064,7 @@ ALTER TABLE ONLY service.vehicle_component_change
 
 
 --
--- TOC entry 5715 (class 2606 OID 25153)
+-- TOC entry 5729 (class 2606 OID 25153)
 -- Name: job_card fk_job_customer; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -7008,7 +7073,7 @@ ALTER TABLE ONLY service.job_card
 
 
 --
--- TOC entry 5718 (class 2606 OID 25193)
+-- TOC entry 5732 (class 2606 OID 25193)
 -- Name: job_labour fk_job_labour_work; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -7017,7 +7082,7 @@ ALTER TABLE ONLY service.job_labour
 
 
 --
--- TOC entry 5722 (class 2606 OID 26087)
+-- TOC entry 5736 (class 2606 OID 26087)
 -- Name: job_spare fk_job_spare_spare; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -7026,7 +7091,7 @@ ALTER TABLE ONLY service.job_spare
 
 
 --
--- TOC entry 5723 (class 2606 OID 25284)
+-- TOC entry 5737 (class 2606 OID 25284)
 -- Name: job_spare fk_job_spare_work; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -7035,7 +7100,7 @@ ALTER TABLE ONLY service.job_spare
 
 
 --
--- TOC entry 5716 (class 2606 OID 25148)
+-- TOC entry 5730 (class 2606 OID 25148)
 -- Name: job_card fk_job_vehicle; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -7044,7 +7109,7 @@ ALTER TABLE ONLY service.job_card
 
 
 --
--- TOC entry 5760 (class 2606 OID 26021)
+-- TOC entry 5775 (class 2606 OID 26021)
 -- Name: vehicle_service_summary fk_last_job_card; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -7053,7 +7118,7 @@ ALTER TABLE ONLY service.vehicle_service_summary
 
 
 --
--- TOC entry 5759 (class 2606 OID 25995)
+-- TOC entry 5774 (class 2606 OID 25995)
 -- Name: service_schedule fk_schedule_variant; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -7062,7 +7127,7 @@ ALTER TABLE ONLY service.service_schedule
 
 
 --
--- TOC entry 5761 (class 2606 OID 26016)
+-- TOC entry 5776 (class 2606 OID 26016)
 -- Name: vehicle_service_summary fk_service_vehicle_sale; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -7071,7 +7136,7 @@ ALTER TABLE ONLY service.vehicle_service_summary
 
 
 --
--- TOC entry 5717 (class 2606 OID 25173)
+-- TOC entry 5731 (class 2606 OID 25173)
 -- Name: job_work_item fk_work_item_job; Type: FK CONSTRAINT; Schema: service; Owner: postgres
 --
 
@@ -7080,7 +7145,7 @@ ALTER TABLE ONLY service.job_work_item
 
 
 --
--- TOC entry 5724 (class 2606 OID 25302)
+-- TOC entry 5738 (class 2606 OID 25302)
 -- Name: claim fk_claim_spare; Type: FK CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -7089,7 +7154,7 @@ ALTER TABLE ONLY warranty.claim
 
 
 --
--- TOC entry 5725 (class 2606 OID 25324)
+-- TOC entry 5739 (class 2606 OID 25324)
 -- Name: shipment_item fk_ship_item_claim; Type: FK CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -7098,7 +7163,7 @@ ALTER TABLE ONLY warranty.shipment_item
 
 
 --
--- TOC entry 5726 (class 2606 OID 25319)
+-- TOC entry 5740 (class 2606 OID 25319)
 -- Name: shipment_item fk_ship_item_shipment; Type: FK CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -7107,7 +7172,7 @@ ALTER TABLE ONLY warranty.shipment_item
 
 
 --
--- TOC entry 5738 (class 2606 OID 25586)
+-- TOC entry 5752 (class 2606 OID 25586)
 -- Name: inward_item fk_warranty_inward; Type: FK CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -7116,7 +7181,7 @@ ALTER TABLE ONLY warranty.inward_item
 
 
 --
--- TOC entry 5739 (class 2606 OID 25591)
+-- TOC entry 5753 (class 2606 OID 25591)
 -- Name: inward_item fk_warranty_inward_spare; Type: FK CONSTRAINT; Schema: warranty; Owner: postgres
 --
 
@@ -7125,8 +7190,8 @@ ALTER TABLE ONLY warranty.inward_item
 
 
 --
--- TOC entry 6075 (class 0 OID 0)
--- Dependencies: 11
+-- TOC entry 6097 (class 0 OID 0)
+-- Dependencies: 7
 -- Name: SCHEMA billing; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7134,8 +7199,8 @@ GRANT USAGE ON SCHEMA billing TO app_user;
 
 
 --
--- TOC entry 6076 (class 0 OID 0)
--- Dependencies: 15
+-- TOC entry 6098 (class 0 OID 0)
+-- Dependencies: 8
 -- Name: SCHEMA crm; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7143,8 +7208,8 @@ GRANT USAGE ON SCHEMA crm TO app_user;
 
 
 --
--- TOC entry 6077 (class 0 OID 0)
--- Dependencies: 17
+-- TOC entry 6099 (class 0 OID 0)
+-- Dependencies: 9
 -- Name: SCHEMA finance; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7152,8 +7217,8 @@ GRANT USAGE ON SCHEMA finance TO app_user;
 
 
 --
--- TOC entry 6078 (class 0 OID 0)
--- Dependencies: 16
+-- TOC entry 6100 (class 0 OID 0)
+-- Dependencies: 10
 -- Name: SCHEMA hr; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7161,8 +7226,8 @@ GRANT USAGE ON SCHEMA hr TO app_user;
 
 
 --
--- TOC entry 6079 (class 0 OID 0)
--- Dependencies: 14
+-- TOC entry 6101 (class 0 OID 0)
+-- Dependencies: 11
 -- Name: SCHEMA insurance; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7170,8 +7235,8 @@ GRANT USAGE ON SCHEMA insurance TO app_user;
 
 
 --
--- TOC entry 6080 (class 0 OID 0)
--- Dependencies: 8
+-- TOC entry 6102 (class 0 OID 0)
+-- Dependencies: 12
 -- Name: SCHEMA inventory; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7179,8 +7244,8 @@ GRANT USAGE ON SCHEMA inventory TO app_user;
 
 
 --
--- TOC entry 6081 (class 0 OID 0)
--- Dependencies: 7
+-- TOC entry 6103 (class 0 OID 0)
+-- Dependencies: 13
 -- Name: SCHEMA master; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7188,8 +7253,8 @@ GRANT USAGE ON SCHEMA master TO app_user;
 
 
 --
--- TOC entry 6082 (class 0 OID 0)
--- Dependencies: 18
+-- TOC entry 6104 (class 0 OID 0)
+-- Dependencies: 14
 -- Name: SCHEMA oem; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7197,8 +7262,8 @@ GRANT USAGE ON SCHEMA oem TO app_user;
 
 
 --
--- TOC entry 6083 (class 0 OID 0)
--- Dependencies: 9
+-- TOC entry 6105 (class 0 OID 0)
+-- Dependencies: 15
 -- Name: SCHEMA procurement; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7206,8 +7271,8 @@ GRANT USAGE ON SCHEMA procurement TO app_user;
 
 
 --
--- TOC entry 6084 (class 0 OID 0)
--- Dependencies: 10
+-- TOC entry 6106 (class 0 OID 0)
+-- Dependencies: 16
 -- Name: SCHEMA sales; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7215,8 +7280,8 @@ GRANT USAGE ON SCHEMA sales TO app_user;
 
 
 --
--- TOC entry 6085 (class 0 OID 0)
--- Dependencies: 12
+-- TOC entry 6107 (class 0 OID 0)
+-- Dependencies: 17
 -- Name: SCHEMA service; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7224,8 +7289,8 @@ GRANT USAGE ON SCHEMA service TO app_user;
 
 
 --
--- TOC entry 6086 (class 0 OID 0)
--- Dependencies: 13
+-- TOC entry 6108 (class 0 OID 0)
+-- Dependencies: 18
 -- Name: SCHEMA warranty; Type: ACL; Schema: -; Owner: postgres
 --
 
@@ -7233,7 +7298,7 @@ GRANT USAGE ON SCHEMA warranty TO app_user;
 
 
 --
--- TOC entry 6087 (class 0 OID 0)
+-- TOC entry 6109 (class 0 OID 0)
 -- Dependencies: 284
 -- Name: TABLE insurance_estimate; Type: ACL; Schema: billing; Owner: postgres
 --
@@ -7242,7 +7307,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE billing.insurance_estimate TO app_user;
 
 
 --
--- TOC entry 6089 (class 0 OID 0)
+-- TOC entry 6111 (class 0 OID 0)
 -- Dependencies: 280
 -- Name: TABLE invoice; Type: ACL; Schema: billing; Owner: postgres
 --
@@ -7251,7 +7316,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE billing.invoice TO app_user;
 
 
 --
--- TOC entry 6091 (class 0 OID 0)
+-- TOC entry 6113 (class 0 OID 0)
 -- Dependencies: 282
 -- Name: TABLE invoice_line; Type: ACL; Schema: billing; Owner: postgres
 --
@@ -7260,7 +7325,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE billing.invoice_line TO app_user;
 
 
 --
--- TOC entry 6093 (class 0 OID 0)
+-- TOC entry 6115 (class 0 OID 0)
 -- Dependencies: 346
 -- Name: TABLE enquiry; Type: ACL; Schema: crm; Owner: postgres
 --
@@ -7269,7 +7334,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE crm.enquiry TO app_user;
 
 
 --
--- TOC entry 6095 (class 0 OID 0)
+-- TOC entry 6117 (class 0 OID 0)
 -- Dependencies: 352
 -- Name: TABLE enquiry_status_master; Type: ACL; Schema: crm; Owner: postgres
 --
@@ -7278,7 +7343,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE crm.enquiry_status_master TO app_user;
 
 
 --
--- TOC entry 6097 (class 0 OID 0)
+-- TOC entry 6119 (class 0 OID 0)
 -- Dependencies: 312
 -- Name: TABLE followup_schedule; Type: ACL; Schema: crm; Owner: postgres
 --
@@ -7287,7 +7352,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE crm.followup_schedule TO app_user;
 
 
 --
--- TOC entry 6099 (class 0 OID 0)
+-- TOC entry 6121 (class 0 OID 0)
 -- Dependencies: 306
 -- Name: TABLE lead; Type: ACL; Schema: crm; Owner: postgres
 --
@@ -7296,7 +7361,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE crm.lead TO app_user;
 
 
 --
--- TOC entry 6100 (class 0 OID 0)
+-- TOC entry 6122 (class 0 OID 0)
 -- Dependencies: 310
 -- Name: TABLE lead_activity; Type: ACL; Schema: crm; Owner: postgres
 --
@@ -7305,7 +7370,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE crm.lead_activity TO app_user;
 
 
 --
--- TOC entry 6102 (class 0 OID 0)
+-- TOC entry 6124 (class 0 OID 0)
 -- Dependencies: 316
 -- Name: TABLE lead_assignment_history; Type: ACL; Schema: crm; Owner: postgres
 --
@@ -7314,7 +7379,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE crm.lead_assignment_history TO app_user;
 
 
 --
--- TOC entry 6105 (class 0 OID 0)
+-- TOC entry 6127 (class 0 OID 0)
 -- Dependencies: 308
 -- Name: TABLE lead_status_history; Type: ACL; Schema: crm; Owner: postgres
 --
@@ -7323,7 +7388,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE crm.lead_status_history TO app_user;
 
 
 --
--- TOC entry 6107 (class 0 OID 0)
+-- TOC entry 6129 (class 0 OID 0)
 -- Dependencies: 350
 -- Name: TABLE lead_status_master; Type: ACL; Schema: crm; Owner: postgres
 --
@@ -7332,7 +7397,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE crm.lead_status_master TO app_user;
 
 
 --
--- TOC entry 6109 (class 0 OID 0)
+-- TOC entry 6131 (class 0 OID 0)
 -- Dependencies: 314
 -- Name: TABLE test_ride; Type: ACL; Schema: crm; Owner: postgres
 --
@@ -7341,7 +7406,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE crm.test_ride TO app_user;
 
 
 --
--- TOC entry 6111 (class 0 OID 0)
+-- TOC entry 6133 (class 0 OID 0)
 -- Dependencies: 336
 -- Name: TABLE salary; Type: ACL; Schema: hr; Owner: postgres
 --
@@ -7350,7 +7415,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE hr.salary TO app_user;
 
 
 --
--- TOC entry 6112 (class 0 OID 0)
+-- TOC entry 6134 (class 0 OID 0)
 -- Dependencies: 326
 -- Name: TABLE expense_category; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7359,7 +7424,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.expense_category TO app_user;
 
 
 --
--- TOC entry 6113 (class 0 OID 0)
+-- TOC entry 6135 (class 0 OID 0)
 -- Dependencies: 338
 -- Name: TABLE expense_summary_view; Type: ACL; Schema: finance; Owner: postgres
 --
@@ -7368,7 +7433,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE finance.expense_summary_view TO app_user;
 
 
 --
--- TOC entry 6114 (class 0 OID 0)
+-- TOC entry 6136 (class 0 OID 0)
 -- Dependencies: 337
 -- Name: TABLE sales_summary_view; Type: ACL; Schema: finance; Owner: postgres
 --
@@ -7377,7 +7442,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE finance.sales_summary_view TO app_user;
 
 
 --
--- TOC entry 6115 (class 0 OID 0)
+-- TOC entry 6137 (class 0 OID 0)
 -- Dependencies: 342
 -- Name: TABLE vehicle_loan; Type: ACL; Schema: finance; Owner: postgres
 --
@@ -7386,7 +7451,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE finance.vehicle_loan TO app_user;
 
 
 --
--- TOC entry 6117 (class 0 OID 0)
+-- TOC entry 6139 (class 0 OID 0)
 -- Dependencies: 344
 -- Name: TABLE vehicle_subsidy; Type: ACL; Schema: finance; Owner: postgres
 --
@@ -7395,7 +7460,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE finance.vehicle_subsidy TO app_user;
 
 
 --
--- TOC entry 6119 (class 0 OID 0)
+-- TOC entry 6141 (class 0 OID 0)
 -- Dependencies: 334
 -- Name: TABLE attendance; Type: ACL; Schema: hr; Owner: postgres
 --
@@ -7404,7 +7469,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE hr.attendance TO app_user;
 
 
 --
--- TOC entry 6122 (class 0 OID 0)
+-- TOC entry 6144 (class 0 OID 0)
 -- Dependencies: 260
 -- Name: TABLE insurance_company; Type: ACL; Schema: insurance; Owner: postgres
 --
@@ -7413,7 +7478,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE insurance.insurance_company TO app_user;
 
 
 --
--- TOC entry 6124 (class 0 OID 0)
+-- TOC entry 6146 (class 0 OID 0)
 -- Dependencies: 262
 -- Name: TABLE policy; Type: ACL; Schema: insurance; Owner: postgres
 --
@@ -7422,7 +7487,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE insurance.policy TO app_user;
 
 
 --
--- TOC entry 6126 (class 0 OID 0)
+-- TOC entry 6148 (class 0 OID 0)
 -- Dependencies: 288
 -- Name: TABLE spare_master; Type: ACL; Schema: inventory; Owner: postgres
 --
@@ -7431,7 +7496,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE inventory.spare_master TO app_user;
 
 
 --
--- TOC entry 6128 (class 0 OID 0)
+-- TOC entry 6150 (class 0 OID 0)
 -- Dependencies: 302
 -- Name: TABLE spare_serial; Type: ACL; Schema: inventory; Owner: postgres
 --
@@ -7440,7 +7505,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE inventory.spare_serial TO app_user;
 
 
 --
--- TOC entry 6130 (class 0 OID 0)
+-- TOC entry 6152 (class 0 OID 0)
 -- Dependencies: 286
 -- Name: TABLE spare_stock_movement; Type: ACL; Schema: inventory; Owner: postgres
 --
@@ -7449,7 +7514,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE inventory.spare_stock_movement TO app_user;
 
 
 --
--- TOC entry 6132 (class 0 OID 0)
+-- TOC entry 6154 (class 0 OID 0)
 -- Dependencies: 340
 -- Name: TABLE vehicle_stock_movement; Type: ACL; Schema: inventory; Owner: postgres
 --
@@ -7458,7 +7523,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE inventory.vehicle_stock_movement TO app_user
 
 
 --
--- TOC entry 6134 (class 0 OID 0)
+-- TOC entry 6156 (class 0 OID 0)
 -- Dependencies: 354
 -- Name: TABLE brand; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7467,7 +7532,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.brand TO app_user;
 
 
 --
--- TOC entry 6136 (class 0 OID 0)
+-- TOC entry 6158 (class 0 OID 0)
 -- Dependencies: 232
 -- Name: TABLE customer; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7476,7 +7541,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.customer TO app_user;
 
 
 --
--- TOC entry 6138 (class 0 OID 0)
+-- TOC entry 6160 (class 0 OID 0)
 -- Dependencies: 239
 -- Name: TABLE customer_document; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7485,7 +7550,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.customer_document TO app_user;
 
 
 --
--- TOC entry 6140 (class 0 OID 0)
+-- TOC entry 6162 (class 0 OID 0)
 -- Dependencies: 237
 -- Name: TABLE customer_phone; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7494,7 +7559,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.customer_phone TO app_user;
 
 
 --
--- TOC entry 6143 (class 0 OID 0)
+-- TOC entry 6165 (class 0 OID 0)
 -- Dependencies: 328
 -- Name: TABLE job_card_category; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7503,7 +7568,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.job_card_category TO app_user;
 
 
 --
--- TOC entry 6145 (class 0 OID 0)
+-- TOC entry 6167 (class 0 OID 0)
 -- Dependencies: 348
 -- Name: TABLE nominee; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7512,7 +7577,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.nominee TO app_user;
 
 
 --
--- TOC entry 6147 (class 0 OID 0)
+-- TOC entry 6169 (class 0 OID 0)
 -- Dependencies: 324
 -- Name: TABLE payment_mode; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7521,7 +7586,16 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.payment_mode TO app_user;
 
 
 --
--- TOC entry 6149 (class 0 OID 0)
+-- TOC entry 6171 (class 0 OID 0)
+-- Dependencies: 369
+-- Name: TABLE pin_reset_request; Type: ACL; Schema: master; Owner: postgres
+--
+
+GRANT SELECT,INSERT,UPDATE ON TABLE master.pin_reset_request TO app_user;
+
+
+--
+-- TOC entry 6173 (class 0 OID 0)
 -- Dependencies: 364
 -- Name: TABLE spare_price_history; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7530,7 +7604,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.spare_price_history TO app_user;
 
 
 --
--- TOC entry 6151 (class 0 OID 0)
+-- TOC entry 6175 (class 0 OID 0)
 -- Dependencies: 304
 -- Name: TABLE staff; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7539,7 +7613,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.staff TO app_user;
 
 
 --
--- TOC entry 6153 (class 0 OID 0)
+-- TOC entry 6177 (class 0 OID 0)
 -- Dependencies: 242
 -- Name: TABLE vehicle; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7548,7 +7622,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.vehicle TO app_user;
 
 
 --
--- TOC entry 6154 (class 0 OID 0)
+-- TOC entry 6178 (class 0 OID 0)
 -- Dependencies: 241
 -- Name: TABLE vehicle_model; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7557,7 +7631,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.vehicle_model TO app_user;
 
 
 --
--- TOC entry 6156 (class 0 OID 0)
+-- TOC entry 6180 (class 0 OID 0)
 -- Dependencies: 366
 -- Name: TABLE vehicle_price_history; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7566,7 +7640,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.vehicle_price_history TO app_user;
 
 
 --
--- TOC entry 6158 (class 0 OID 0)
+-- TOC entry 6182 (class 0 OID 0)
 -- Dependencies: 244
 -- Name: TABLE vendor; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7575,7 +7649,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.vendor TO app_user;
 
 
 --
--- TOC entry 6159 (class 0 OID 0)
+-- TOC entry 6183 (class 0 OID 0)
 -- Dependencies: 246
 -- Name: TABLE vendor_contact; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7584,7 +7658,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.vendor_contact TO app_user;
 
 
 --
--- TOC entry 6161 (class 0 OID 0)
+-- TOC entry 6185 (class 0 OID 0)
 -- Dependencies: 248
 -- Name: TABLE vendor_document; Type: ACL; Schema: master; Owner: postgres
 --
@@ -7593,7 +7667,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE master.vendor_document TO app_user;
 
 
 --
--- TOC entry 6164 (class 0 OID 0)
+-- TOC entry 6188 (class 0 OID 0)
 -- Dependencies: 294
 -- Name: TABLE reimbursement_invoice; Type: ACL; Schema: oem; Owner: postgres
 --
@@ -7602,7 +7676,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE oem.reimbursement_invoice TO app_user;
 
 
 --
--- TOC entry 6166 (class 0 OID 0)
+-- TOC entry 6190 (class 0 OID 0)
 -- Dependencies: 296
 -- Name: TABLE reimbursement_line; Type: ACL; Schema: oem; Owner: postgres
 --
@@ -7611,7 +7685,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE oem.reimbursement_line TO app_user;
 
 
 --
--- TOC entry 6168 (class 0 OID 0)
+-- TOC entry 6192 (class 0 OID 0)
 -- Dependencies: 290
 -- Name: TABLE spare_purchase; Type: ACL; Schema: procurement; Owner: postgres
 --
@@ -7620,7 +7694,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE procurement.spare_purchase TO app_user;
 
 
 --
--- TOC entry 6169 (class 0 OID 0)
+-- TOC entry 6193 (class 0 OID 0)
 -- Dependencies: 292
 -- Name: TABLE spare_purchase_item; Type: ACL; Schema: procurement; Owner: postgres
 --
@@ -7629,7 +7703,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE procurement.spare_purchase_item TO app_user;
 
 
 --
--- TOC entry 6172 (class 0 OID 0)
+-- TOC entry 6196 (class 0 OID 0)
 -- Dependencies: 250
 -- Name: TABLE vehicle_purchase; Type: ACL; Schema: procurement; Owner: postgres
 --
@@ -7638,7 +7712,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE procurement.vehicle_purchase TO app_user;
 
 
 --
--- TOC entry 6173 (class 0 OID 0)
+-- TOC entry 6197 (class 0 OID 0)
 -- Dependencies: 252
 -- Name: TABLE vehicle_purchase_detail; Type: ACL; Schema: procurement; Owner: postgres
 --
@@ -7647,7 +7721,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE procurement.vehicle_purchase_detail TO app_u
 
 
 --
--- TOC entry 6176 (class 0 OID 0)
+-- TOC entry 6200 (class 0 OID 0)
 -- Dependencies: 360
 -- Name: TABLE delivery_checklist; Type: ACL; Schema: sales; Owner: postgres
 --
@@ -7656,7 +7730,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE sales.delivery_checklist TO app_user;
 
 
 --
--- TOC entry 6178 (class 0 OID 0)
+-- TOC entry 6202 (class 0 OID 0)
 -- Dependencies: 358
 -- Name: TABLE payment_receipt; Type: ACL; Schema: sales; Owner: postgres
 --
@@ -7665,7 +7739,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE sales.payment_receipt TO app_user;
 
 
 --
--- TOC entry 6180 (class 0 OID 0)
+-- TOC entry 6204 (class 0 OID 0)
 -- Dependencies: 356
 -- Name: TABLE sale; Type: ACL; Schema: sales; Owner: postgres
 --
@@ -7674,7 +7748,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE sales.sale TO app_user;
 
 
 --
--- TOC entry 6182 (class 0 OID 0)
+-- TOC entry 6206 (class 0 OID 0)
 -- Dependencies: 362
 -- Name: TABLE service_schedule; Type: ACL; Schema: sales; Owner: postgres
 --
@@ -7683,7 +7757,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE sales.service_schedule TO app_user;
 
 
 --
--- TOC entry 6184 (class 0 OID 0)
+-- TOC entry 6208 (class 0 OID 0)
 -- Dependencies: 330
 -- Name: TABLE spare_sale; Type: ACL; Schema: sales; Owner: postgres
 --
@@ -7692,7 +7766,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE sales.spare_sale TO app_user;
 
 
 --
--- TOC entry 6185 (class 0 OID 0)
+-- TOC entry 6209 (class 0 OID 0)
 -- Dependencies: 332
 -- Name: TABLE spare_sale_detail; Type: ACL; Schema: sales; Owner: postgres
 --
@@ -7701,7 +7775,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE sales.spare_sale_detail TO app_user;
 
 
 --
--- TOC entry 6188 (class 0 OID 0)
+-- TOC entry 6212 (class 0 OID 0)
 -- Dependencies: 258
 -- Name: TABLE vehicle_payment; Type: ACL; Schema: sales; Owner: postgres
 --
@@ -7710,7 +7784,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE sales.vehicle_payment TO app_user;
 
 
 --
--- TOC entry 6190 (class 0 OID 0)
+-- TOC entry 6214 (class 0 OID 0)
 -- Dependencies: 318
 -- Name: TABLE vehicle_registration; Type: ACL; Schema: sales; Owner: postgres
 --
@@ -7719,7 +7793,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE sales.vehicle_registration TO app_user;
 
 
 --
--- TOC entry 6192 (class 0 OID 0)
+-- TOC entry 6216 (class 0 OID 0)
 -- Dependencies: 254
 -- Name: TABLE vehicle_sale; Type: ACL; Schema: sales; Owner: postgres
 --
@@ -7728,7 +7802,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE sales.vehicle_sale TO app_user;
 
 
 --
--- TOC entry 6193 (class 0 OID 0)
+-- TOC entry 6217 (class 0 OID 0)
 -- Dependencies: 256
 -- Name: TABLE vehicle_sale_finance; Type: ACL; Schema: sales; Owner: postgres
 --
@@ -7737,7 +7811,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE sales.vehicle_sale_finance TO app_user;
 
 
 --
--- TOC entry 6196 (class 0 OID 0)
+-- TOC entry 6220 (class 0 OID 0)
 -- Dependencies: 264
 -- Name: TABLE job_card; Type: ACL; Schema: service; Owner: postgres
 --
@@ -7746,7 +7820,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE service.job_card TO app_user;
 
 
 --
--- TOC entry 6198 (class 0 OID 0)
+-- TOC entry 6222 (class 0 OID 0)
 -- Dependencies: 268
 -- Name: TABLE job_labour; Type: ACL; Schema: service; Owner: postgres
 --
@@ -7755,7 +7829,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE service.job_labour TO app_user;
 
 
 --
--- TOC entry 6200 (class 0 OID 0)
+-- TOC entry 6224 (class 0 OID 0)
 -- Dependencies: 274
 -- Name: TABLE job_spare; Type: ACL; Schema: service; Owner: postgres
 --
@@ -7764,7 +7838,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE service.job_spare TO app_user;
 
 
 --
--- TOC entry 6202 (class 0 OID 0)
+-- TOC entry 6226 (class 0 OID 0)
 -- Dependencies: 266
 -- Name: TABLE job_work_item; Type: ACL; Schema: service; Owner: postgres
 --
@@ -7773,7 +7847,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE service.job_work_item TO app_user;
 
 
 --
--- TOC entry 6204 (class 0 OID 0)
+-- TOC entry 6228 (class 0 OID 0)
 -- Dependencies: 320
 -- Name: TABLE service_schedule; Type: ACL; Schema: service; Owner: postgres
 --
@@ -7782,7 +7856,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE service.service_schedule TO app_user;
 
 
 --
--- TOC entry 6206 (class 0 OID 0)
+-- TOC entry 6230 (class 0 OID 0)
 -- Dependencies: 270
 -- Name: TABLE vehicle_component_change; Type: ACL; Schema: service; Owner: postgres
 --
@@ -7791,7 +7865,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE service.vehicle_component_change TO app_user
 
 
 --
--- TOC entry 6208 (class 0 OID 0)
+-- TOC entry 6232 (class 0 OID 0)
 -- Dependencies: 322
 -- Name: TABLE vehicle_service_summary; Type: ACL; Schema: service; Owner: postgres
 --
@@ -7800,7 +7874,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE service.vehicle_service_summary TO app_user;
 
 
 --
--- TOC entry 6210 (class 0 OID 0)
+-- TOC entry 6234 (class 0 OID 0)
 -- Dependencies: 276
 -- Name: TABLE claim; Type: ACL; Schema: warranty; Owner: postgres
 --
@@ -7809,7 +7883,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE warranty.claim TO app_user;
 
 
 --
--- TOC entry 6212 (class 0 OID 0)
+-- TOC entry 6236 (class 0 OID 0)
 -- Dependencies: 298
 -- Name: TABLE inward; Type: ACL; Schema: warranty; Owner: postgres
 --
@@ -7818,7 +7892,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE warranty.inward TO app_user;
 
 
 --
--- TOC entry 6213 (class 0 OID 0)
+-- TOC entry 6237 (class 0 OID 0)
 -- Dependencies: 300
 -- Name: TABLE inward_item; Type: ACL; Schema: warranty; Owner: postgres
 --
@@ -7827,7 +7901,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE warranty.inward_item TO app_user;
 
 
 --
--- TOC entry 6216 (class 0 OID 0)
+-- TOC entry 6240 (class 0 OID 0)
 -- Dependencies: 272
 -- Name: TABLE shipment; Type: ACL; Schema: warranty; Owner: postgres
 --
@@ -7836,7 +7910,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE warranty.shipment TO app_user;
 
 
 --
--- TOC entry 6217 (class 0 OID 0)
+-- TOC entry 6241 (class 0 OID 0)
 -- Dependencies: 278
 -- Name: TABLE shipment_item; Type: ACL; Schema: warranty; Owner: postgres
 --
@@ -7845,7 +7919,7 @@ GRANT SELECT,INSERT,UPDATE ON TABLE warranty.shipment_item TO app_user;
 
 
 --
--- TOC entry 2409 (class 826 OID 26239)
+-- TOC entry 2414 (class 826 OID 26239)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: billing; Owner: postgres
 --
 
@@ -7853,7 +7927,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA billing GRANT SELECT,INSERT
 
 
 --
--- TOC entry 2413 (class 826 OID 26243)
+-- TOC entry 2415 (class 826 OID 26243)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: crm; Owner: postgres
 --
 
@@ -7861,7 +7935,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA crm GRANT SELECT,INSERT,UPD
 
 
 --
--- TOC entry 2415 (class 826 OID 26245)
+-- TOC entry 2416 (class 826 OID 26245)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: finance; Owner: postgres
 --
 
@@ -7869,7 +7943,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA finance GRANT SELECT,INSERT
 
 
 --
--- TOC entry 2414 (class 826 OID 26244)
+-- TOC entry 2417 (class 826 OID 26244)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: hr; Owner: postgres
 --
 
@@ -7877,7 +7951,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA hr GRANT SELECT,INSERT,UPDA
 
 
 --
--- TOC entry 2412 (class 826 OID 26242)
+-- TOC entry 2418 (class 826 OID 26242)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: insurance; Owner: postgres
 --
 
@@ -7885,7 +7959,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA insurance GRANT SELECT,INSE
 
 
 --
--- TOC entry 2406 (class 826 OID 26236)
+-- TOC entry 2419 (class 826 OID 26236)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: inventory; Owner: postgres
 --
 
@@ -7893,7 +7967,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA inventory GRANT SELECT,INSE
 
 
 --
--- TOC entry 2405 (class 826 OID 26235)
+-- TOC entry 2420 (class 826 OID 26235)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: master; Owner: postgres
 --
 
@@ -7901,7 +7975,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA master GRANT SELECT,INSERT,
 
 
 --
--- TOC entry 2416 (class 826 OID 26246)
+-- TOC entry 2421 (class 826 OID 26246)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: oem; Owner: postgres
 --
 
@@ -7909,7 +7983,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA oem GRANT SELECT,INSERT,UPD
 
 
 --
--- TOC entry 2407 (class 826 OID 26237)
+-- TOC entry 2422 (class 826 OID 26237)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: procurement; Owner: postgres
 --
 
@@ -7917,7 +7991,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA procurement GRANT SELECT,IN
 
 
 --
--- TOC entry 2408 (class 826 OID 26238)
+-- TOC entry 2423 (class 826 OID 26238)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: sales; Owner: postgres
 --
 
@@ -7925,7 +7999,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA sales GRANT SELECT,INSERT,U
 
 
 --
--- TOC entry 2410 (class 826 OID 26240)
+-- TOC entry 2424 (class 826 OID 26240)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: service; Owner: postgres
 --
 
@@ -7933,18 +8007,18 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA service GRANT SELECT,INSERT
 
 
 --
--- TOC entry 2411 (class 826 OID 26241)
+-- TOC entry 2425 (class 826 OID 26241)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: warranty; Owner: postgres
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA warranty GRANT SELECT,INSERT,UPDATE ON TABLES TO app_user;
 
 
--- Completed on 2026-02-10 16:09:26
+-- Completed on 2026-02-14 13:45:44
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict JU5WId1i3N7kmGH96aB36Tl6QzPLz2kp3fQAtEfGBrtOEVooSMzEgbXpztPfjFU
+\unrestrict Ab1ecRPM3nQ0mh8dRyY7189USlEdmh1qCYsbdUwgE1mZT507Y60mRYq4hlMBl3D
 

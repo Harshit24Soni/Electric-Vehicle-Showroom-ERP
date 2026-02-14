@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { X, ArrowLeft, ShieldCheck } from 'lucide-react'
+import { X, ArrowLeft, ShieldCheck, UserCog, Key } from 'lucide-react'
 import { authApi } from '../api/authApi'
 
 interface ForgotPinModalProps {
     onClose: () => void
 }
 
-type Mode = 'identifier' | 'totp-reset'
+type Mode = 'select' | 'staff-request' | 'totp-reset'
 
 const resetSchema = z.object({
     totp_code: z.string().length(6, 'Code must be 6 digits'),
@@ -23,7 +23,7 @@ const resetSchema = z.object({
 type ResetForm = z.infer<typeof resetSchema>
 
 export default function ForgotPinModal({ onClose }: ForgotPinModalProps) {
-    const [mode, setMode] = useState<Mode>('identifier')
+    const [mode, setMode] = useState<Mode>('select')
     const [loading, setLoading] = useState(false)
     const [identifier, setIdentifier] = useState('')
     const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
@@ -32,51 +32,42 @@ export default function ForgotPinModal({ onClose }: ForgotPinModalProps) {
         resolver: zodResolver(resetSchema)
     })
 
-    const handleIdentifierSubmit = async (e: React.FormEvent) => {
+    // Staff submits a PIN reset request to admin
+    const handleStaffRequest = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!identifier.trim()) return
 
         setLoading(true)
         setMessage(null)
         try {
-            const res = await authApi.forgotPin(identifier)
-
-            switch (res.action) {
-                case 'TOTP_REQUIRED':
-                    setMode('totp-reset')
-                    setMessage({ type: 'info', text: res.message })
-                    break
-                case 'CONTACT_ADMIN':
-                    setMessage({ type: 'error', text: res.message })
-                    break
-                case 'CONTACT_DEALER':
-                    setMessage({ type: 'info', text: res.message })
-                    break
-                case 'NONE':
-                default:
-                    setMessage({ type: 'success', text: res.message })
-                    break
-            }
+            const res = await authApi.requestPinReset(identifier)
+            setMessage({ type: 'success', text: res.message })
         } catch (err: any) {
-            setMessage({ type: 'error', text: 'Failed to process request. Please try again.' })
+            setMessage({ type: 'error', text: err?.response?.data?.detail || 'Failed to submit request' })
         } finally {
             setLoading(false)
         }
     }
 
-    const onResetSubmit = async (data: ResetForm) => {
+    // Admin/Dealer resets own PIN with TOTP
+    const onTotpResetSubmit = async (data: ResetForm) => {
+        if (!identifier.trim()) {
+            setMessage({ type: 'error', text: 'Please enter your mobile number' })
+            return
+        }
         setLoading(true)
         setMessage(null)
         try {
-            await authApi.resetDealerPin({
-                identifier,
+            const res = await authApi.resetPinSelf({
+                mobile: identifier,
                 totp_code: data.totp_code,
-                new_pin: data.new_pin
+                new_pin: data.new_pin,
+                confirm_pin: data.confirm_pin,
             })
-            setMessage({ type: 'success', text: 'PIN reset successfully. You can login now.' })
+            setMessage({ type: 'success', text: res.message })
             setTimeout(onClose, 2000)
         } catch (err: any) {
-            setMessage({ type: 'error', text: err.response?.data?.detail || 'Reset failed' })
+            setMessage({ type: 'error', text: err?.response?.data?.detail || 'Reset failed' })
         } finally {
             setLoading(false)
         }
@@ -102,47 +93,108 @@ export default function ForgotPinModal({ onClose }: ForgotPinModalProps) {
                     </div>
                 )}
 
-                {mode === 'identifier' && (
-                    <form onSubmit={handleIdentifierSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email or Mobile Number
-                            </label>
-                            <input
-                                className="input w-full"
-                                value={identifier}
-                                onChange={(e) => setIdentifier(e.target.value)}
-                                placeholder="Enter your registered contact"
-                                required
-                                autoFocus
-                            />
-                        </div>
+                {/* Step 1: Choose reset method */}
+                {mode === 'select' && (
+                    <div className="space-y-3">
                         <button
-                            type="submit"
-                            disabled={loading || !identifier.trim()}
-                            className="btn btn-primary w-full py-2.5"
+                            onClick={() => { setMode('totp-reset'); setMessage(null) }}
+                            className="w-full flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 transition text-left"
                         >
-                            {loading ? 'Checking...' : 'Continue'}
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                                <ShieldCheck className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-medium text-gray-900">I have Authenticator Access</h3>
+                                <p className="text-xs text-gray-500">Reset using your TOTP authenticator app</p>
+                            </div>
                         </button>
-                    </form>
+
+                        <button
+                            onClick={() => { setMode('staff-request'); setMessage(null) }}
+                            className="w-full flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 transition text-left"
+                        >
+                            <div className="p-2 bg-orange-100 rounded-lg">
+                                <UserCog className="w-6 h-6 text-orange-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-medium text-gray-900">Request Reset from Admin</h3>
+                                <p className="text-xs text-gray-500">Staff: Submit reset request for admin approval</p>
+                            </div>
+                        </button>
+                    </div>
                 )}
 
-                {mode === 'totp-reset' && (
+                {/* Staff request flow */}
+                {mode === 'staff-request' && (
                     <div>
                         <button
-                            onClick={() => setMode('identifier')}
+                            onClick={() => { setMode('select'); setMessage(null) }}
                             className="text-sm text-gray-500 flex items-center mb-6 hover:text-gray-900 transition-colors"
                         >
                             <ArrowLeft className="w-4 h-4 mr-1" /> Back
                         </button>
 
-                        <form onSubmit={handleSubmit(onResetSubmit)} className="space-y-5">
+                        <div className="bg-orange-50 p-4 rounded-lg flex items-center gap-3 mb-6">
+                            <UserCog className="w-8 h-8 text-orange-600" />
+                            <div>
+                                <h3 className="font-medium text-gray-900">Request Admin Reset</h3>
+                                <p className="text-xs text-gray-500">An admin will generate a temporary PIN for you</p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleStaffRequest} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Mobile Number
+                                </label>
+                                <input
+                                    className="input w-full"
+                                    value={identifier}
+                                    onChange={(e) => setIdentifier(e.target.value)}
+                                    placeholder="Enter your registered mobile number"
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={loading || !identifier.trim()}
+                                className="btn btn-primary w-full py-2.5"
+                            >
+                                {loading ? 'Submitting...' : 'Submit Reset Request'}
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                {/* TOTP reset flow (Admin/Dealer) */}
+                {mode === 'totp-reset' && (
+                    <div>
+                        <button
+                            onClick={() => { setMode('select'); setMessage(null) }}
+                            className="text-sm text-gray-500 flex items-center mb-6 hover:text-gray-900 transition-colors"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-1" /> Back
+                        </button>
+
+                        <form onSubmit={handleSubmit(onTotpResetSubmit)} className="space-y-5">
                             <div className="bg-gray-50 p-4 rounded-lg flex items-center gap-3 mb-6">
                                 <ShieldCheck className="w-8 h-8 text-primary-600" />
                                 <div>
-                                    <h3 className="font-medium text-gray-900">Authenticator Check</h3>
-                                    <p className="text-xs text-gray-500">Enter the 6-digit code from your app</p>
+                                    <h3 className="font-medium text-gray-900">Authenticator Reset</h3>
+                                    <p className="text-xs text-gray-500">Enter your mobile and TOTP code</p>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                                <input
+                                    className="input w-full"
+                                    value={identifier}
+                                    onChange={(e) => setIdentifier(e.target.value)}
+                                    placeholder="Enter your registered mobile"
+                                    required
+                                />
                             </div>
 
                             <div>

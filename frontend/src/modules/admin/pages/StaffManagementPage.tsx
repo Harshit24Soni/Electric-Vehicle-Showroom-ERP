@@ -2,8 +2,9 @@ import { useAuthStore } from '../../../store/authStore'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { Plus, Search, Trash2, RefreshCcw, X } from 'lucide-react'
+import { Plus, Search, Trash2, RefreshCcw, X, RotateCcw } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import TempPinModal from '../components/TempPinModal'
 
 interface Staff {
   staff_id: number
@@ -63,7 +64,11 @@ export default function StaffManagementPage() {
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState<CreateStaffForm>({ ...INITIAL_FORM })
   const [createError, setCreateError] = useState('')
-  const [createdPin, setCreatedPin] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'ADMIN' | 'DEALER' | 'STAFF'>('all')
+  // Temp PIN modal state
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [tempPin, setTempPin] = useState('')
+  const [tempPinStaffName, setTempPinStaffName] = useState('')
   const queryClient = useQueryClient()
   const { hasRole, user } = useAuthStore()
 
@@ -74,11 +79,13 @@ export default function StaffManagementPage() {
     queryFn: () => api.get<Staff[]>(`/admin/staff?include_deleted=${showDeleted}`),
   })
 
-  const filteredStaff = staff.filter((s) =>
-    s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.mobile_no.includes(searchTerm) ||
-    s.designation.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredStaff = staff.filter((s) => {
+    const matchesSearch = s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.mobile_no.includes(searchTerm) ||
+      s.designation.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesRole = roleFilter === 'all' || s.designation === roleFilter
+    return matchesSearch && matchesRole
+  })
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/admin/staff/${id}`),
@@ -91,7 +98,14 @@ export default function StaffManagementPage() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateStaffForm) => api.post<Staff>('/admin/staff', data),
+    mutationFn: (data: CreateStaffForm) => api.post<any>('/admin/staff', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] })
+    },
+  })
+
+  const resetPinMutation = useMutation({
+    mutationFn: (staffId: number) => api.post<any>('/auth/reset-pin', { staff_id: staffId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff'] })
     },
@@ -109,10 +123,21 @@ export default function StaffManagementPage() {
     }
   }
 
+  const handleResetPin = async (staffId: number, staffName: string) => {
+    if (!confirm(`Reset PIN for ${staffName}? This will generate a temporary PIN that must be changed on next login.`)) return
+    try {
+      const result = await resetPinMutation.mutateAsync(staffId)
+      setTempPin(result.temporary_pin)
+      setTempPinStaffName(staffName)
+      setShowPinModal(true)
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to reset PIN')
+    }
+  }
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setCreateError('')
-    setCreatedPin('')
 
     if (!form.full_name || !form.mobile_no || !form.email || !form.aadhaar_no) {
       setCreateError('Full Name, Mobile, Email, and Aadhaar are required.')
@@ -120,13 +145,15 @@ export default function StaffManagementPage() {
     }
 
     try {
-      await createMutation.mutateAsync(form)
-      setCreatedPin('Staff created! A temporary PIN has been generated (check server logs).')
+      const result = await createMutation.mutateAsync(form)
+      setShowModal(false)
       setForm({ ...INITIAL_FORM })
-      setTimeout(() => {
-        setShowModal(false)
-        setCreatedPin('')
-      }, 3000)
+      // Show temp PIN modal
+      if (result.temp_pin) {
+        setTempPin(result.temp_pin)
+        setTempPinStaffName(result.full_name || form.full_name)
+        setShowPinModal(true)
+      }
     } catch (err: any) {
       setCreateError(err?.response?.data?.detail || err?.message || 'Failed to create staff')
     }
@@ -138,7 +165,6 @@ export default function StaffManagementPage() {
       setForm(prev => ({ ...prev, designation: 'STAFF' }))
     }
     setCreateError('')
-    setCreatedPin('')
     setShowModal(true)
   }
 
@@ -170,8 +196,18 @@ export default function StaffManagementPage() {
       </div>
 
       <div className="card">
-        <div className="mb-4">
-          <div className="relative">
+        <div className="mb-4 flex gap-3">
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as any)}
+            className="input w-auto"
+          >
+            <option value="all">All Roles</option>
+            <option value="ADMIN">Admin</option>
+            <option value="DEALER">Dealer</option>
+            <option value="STAFF">Staff</option>
+          </select>
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -244,13 +280,22 @@ export default function StaffManagementPage() {
                             <RefreshCcw className="w-4 h-4" />
                           </button>
                         ) : (
-                          <button
-                            onClick={() => handleDelete(s.staff_id)}
-                            className="text-red-600 hover:text-red-800"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleResetPin(s.staff_id, s.full_name)}
+                              className="text-orange-600 hover:text-orange-800"
+                              title="Reset PIN"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(s.staff_id)}
+                              className="text-red-600 hover:text-red-800"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -277,11 +322,6 @@ export default function StaffManagementPage() {
               {createError && (
                 <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
                   {createError}
-                </div>
-              )}
-              {createdPin && (
-                <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm">
-                  {createdPin}
                 </div>
               )}
 
@@ -424,6 +464,19 @@ export default function StaffManagementPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Temp PIN Modal */}
+      {showPinModal && tempPin && (
+        <TempPinModal
+          pin={tempPin}
+          staffName={tempPinStaffName}
+          onClose={() => {
+            setShowPinModal(false)
+            setTempPin('')
+            setTempPinStaffName('')
+          }}
+        />
       )}
     </div>
   )

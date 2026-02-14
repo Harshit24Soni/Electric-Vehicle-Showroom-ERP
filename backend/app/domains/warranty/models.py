@@ -20,7 +20,7 @@ class Claim(Base):
     __table_args__ = (Index("idx_warranty_claim_status", "claim_status"), {"schema": "warranty"})
 
     claim_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    job_spare_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("service.job_spare.job_spare_id", ondelete="CASCADE"), nullable=False)
+    job_spare_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("service.spare_consumption.consumption_id", ondelete="CASCADE"), nullable=False)
     claim_status: Mapped[str] = mapped_column(String(30), nullable=False)
     portal_ref_no: Mapped[str | None] = mapped_column(String(100))
     approval_date: Mapped[Date | None] = mapped_column(Date)
