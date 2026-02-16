@@ -46,8 +46,35 @@ async def create_staff(
         (Staff.mobile_no == data.mobile_no) | (Staff.email == data.email)
     )
     result = await db.execute(stmt)
-    if result.scalars().first():
-        raise HTTPException(status_code=400, detail="Mobile number or Email already exists")
+    existing_staff = result.scalars().first()
+    
+    if existing_staff:
+        if existing_staff.is_deleted:
+            # reinstate
+            existing_staff.deleted_at = None
+            existing_staff.is_deleted = False
+            existing_staff.deleted_by = None
+            existing_staff.is_active = True
+            await db.flush()
+            await db.commit()
+            
+            # Return existing staff data + temp PIN
+            # We should probably reset PIN too since "new" staff might need it?
+            # Or just return existing. Let's reset PIN to be safe/helpful.
+            pin = str(random.randint(100000, 999999))
+            pin_hash = hash_pin(pin)
+            existing_staff.pin_hash = pin_hash
+            existing_staff.is_pin_reset_required = True
+            await db.commit()
+            
+            staff_data = StaffResponse.model_validate(existing_staff, from_attributes=True)
+            return {
+                **staff_data.model_dump(),
+                "temp_pin": pin,
+                "message": "Staff account reinstated successfully"
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Mobile number or Email already exists")
 
     # Generate PIN
     pin = str(random.randint(100000, 999999))
@@ -110,7 +137,7 @@ async def list_staff(
     stmt = select(Staff).order_by(Staff.staff_id)
     
     if not include_deleted:
-        stmt = stmt.filter(Staff.deleted_at.is_(None))
+        stmt = stmt.filter(Staff.is_deleted == False)
     
     if current_staff["designation"] == "DEALER":
         stmt = stmt.filter(Staff.dealer_id == current_staff["staff_id"])
@@ -239,6 +266,8 @@ async def delete_staff(
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
 
     staff.deleted_at = datetime.utcnow()
+    staff.is_deleted = True
+    staff.deleted_by = current_staff["staff_id"]
     staff.is_active = False
     await db.flush()
     await db.commit()
@@ -274,7 +303,7 @@ async def restore_staff(
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
         
-    if staff.deleted_at is None:
+    if not staff.is_deleted:
         raise HTTPException(status_code=400, detail="Staff is not deleted")
 
     # Permission Check (Same as delete)
@@ -285,6 +314,9 @@ async def restore_staff(
              raise HTTPException(status_code=403, detail="Access denied")
 
     staff.deleted_at = None # Restore
+    staff.is_deleted = False
+    staff.deleted_by = None
+    staff.is_active = True
     await db.flush()
     await db.commit()
     

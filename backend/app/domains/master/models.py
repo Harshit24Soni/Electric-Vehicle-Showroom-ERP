@@ -1,5 +1,6 @@
 from sqlalchemy import (
 	BigInteger,
+	Integer,
 	String,
 	Text,
 	Date,
@@ -15,9 +16,9 @@ from datetime import datetime, date
 from app.db.base import Base
 
 
-from app.db.mixins import SoftDeleteMixin
+from app.db.mixins import SoftDeleteMixin, AuditMixin
 
-class Customer(Base, SoftDeleteMixin):
+class Customer(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "customer"
 	__table_args__ = (
 		Index("idx_customer_created", "created_at"),
@@ -39,11 +40,11 @@ class Customer(Base, SoftDeleteMixin):
 	aadhaar_no: Mapped[str | None] = mapped_column(String(12), unique=True)
 	pan_no: Mapped[str | None] = mapped_column(String(10), unique=True)
 	gstin: Mapped[str | None] = mapped_column(String(15), unique=True)
-	created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
 	is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-class Nominee(Base, SoftDeleteMixin):
+class Nominee(Base, SoftDeleteMixin, AuditMixin):
 	"""Insurance nominee details for a customer"""
 	__tablename__ = "nominee"
 	__table_args__ = (
@@ -57,11 +58,11 @@ class Nominee(Base, SoftDeleteMixin):
 	nominee_dob: Mapped[Date] = mapped_column(Date, nullable=False)
 	relation: Mapped[str] = mapped_column(String(100), nullable=False)
 	is_primary: Mapped[bool] = mapped_column(Boolean, default=True)
-	created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
 	is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-class Staff(Base, SoftDeleteMixin):
+class Staff(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "staff"
 	__table_args__ = (
 		Index("idx_staff_active_lock", "staff_id", "is_active", "locked_until"),
@@ -81,10 +82,14 @@ class Staff(Base, SoftDeleteMixin):
 	is_pin_reset_required: Mapped[bool] = mapped_column(Boolean, default=False)
 	last_pin_changed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
 	totp_secret: Mapped[str | None] = mapped_column(String(100))  # For Dealer 2FA
-	created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
 
 	# Hierarchy
 	dealer_id: Mapped[int | None] = mapped_column(BigInteger)
+
+	# Soft delete
+	is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+	deleted_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=True)
 
 	# Personal details
 	joined_date: Mapped[date | None] = mapped_column(Date)
@@ -113,15 +118,17 @@ class Staff(Base, SoftDeleteMixin):
 		return bool(self.totp_secret)
 
 
-class Brand(Base, SoftDeleteMixin):
+class Brand(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "brand"
 	__table_args__ = ({"schema": "master"},)
 
-	brand_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+	brand_id: Mapped[int] = mapped_column(Integer, primary_key=True)
 	brand_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+	is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
 
-class VehicleModel(Base, SoftDeleteMixin):
+
+class VehicleModel(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "vehicle_model"
 	__table_args__ = (Index("idx_vehicle_model_material", "created_at"), {"schema": "master"})
 
@@ -129,19 +136,16 @@ class VehicleModel(Base, SoftDeleteMixin):
 	brand_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.brand.brand_id"), nullable=False)
 	model_name: Mapped[str] = mapped_column(String(100), nullable=False)
 	material_number: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
-	colour: Mapped[str | None] = mapped_column(String(50))
+	colour: Mapped[str] = mapped_column(String(50), nullable=False)
 	battery_type: Mapped[str | None] = mapped_column(String(50))
 	laden_weight: Mapped[float | None] = mapped_column(nullable=True)
 	unladen_weight: Mapped[float | None] = mapped_column(nullable=True)
 	hsn_code: Mapped[str | None] = mapped_column(String(20))
 	is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-	created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
-
-	# Relationships
-	brand = relationship("Brand")
 
 
-class Vehicle(Base, SoftDeleteMixin):
+
+class Vehicle(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "vehicle"
 	__table_args__ = ({"schema": "master"},)
 
@@ -154,10 +158,10 @@ class Vehicle(Base, SoftDeleteMixin):
 	battery_serial_no: Mapped[str | None] = mapped_column(String(100))
 	date_of_manufacture: Mapped[Date | None] = mapped_column(Date)
 	current_status: Mapped[str] = mapped_column(String(30), nullable=False, default="IN_STOCK")
-	created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
 
-class Vendor(Base, SoftDeleteMixin):
+
+class Vendor(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "vendor"
 	__table_args__ = ({"schema": "master"},)
 
@@ -172,7 +176,104 @@ class Vendor(Base, SoftDeleteMixin):
 	state: Mapped[str | None] = mapped_column(String(100))
 	pincode: Mapped[str | None] = mapped_column(String(10))
 	is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-	created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
+
+
+# ==================== SETUP MODULE TABLES ====================
+
+
+class PaymentMode(Base, AuditMixin):
+	__tablename__ = "payment_mode"
+	__table_args__ = (
+		Index("idx_payment_mode_active", "is_active"),
+		{"schema": "master"},
+	)
+
+	payment_mode_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+	mode_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+	description: Mapped[str | None] = mapped_column(Text)
+	is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+
+
+class ExpenseCategory(Base, AuditMixin):
+	__tablename__ = "expense_category"
+	__table_args__ = (
+		Index("idx_expense_category_active", "is_active"),
+		{"schema": "master"},
+	)
+
+	expense_category_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+	category_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+	description: Mapped[str | None] = mapped_column(Text)
+	is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+
+
+class JobCardCategory(Base, AuditMixin):
+	__tablename__ = "job_card_category"
+	__table_args__ = (
+		Index("idx_job_card_category_active", "is_active"),
+		{"schema": "master"},
+	)
+
+	job_card_category_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+	category_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+	description: Mapped[str | None] = mapped_column(Text)
+	is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+
+
+class InsuranceCompany(Base, AuditMixin):
+	__tablename__ = "insurance_company"
+	__table_args__ = (
+		Index("idx_insurance_company_active", "is_active"),
+		{"schema": "master"},
+	)
+
+	insurance_company_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+	company_name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+	contact_person: Mapped[str | None] = mapped_column(String(255))
+	contact_number: Mapped[str | None] = mapped_column(String(20))
+	email: Mapped[str | None] = mapped_column(String(255))
+	address: Mapped[str | None] = mapped_column(Text)
+	gstin: Mapped[str | None] = mapped_column(String(20))
+	is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+
+
+class Bank(Base, AuditMixin):
+	__tablename__ = "bank"
+	__table_args__ = (
+		Index("idx_bank_active", "is_active"),
+		{"schema": "master"},
+	)
+
+	bank_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+	bank_name: Mapped[str] = mapped_column(String(255), nullable=False)
+	branch: Mapped[str | None] = mapped_column(String(255))
+	ifsc_code: Mapped[str] = mapped_column(String(11), nullable=False)
+	address: Mapped[str | None] = mapped_column(Text)
+	contact_number: Mapped[str | None] = mapped_column(String(20))
+	is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+
+
+class DocumentType(Base, AuditMixin):
+	__tablename__ = "document_type"
+	__table_args__ = (
+		Index("idx_document_type_active", "is_active"),
+		{"schema": "master"},
+	)
+
+	document_type_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+	type_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+	description: Mapped[str | None] = mapped_column(Text)
+	applicable_to: Mapped[str | None] = mapped_column(String(20))  # customer, vendor, vehicle, sale, all
+	is_mandatory: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+	is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+
 
 class SparePriceHistory(Base):
     __tablename__ = "spare_price_history"
@@ -214,3 +315,4 @@ class PinResetRequest(Base):
     requested_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
     processed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     processed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"))
+

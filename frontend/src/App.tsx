@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect } from 'react'
 import { useAuthStore, useAuthHydration } from './store/authStore'
 import { Layout } from './components/layout/Layout'
 import { ProtectedRoute } from './components/layout/ProtectedRoute'
@@ -31,9 +30,10 @@ import VehiclePurchasePage from './modules/procurement/pages/VehiclePurchasePage
 import TemporaryItemPage from './modules/procurement/pages/TemporaryItemPage'
 
 // Admin
-import StaffManagementPage from './modules/admin/pages/StaffManagementPage'
+
 import DealerManagementPage from './modules/admin/pages/DealerManagementPage'
 import StaffProfilePage from './modules/staff/pages/StaffProfilePage'
+import SetupPage from './modules/setup/pages/SetupPage'
 
 // Print Views
 import PrintInvoicePage from './modules/sales/pages/print/PrintInvoicePage'
@@ -43,16 +43,6 @@ import PrintSchedulePage from './modules/sales/pages/print/PrintSchedulePage'
 function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const hydrated = useAuthHydration()
-
-  const { token, login } = useAuthStore()
-
-  // FORCE RE-EVALUATION OF TOKEN ON MOUNT
-  useEffect(() => {
-    const currentToken = useAuthStore.getState().token
-    if (currentToken) {
-      useAuthStore.getState().login(currentToken)
-    }
-  }, [])
 
   // Wait for auth state to hydrate from localStorage before rendering routes
   if (!hydrated) {
@@ -129,12 +119,13 @@ function App() {
 
           {/* Admin & Profile */}
           <Route path="admin/dealers" element={<Navigate to="/admin/staff" replace />} />
-          <Route path="admin/staff" element={
+
+          <Route path="staff/profile" element={<StaffProfilePage />} />
+          <Route path="setup" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'DEALER']}>
-              <StaffManagementPage />
+              <SetupPage />
             </ProtectedRoute>
           } />
-          <Route path="staff/profile" element={<StaffProfilePage />} />
         </Route>
 
         {/* Print Views - Outside Layout */}

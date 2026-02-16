@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useAuthStore, UserRole } from '@/store/authStore'
+import { useAuthStore } from '@/store/authStore'
 import { useQueryClient } from '@tanstack/react-query'
 import { authApi } from '../api/authApi'
 import { Car } from 'lucide-react'
@@ -19,7 +19,7 @@ type LoginForm = z.infer<typeof loginSchema>
 export default function LoginPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { setAuth } = useAuthStore()
+  const { login } = useAuthStore()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showForgotPin, setShowForgotPin] = useState(false)
@@ -59,29 +59,16 @@ export default function LoginPage() {
     try {
       const response = await authApi.login(data)
 
-      // Decode JWT to get user info
-      const tokenParts = response.access_token.split('.')
-      if (tokenParts.length === 3) {
-        const payload = JSON.parse(atob(tokenParts[1]))
-        const user = {
-          staff_id: payload.staff_id || payload.sub || 0,
-          name: payload.name || payload.full_name || '',
-          designation: payload.designation || '',
-          role: (payload.role || 'STAFF') as UserRole,
-          force_pin_change: response.force_pin_change || payload.force_pin_change || false,
-        }
-        setAuth(user, response.access_token)
+      // Use the store's login() which properly maps designation → role
+      login(response.access_token)
 
-        // Invalidate all cached queries so dashboard fetches fresh data
-        await queryClient.invalidateQueries()
+      // Invalidate all cached queries so dashboard fetches fresh data
+      await queryClient.invalidateQueries()
 
-        if (response.force_pin_change || payload.force_pin_change) {
-          navigate('/change-pin')
-        } else {
-          navigate('/dashboard')
-        }
+      if (response.force_pin_change) {
+        navigate('/change-pin')
       } else {
-        throw new Error('Invalid token format')
+        navigate('/dashboard')
       }
     } catch (err: any) {
       console.error('Login error:', err)

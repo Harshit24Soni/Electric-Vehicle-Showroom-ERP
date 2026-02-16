@@ -108,6 +108,11 @@ class StaffResponse(BaseModel):
     emergency_contact_no: Optional[str]
 
     created_at: datetime
+    updated_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
+    is_deleted: bool = False
+    deleted_by: Optional[int] = None
+
     totp_enabled: bool
 
     class Config:

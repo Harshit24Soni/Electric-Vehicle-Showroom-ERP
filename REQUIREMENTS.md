@@ -31,25 +31,41 @@
 
 ---
 
-## 2. Recommended Changes & Roadmap
-> **Source**: Originally from `RECOMMENDED_CHANGES.md` (Feb 5, 2026).
-> **Status Update**: As of Feb 2026, Backend Phase 1 is complete.
+## 2. Current Feature Status (Updated Feb 2026)
 
-### 1. BACKEND API IMPLEMENTATION (CRITICAL) 🔴
-**Status: ✅ COMPLETED**
+### ✅ Completed Features
 
-#### 1.1 CRM Lead Endpoints
-**File:** `backend/app/domains/crm/routes.py`
-- [x] Endpoints to Implement: `POST /crm/leads`, `GET /crm/leads` (list & single), `PUT /crm/leads`, `DELETE /crm/leads`, `POST /crm/leads/{id}/convert`, `GET /crm/leads/{id}/activities`.
-- [x] Business Logic: Lead creation independent of customer_id, status management, activity tracking.
+#### 1. Setup & Master Data
+- **Setup Module**: Centralized configuration for Banks, Brands, Payment Modes, etc.
+- **Soft Delete**: Implemented for Staff and all Setup tables. No data loss.
+- **Audit Trails**: `created_by`, `updated_by`, `created_at`, `updated_at` on all core tables.
+- **Serial Numbers**: UI updated to show sequential S.No. instead of Database IDs.
 
-#### 1.2 Enquiry Endpoints
-**File:** `backend/app/domains/crm/routes.py`
-- [x] Endpoints: `POST /crm/enquiries`, `GET /crm/enquiries` (list & active stats), `GET/PUT` single enquiry.
-- [x] Features: Track active enquiries, latest followup, sync with lead status.
+#### 2. Authentication & Admin
+- **Role-Based Access**: Admin, Dealer, Staff roles functioning.
+- **PIN Reset**: Backend support for PIN reset requests.
+- **Staff Management**: Create, Edit, Soft Delete, Restore, List.
 
-#### 1.3 Lead-to-Customer Conversion
-- [x] Logic: Fetch lead -> Create customer (ref lead_id) -> Copy data (optional) -> Update lead status -> Return customer details.
+#### 3. Backend Foundations
+- **CRM Backend**: Leads, Enquiries endpoints implemented.
+- **Middleware**: Rate limiting, CORS, Auth.
+- **Database**: Alembic migrations fully set up.
+
+---
+
+## 3. High Priority Roadmap (Pending)
+
+### 1. FRONTEND UPDATES (CRITICAL) 🔴
+**Status: ⏳ PENDING**
+#### 1.1 Login Page
+- [ ] Remove "Staff ID". Use Mobile/Email + PIN.
+- [ ] Add "Forgot PIN" and "Dealer PIN Reset" (OTP) flows.
+
+#### 1.2 CRM Module Restructuring
+- [ ] **Leads Tab**: Create, List, Followups, Convert (Frontend).
+- [ ] **Enquiries Tab**: Active list, stats (Frontend).
+- [ ] **Customers Tab**: List (w/ vehicles/service status), Add (Direct or via Lead), Nominee Mgmt.
+- [ ] **FollowUps Tab**: Aggregated dashboard (Sales, Service, Insurance).
 
 ### 2. NOMINEE MANAGEMENT (HIGH PRIORITY) 🔴
 **Status: 🔄 IN PROGRESS**
@@ -58,53 +74,22 @@
 - [ ] Features: Multiple nominees, primary flag, relationship validation.
 - [ ] Customer Details API: Should include nominee list, vehicle count, last service/warranty dates.
 
-### 4. PIN RESET REQUEST TRACKING (MEDIUM PRIORITY) 🟡
-**Status: ✅ COMPLETED**
-- [x] Model: `PinResetRequest` (implied in Auth flow).
-- [x] Feature: Admin notification system for resets (via `forgot-pin` flow).
-
-### 5. FOLLOW-UP TRACKING ENHANCEMENT (MEDIUM PRIORITY) 🟡
-**Status: ✅ COMPLETED (Backend)**
-- [x] Dashboard: Unified view of Sales (Leads), Service (Due dates), and Warranty (Expiry) follow-ups.
-
-### 6. FRONTEND UPDATES (CRITICAL) 🔴
-**Status: ⏳ PENDING**
-#### 6.1 Login Page
-- [ ] Remove "Staff ID". Use Mobile/Email + PIN.
-- [ ] Add "Forgot PIN" and "Dealer PIN Reset" (OTP) flows.
-
-#### 6.2 CRM Module Restructuring
-- [ ] **Leads Tab**: Create, List, Followups, Convert.
-- [ ] **Enquiries Tab**: Active list, stats.
-- [ ] **Customers Tab**: List (w/ vehicles/service status), Add (Direct or via Lead), Nominee Mgmt.
-- [ ] **FollowUps Tab**: Aggregated dashboard.
-
-### 7. CUSTOMER DETAIL VIEW ENHANCEMENT (HIGH PRIORITY) 🔴
+### 3. CUSTOMER DETAIL VIEW ENHANCEMENT 🔴
 **Status: ⏳ PENDING**
 - [ ] **Display**: Personal Info, Nominees (Manage), Vehicles (Service/Warranty status), Activity Timeline.
 
-### 8. API CLIENT UPDATES 🔴
-**Status: ⏳ PENDING**
-- [ ] Extend `api.ts` for all new endpoints (Leads, Enquiries, Nominees, Auth/OTP).
-
-### 9. STATE MANAGEMENT 🟡
-**Status: ⏳ PENDING**
-- [ ] Update Zustand stores (`authStore`, `leads`, `enquiries`, etc.).
-
-### 10. VALIDATION & ERROR HANDLING 🔴
-**Status: ✅ COMPLETED (Backend) / ⏳ PENDING (Frontend)**
-- [x] Strict validation for Mobile, Email, DOB (Pydantic models).
+### 4. VALIDATION & ERROR HANDLING 🟡
+**Status: ⏳ PENDING (Frontend)**
 - [ ] User-friendly error messages (Frontend).
+- [ ] Comprehensive form validation.
 
-### 11. DATABASE MIGRATION STRATEGY 🔴
-**Status: ✅ COMPLETED**
-- [x] SQL scripts/Alembic for: Lead fields, Enquiry table, Nominee table, Customer lead_ref, Pin Reset table.
+### 5. STATE MANAGEMENT 🟡
+**Status: ⏳ PENDING**
+- [ ] Update Zustand stores (`leads`, `enquiries`) to match backend changes.
 
-### 12. TESTING CHECKLIST 🔴
+---
+
+## 4. Testing & Verification
 **Status: 🔄 IN PROGRESS**
-- [x] Unit/Integration tests for all new flows (Login, Lead->Customer, Nominees - Backend verified).
-
-### 13. PROJECT MILESTONES
-- [x] **Phase 1 (Critical)**: Backend Schema/APIs, Login Page (Backend), OTP.
-- [ ] **Phase 2 (High)**: CRM Restructuring, Conversion UI, Nominees.
-- [ ] **Phase 3 (Medium)**: Follow-up Dashboard, Admin Notifications.
+- [x] Backend Regression Tests (Setup, Staff, Auth).
+- [ ] Frontend E2E Tests for CRM flows.

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Car, Search, Package } from 'lucide-react'
+import { SkeletonTable } from '@/components/ui/SkeletonTable'
 
 interface Vehicle {
   vehicle_id: number
@@ -143,9 +144,7 @@ export default function InventoryPage() {
       {/* Vehicle List */}
       <div className="card">
         {isLoading ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Loading inventory...</p>
-          </div>
+          <SkeletonTable rows={5} />
         ) : filteredVehicles.length === 0 ? (
           <div className="text-center py-8">
             <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />

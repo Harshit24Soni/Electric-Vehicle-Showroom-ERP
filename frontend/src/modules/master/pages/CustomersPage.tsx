@@ -5,6 +5,7 @@ import { Plus, Search, Edit, Eye } from 'lucide-react'
 import { formatDate } from '../../../lib/utils'
 import CustomerForm from '../components/CustomerForm'
 import CustomerDetailModal from '../components/CustomerDetailModal'
+import { SkeletonTable } from '@/components/ui/SkeletonTable'
 
 export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -66,9 +67,7 @@ export default function CustomersPage() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Loading customers...</p>
-          </div>
+          <SkeletonTable rows={5} />
         ) : filteredCustomers.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500">No customers found</p>

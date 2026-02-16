@@ -108,18 +108,18 @@ class CustomerDetailedResponse(BaseModel):
 
 
 class VehicleModelCreate(BaseModel):
-    brand: str
+    brand_id: int
     model_name: str
     material_number: str
-    colour: Optional[str] = None
+    colour: str
     battery_type: Optional[str] = None
 
 
 class VehicleModelResponse(BaseModel):
     vehicle_model_id: int
-    brand: str
     model_name: str
     material_number: str
+    colour: str
     is_active: bool
     created_at: datetime
 

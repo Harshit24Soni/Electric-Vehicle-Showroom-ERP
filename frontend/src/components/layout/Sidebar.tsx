@@ -45,7 +45,8 @@ const menuItems: MenuItem[] = [
       { path: '/master/vendors', label: 'Vendors', roles: ['ADMIN', 'DEALER'] },
     ]
   },
-  { path: '/admin/staff', label: 'Staff Management', icon: Settings, roles: ['ADMIN', 'DEALER'] },
+
+  { path: '/setup', label: 'Setup', icon: Settings, roles: ['ADMIN', 'DEALER'] },
 ]
 
 export function Sidebar() {

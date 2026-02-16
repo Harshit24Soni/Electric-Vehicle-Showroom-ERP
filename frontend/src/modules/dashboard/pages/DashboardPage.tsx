@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import FollowupDashboard from '@/modules/crm/components/FollowupDashboard'
 import PinResetRequests from '@/modules/admin/components/PinResetRequests'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 interface DashboardStats {
   totalLeads: number
@@ -110,9 +111,9 @@ export default function DashboardPage() {
                   <Icon className={`w-6 h-6 ${stat.color}`} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {isLoading ? '...' : stat.value}
-                  </p>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {isLoading ? <Skeleton className="h-8 w-16" /> : stat.value}
+                  </div>
                   <p className="text-sm text-gray-500">{stat.title}</p>
                 </div>
               </div>

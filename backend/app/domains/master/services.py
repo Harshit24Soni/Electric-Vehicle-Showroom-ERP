@@ -269,7 +269,7 @@ async def delete_nominee(db: AsyncSession, nominee_id: int, customer_id: int) ->
 async def create_vehicle_model(db: AsyncSession, payload) -> models.VehicleModel:
     """Create a new vehicle model"""
     vm = models.VehicleModel(
-        brand=payload.brand,
+        brand_id=payload.brand_id,
         model_name=payload.model_name,
         material_number=payload.material_number,
         colour=payload.colour,

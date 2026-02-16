@@ -1,89 +1,115 @@
 # Electric Vehicle Showroom ERP
 
-![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
-![Python](https://img.shields.io/badge/Backend-FastAPI-009688)
-![Database](https://img.shields.io/badge/Database-PostgreSQL-336791)
-![Frontend](https://img.shields.io/badge/Frontend-React-61DAFB)
+![Status](https://img.shields.io/badge/Status-Active%20Development-brightgreen)
+![Backend](https://img.shields.io/badge/Backend-FastAPI-009688)
+![Frontend](https://img.shields.io/badge/Frontend-React_18-61DAFB)
+![Database](https://img.shields.io/badge/Database-PostgreSQL_15+-336791)
 
 ## ⚡ Overview
 
-The **Electric Vehicle Showroom ERP** is a comprehensive enterprise solution designed to manage the entire lifecycle of an EV dealership. From inventory and sales to service and warranty, this system integrates all business functions into a unified, high-performance platform.
+The **Electric Vehicle Showroom ERP** is a high-performance, enterprise-grade solution designed to streamline the operations of single or multi-brand EV dealerships. It unifies inventory, sales, customer relationship management (CRM), finance, and after-sales service into a single reactive platform.
 
-Built with **FastAPI** (Python) and **React**, it offers a modern, responsive experience with robust security and scalability.
+Built with a **FastAPI** (Python) backend and a **React 18** frontend, the system prioritizes speed, data integrity, and a premium user experience.
 
 ---
 
 ## 🌟 Key Features
 
-### 🏢 Master Data Management
-- Centralized management of **Customers**, **Vehicles**, **Staff**, and **Vendors**.
-- Role-based access control (RBAC) with PIN-based staff authentication.
+### 🏢 Unified Setup & Administration
+- **Centralized Master Data**: Manage Brands, Payment Modes, Banks, Insurance Companies, and Document Types from a single **Setup Module**.
+- **Role-Based Access Control (RBAC)**: secure hierarchy with **Admin**, **Dealer**, and **Staff** roles.
+- **Smart Staff Management**: "Soft Delete" architecture ensuring no staff data is ever permanently lost; includes "Active/Inactive" toggle and restore capabilities.
+- **Audit Trails**: Automatic tracking of `created_by` and `updated_by` for all core records.
 
-### 🚗 Sales & Showroom
-- Complete **Sales Workflow**: Inquiry → Lead → Allocation → Billing → Delivery.
-- Real-time stock availability checks.
-- automated generation of **Invoices**, **Delivery Challans**, and **Service Schedules**.
+### 🤝 CRM & Sales Pipeline
+- **Lead Management**: Track potential customers from Enquiry to Booking.
+- **Follow-up System**: Automated schedules for sales inquiries, service reminders, and insurance renewals.
+- **Digital Conversions**: Seamlessly convert Leads to Customers with data persistence.
+- **Nominee Management**: Capture insurance nominee details linked to customer profiles.
 
-### 📦 Inventory & Procurement
-- Real-time tracking of **Vehicles** and **Spare Parts**.
-- Automated audit trail for all stock movements (Inward, Outward, Consumption).
-- **Proactive Procurement**: Vendor management and purchase order tracking.
+### 🚗 Inventory & Procurement
+- **Vehicle Lifecycle**: Track Chassis numbers from Inward (Procurement) to Outward (Delivery).
+- **Multi-Brand Support**: dynamic handling of different OEM models and variants.
+- **Spare Parts**: Real-time stock tracking with auto-consumption logic during Service.
 
 ### 🛠️ Service & Warranty
-- **Job Cards**: Track vehicle service history, labor, and spare part consumption.
-- **Warranty Claims**: End-to-end claim processing with OEM (Inward/Shipment logic).
-- Smart integration: Consumed spares automatically deduct from inventory.
+- **Job Cards**: Digital job cards for vehicle servicing.
+- **Warranty Claims**: End-to-end claim processing integrated with OEM requirements.
 
 ### 💰 Finance & Billing
-- **GST-compliant Invoicing** with automatic tax calculations.
-- **Payment Tracking**: Multiple payment modes, loan/EMI tracking, and subsidy management.
-- Financial reporting and revenue analytics.
-
-### 🤝 CRM (Customer Relationship Management)
-- **Lead Tracking**: Source tracking, status pipelines, and automated follow-up schedules.
-- **Activity Logs**: Record calls, visits, and test rides.
-- **2FA Security**: Dealer-level actions protected by TOTP (Time-based One-Time Password).
+- **GST Invoicing**: Automated tax calculation and invoice generation.
+- **Payment Tracking**: Support for multiple payment modes, partial payments, and finance/EMI logs.
 
 ---
 
 ## 🏗️ Technical Architecture
 
-### Backend
+### Backend (`/backend`)
 - **Framework**: FastAPI (Async Python 3.10+)
-- **Database**: PostgreSQL 12+ (SQLAlchemy ORM + Alembic Migrations)
-- **Cash & Rate Limits**: Redis
-- **Security**: JWT Authentication, Argon2 Password Hashing, Role-Based Access Control
+- **Database**: PostgreSQL 15+
+- **ORM**: SQLAlchemy 2.0 (Async) + Alembic (Migrations)
+- **Caching**: Redis (Rate Limiting & caching)
+- **Security**:
+  - JWT Authentication (Access + Refresh tokens)
+  - Argon2 Password Hashing
+  - PIN-based login for Staff
+- **Architecture**: Domain-Driven Design (DDD) with clear separation of concerns (`routes`, `services`, `schemas`, `models`).
 
-### Frontend
-- **Framework**: React 18 + Vite
-- **Styling**: Tailwind CSS
-- **State Management**: Zustand / TanStack Query
+### Frontend (`/frontend`)
+- **Framework**: React 18 + Vite (TypeScript)
+- **State Management**: Zustand (Global Store) + TanStack Query v5 (Server State)
+- **UI System**: Tailwind CSS v3 + Lucide Icons + Shadcn/UI-inspired components.
+- **Forms**: React Hook Form + Zod Validation.
+- **Experience**: Skeletal loading states, Optimistic updates, Responsive design.
 
 ---
 
 ## 🚀 Getting Started
 
-### For Users
-This system is designed to be deployed on a cloud server or on-premise infrastructure. Access the web interface via your browser.
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- PostgreSQL 12+
+- Redis (Optional for dev, required for prod)
 
-### For Developers
-We welcome contributions! If you are a developer looking to set up the project locally, modify the code, or contribute features, please read our detailed **Developer Guide**:
+### Quick Setup
 
-👉 **[Read CONTRIBUTING.md](CONTRIBUTING.md)**
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/Harshit24Soni/Electric-Vehicle-Showroom-ERP.git
+   ```
 
-It covers:
-- Local Environment Setup (Python/Node.js)
-- Database Initialization
-- Running Development Servers
-- Project Structure & Code Guidelines
+2. **Backend Setup**
+   ```bash
+   cd backend
+   python -m venv venv
+   source venv/bin/activate  # or .\venv\Scripts\activate
+   pip install -r requirements.txt
+   # Configure .env (see CONTRIBUTING.md)
+   alembic upgrade head
+   uvicorn app.main:app --reload
+   ```
 
-### Product Roadmap
-Interested in the future of this project? Check out our **[Product Requirements & Roadmap](REQUIREMENTS.md)**.
+3. **Frontend Setup**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+For detailed setup instructions, coding standards, and contribution guidelines, please see:
+
+👉 **[CONTRIBUTING.md](CONTRIBUTING.md)**
 
 ---
 
-## 📄 License
-This project is proprietary software. All rights reserved.
+## 🛤️ Roadmap & Requirements
 
-## 📞 Support
-For support or feature requests, please contact the IT administration.
+For a detailed breakdown of current project status, implemented features, and future goals, please refer to:
+
+📄 **[REQUIREMENTS.md](REQUIREMENTS.md)**
+
+---
+
+## 🔒 License
+Proprietary Software. Internal Use Only.
