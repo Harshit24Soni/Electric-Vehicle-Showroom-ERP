@@ -16,6 +16,7 @@ import SalesPage from './modules/sales/pages/SalesPage'
 import SaleDetailPage from './modules/sales/pages/SaleDetailPage'
 import InventoryPage from './modules/inventory/pages/InventoryPage'
 import ServicePage from './modules/service/pages/ServicePage'
+import FollowupDashboardPage from './modules/followup/pages/FollowupDashboardPage'
 
 // Master Data
 import CustomersPage from './modules/master/pages/CustomersPage'
@@ -84,6 +85,7 @@ function App() {
 
           {/* Core Workflow */}
           <Route path="crm" element={<CrmPage />} />
+          <Route path="followups" element={<FollowupDashboardPage />} />
           <Route path="sales" element={<SalesPage />} />
           <Route path="sales/:saleId" element={<SaleDetailPage />} />
           <Route path="inventory" element={<InventoryPage />} />

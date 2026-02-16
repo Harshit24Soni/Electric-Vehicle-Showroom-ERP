@@ -17,6 +17,7 @@ from app.domains.crm.routes import router as crm_router
 from app.domains.insurance.routes import router as insurance_router
 from app.domains.warranty.routes import router as warranty_router
 from app.domains.procurement.routes import router as procurement_router
+from app.domains.followup.routes import router as followup_router
 from app.bootstrap import init_models
 from app.core.config import settings
 
@@ -68,3 +69,4 @@ app.include_router(crm_router)
 app.include_router(insurance_router)
 app.include_router(warranty_router)
 app.include_router(procurement_router)
+app.include_router(followup_router)

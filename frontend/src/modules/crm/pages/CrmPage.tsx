@@ -6,7 +6,7 @@ import { Plus, Search, Eye, ShoppingCart } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import LeadForm from '../components/LeadForm'
 import LeadConversionModal from '../components/LeadConversionModal'
-import FollowUpList from '../components/FollowUpList'
+import TestRideList from '../components/TestRideList'
 import { useCrmStore } from '@/store/crmStore'
 import { useMasterStore } from '@/store/masterStore'
 
@@ -16,7 +16,7 @@ export default function CrmPage() {
   const [showForm, setShowForm] = useState(false)
   const [convertingLead, setConvertingLead] = useState<any>(null)
   const [selectedLead, setSelectedLead] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState<'leads' | 'followups' | 'testrides'>('leads')
+  const [activeTab, setActiveTab] = useState<'leads' | 'testrides'>('leads')
 
   const { leads, fetchLeads, isLoading: leadsLoading } = useCrmStore()
   const {
@@ -70,7 +70,6 @@ export default function CrmPage() {
 
   const tabs = [
     { key: 'leads', label: 'Leads', count: leads.length },
-    { key: 'followups', label: 'Follow-ups', count: null },
     { key: 'testrides', label: 'Test Rides', count: null },
   ] as const
 
@@ -79,8 +78,8 @@ export default function CrmPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">CRM / Leads</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage leads, follow-ups, and test rides</p>
+          <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
+          <p className="text-gray-500 text-sm mt-1">Manage leads and test rides</p>
         </div>
 
         {/* Tabs */}
@@ -236,22 +235,10 @@ export default function CrmPage() {
         </>
       )}
 
-      {/* Follow-ups Tab */}
-      {activeTab === 'followups' && (
-        <div className="card">
-          <FollowUpList />
-        </div>
-      )}
-
       {/* Test Rides Tab */}
       {activeTab === 'testrides' && (
         <div className="card">
-          <div className="text-center py-8">
-            <p className="text-gray-500 mb-4">Test ride tracking</p>
-            <p className="text-sm text-gray-400">
-              Record test rides (optional) - no restrictions, multiple rides allowed
-            </p>
-          </div>
+          <TestRideList />
         </div>
       )}
     </div>

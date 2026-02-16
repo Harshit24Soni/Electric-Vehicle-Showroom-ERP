@@ -1,10 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 
 from app.domains.crm import models
+from app.domains.crm import schemas as crm_schemas
 
 
 class CRMError(Exception):
@@ -28,7 +29,13 @@ async def create_lead(db: AsyncSession, *, payload, current_staff_id: int) -> mo
         expected_purchase_date=payload.expected_purchase_date,
         remarks=payload.remarks,
         created_at=datetime.utcnow(),
+        # New workflow fields
+        expected_purchase_days=getattr(payload, 'expected_purchase_days', None),
+        lead_status=getattr(payload, 'lead_status', 'WARM'),
+        visit_date=datetime.utcnow(),
     )
+    # Auto-calculate next followup date
+    lead.calculate_next_followup()
     db.add(lead)
     await db.flush()
     # Reload with relationships for response
@@ -39,7 +46,7 @@ async def list_leads(db: AsyncSession, status_id: int = None, owner_id: int = No
     """List leads with optional filters"""
     stmt = select(models.Lead).options(
         selectinload(models.Lead.vehicle_model),
-        selectinload(models.Lead.lead_status)
+        selectinload(models.Lead.lead_status_ref)
     )
     
     if status_id:
@@ -57,9 +64,10 @@ async def get_lead(db: AsyncSession, lead_id: int) -> models.Lead | None:
     """Get a single lead by ID with relationships"""
     stmt = select(models.Lead).options(
         selectinload(models.Lead.vehicle_model),
-        selectinload(models.Lead.lead_status),
+        selectinload(models.Lead.lead_status_ref),
         selectinload(models.Lead.enquiries),
-        selectinload(models.Lead.test_rides)
+        selectinload(models.Lead.test_rides),
+        selectinload(models.Lead.lead_followups),
     ).filter(models.Lead.lead_id == lead_id)
     
     result = await db.execute(stmt)
@@ -89,6 +97,9 @@ async def update_lead(db: AsyncSession, lead_id: int, payload) -> models.Lead | 
         lead.expected_purchase_date = payload.expected_purchase_date
     if payload.remarks is not None:
         lead.remarks = payload.remarks
+    if getattr(payload, 'lead_status', None) is not None:
+        lead.lead_status = payload.lead_status
+        lead.calculate_next_followup()
     
     await db.flush()
     return lead
@@ -369,3 +380,118 @@ async def add_activity(db: AsyncSession, payload: dict, current_staff_id: int) -
     db.add(a)
     await db.flush()
     return a
+
+
+# ==================== NEW LEAD FOLLOWUP SERVICES ====================
+
+async def add_lead_followup(
+    db: AsyncSession,
+    lead_id: int,
+    payload: crm_schemas.LeadFollowupCreate,
+    current_staff_id: int,
+) -> models.LeadFollowup:
+    """Add a followup entry to a lead with mandatory 10-char remarks.
+    Also updates the lead's status and next followup date."""
+    lead = await get_lead(db, lead_id)
+    if not lead:
+        raise CRMError("Lead not found")
+
+    # Double-check remarks length (schema already validates, but belt & suspenders)
+    if len(payload.remarks.strip()) < 10:
+        raise CRMError("Remarks must be at least 10 characters")
+
+    followup = models.LeadFollowup(
+        lead_id=lead_id,
+        followup_date=datetime.utcnow(),
+        remarks=payload.remarks,
+        outcome_status=payload.outcome_status,
+        next_followup_date=payload.next_followup_date,
+        staff_id=current_staff_id,
+    )
+    db.add(followup)
+
+    # Update lead status and recalculate next followup
+    lead.lead_status = payload.outcome_status
+    if payload.next_followup_date:
+        lead.next_followup_date = payload.next_followup_date
+    else:
+        lead.calculate_next_followup()
+
+    await db.flush()
+    return followup
+
+
+async def get_lead_followups(db: AsyncSession, lead_id: int) -> list[models.LeadFollowup]:
+    """Get all followup entries for a lead"""
+    stmt = (
+        select(models.LeadFollowup)
+        .filter(models.LeadFollowup.lead_id == lead_id)
+        .order_by(desc(models.LeadFollowup.followup_date))
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+async def get_lead_followup_dashboard(
+    db: AsyncSession,
+    staff_id: int | None = None,
+) -> dict:
+    """Get lead followup dashboard categorized into overdue, today, upcoming."""
+    today = date.today()
+
+    base_stmt = select(models.Lead).filter(
+        models.Lead.is_converted != True,  # noqa: E712
+        models.Lead.deleted_at.is_(None),
+        models.Lead.next_followup_date.isnot(None),
+    )
+    if staff_id:
+        base_stmt = base_stmt.filter(models.Lead.owner_staff_id == staff_id)
+
+    # Overdue: next_followup_date < today
+    overdue_stmt = base_stmt.filter(models.Lead.next_followup_date < today).order_by(models.Lead.next_followup_date)
+    result = await db.execute(overdue_stmt)
+    overdue = result.scalars().all()
+
+    # Today: next_followup_date == today
+    today_stmt = base_stmt.filter(models.Lead.next_followup_date == today)
+    result = await db.execute(today_stmt)
+    today_leads = result.scalars().all()
+
+    # Upcoming: next_followup_date > today (next 7 days)
+    from datetime import timedelta
+    upcoming_stmt = base_stmt.filter(
+        models.Lead.next_followup_date > today,
+        models.Lead.next_followup_date <= today + timedelta(days=7),
+    ).order_by(models.Lead.next_followup_date)
+    result = await db.execute(upcoming_stmt)
+    upcoming = result.scalars().all()
+
+    return {
+        "overdue": overdue,
+        "today": today_leads,
+        "upcoming": upcoming,
+    }
+
+
+async def add_test_ride(
+    db: AsyncSession,
+    lead_id: int,
+    payload: crm_schemas.TestRideCreate,
+    current_staff_id: int,
+) -> models.TestRide:
+    """Add a test ride for a lead"""
+    lead = await get_lead(db, lead_id)
+    if not lead:
+        raise CRMError("Lead not found")
+
+    test_ride = models.TestRide(
+        lead_id=lead_id,
+        vehicle_model_id=payload.vehicle_model_id,
+        test_ride_date=payload.test_ride_date,
+        staff_id=current_staff_id,
+        customer_feedback=payload.customer_feedback,
+        created_at=datetime.utcnow(),
+    )
+    db.add(test_ride)
+    await db.flush()
+    return test_ride

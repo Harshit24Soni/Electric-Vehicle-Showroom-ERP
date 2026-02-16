@@ -251,3 +251,71 @@ async def add_activity(
     a = await services.add_activity(db, data, current_staff_id=_staff["staff_id"])
     return {"message": "Activity recorded", "activity_id": a.activity_id}
 
+
+# ==================== NEW LEAD FOLLOWUP ENDPOINTS ====================
+
+@router.post(
+    "/leads/{lead_id}/followups",
+    response_model=schemas.LeadFollowupResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_lead_followup(
+    lead_id: int,
+    data: schemas.LeadFollowupCreate,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """Add a followup to a lead (remarks minimum 10 characters)"""
+    try:
+        followup = await services.add_lead_followup(
+            db, lead_id, data, current_staff_id=_staff["staff_id"]
+        )
+        return followup
+    except services.CRMError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get(
+    "/leads/{lead_id}/followups",
+    response_model=list[schemas.LeadFollowupResponse],
+)
+async def get_lead_followups(
+    lead_id: int,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """Get all followup entries for a lead"""
+    return await services.get_lead_followups(db, lead_id)
+
+
+@router.get(
+    "/leads/dashboard/followups",
+    response_model=schemas.LeadFollowupDashboardResponse,
+)
+async def get_lead_followup_dashboard(
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+    staff_id: int = Query(None, description="Filter by staff ID (optional)"),
+):
+    """Get lead followup dashboard: overdue, today, upcoming"""
+    return await services.get_lead_followup_dashboard(db, staff_id=staff_id)
+
+
+@router.post(
+    "/leads/{lead_id}/test-rides",
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_test_ride(
+    lead_id: int,
+    data: schemas.TestRideCreate,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """Add a test ride for a lead"""
+    try:
+        ride = await services.add_test_ride(
+            db, lead_id, data, current_staff_id=_staff["staff_id"]
+        )
+        return {"message": "Test ride added", "test_ride_id": ride.test_ride_id}
+    except services.CRMError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

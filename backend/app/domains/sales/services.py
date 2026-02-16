@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 from app.domains.sales import models
+from app.domains.sales import schemas as sales_schemas
 from app.domains.master import models as master_models
 from app.domains.crm import models as crm_models
 
@@ -12,12 +13,17 @@ class SalesError(Exception):
     pass
 
 async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> models.Sale:
-    """Create a new sale"""
+    """Create a new sale — supports direct sales (no lead required)"""
     
-    # Verify Lead
-    lead = await db.get(crm_models.Lead, payload.lead_id)
-    if not lead:
-        raise SalesError("Lead not found")
+    is_direct = getattr(payload, 'is_direct_sale', False) or payload.lead_id is None
+
+    # Verify Lead (if not direct sale)
+    if not is_direct:
+        lead = await db.get(crm_models.Lead, payload.lead_id)
+        if not lead:
+            raise SalesError("Lead not found")
+    else:
+        lead = None
         
     # Verify Customer
     customer = await db.get(master_models.Customer, payload.customer_id)
@@ -29,15 +35,12 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
     if not vehicle:
         raise SalesError("Vehicle not found")
         
-    if vehicle.current_status != 'IN_STOCK': # Assuming default status is IN_STOCK
-        # Wait, I should check master/models.py for status default. 
-        # It was "IN_STOCK" in master/models.py view earlier.
-        # But create_sale logic used 'AVAILABLE'. I should fix to 'IN_STOCK'.
+    if vehicle.current_status != 'IN_STOCK':
         raise SalesError(f"Vehicle is not available (Status: {vehicle.current_status})")
         
     # Create Sale
     sale = models.Sale(
-        lead_id=payload.lead_id,
+        lead_id=payload.lead_id if not is_direct else None,
         customer_id=payload.customer_id,
         chassis_no=payload.chassis_no,
         sale_date=payload.sale_date,
@@ -45,7 +48,11 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
         sale_status="PENDING",
         remarks=payload.remarks,
         created_by_staff_id=current_staff_id,
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
+        # New workflow fields
+        sale_stage=models.SaleStage.ENQUIRY.value,
+        stage_updated_at=datetime.utcnow(),
+        is_direct_sale=is_direct,
     )
     db.add(sale)
     
@@ -56,17 +63,35 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
     # Update Vehicle Status
     vehicle.current_status = 'BOOKED'
     
-    # Update Lead Status to CONVERTED/WON
-    # Check if a status named 'WON' or 'CONVERTED' exists
-    # For now, assume CONVERTED exists or use ID 5 (from convert_lead logic)
-    # Ideally fetch by name
-    stmt = select(crm_models.LeadStatusMaster).filter(crm_models.LeadStatusMaster.status_name.in_(['WON', 'CONVERTED']))
-    result = await db.execute(stmt)
-    status_obj = result.scalars().first()
-    if status_obj:
-        lead.lead_status_id = status_obj.status_id
+    # Update Lead Status to CONVERTED/WON (if not direct sale)
+    if lead:
+        stmt = select(crm_models.LeadStatusMaster).filter(crm_models.LeadStatusMaster.status_name.in_(['WON', 'CONVERTED']))
+        result = await db.execute(stmt)
+        status_obj = result.scalars().first()
+        if status_obj:
+            lead.lead_status_id = status_obj.status_id
+        lead.is_converted = True
+        lead.lead_status = "SOLD"
         
     await db.flush()
+
+    # Create initial portal tracking
+    portal = models.SalePortalTracking(
+        sale_id=sale.sale_id,
+    )
+    db.add(portal)
+
+    # Record initial stage history
+    history = models.SaleStageHistory(
+        sale_id=sale.sale_id,
+        from_stage=None,
+        to_stage=models.SaleStage.ENQUIRY.value,
+        changed_by_staff_id=current_staff_id,
+        remarks="Sale created",
+    )
+    db.add(history)
+    await db.flush()
+
     return sale
 
 async def get_sale(db: AsyncSession, sale_id: int) -> models.Sale | None:
@@ -76,7 +101,11 @@ async def get_sale(db: AsyncSession, sale_id: int) -> models.Sale | None:
         selectinload(models.Sale.vehicle),
         selectinload(models.Sale.receipts),
         selectinload(models.Sale.delivery_checklist),
-        selectinload(models.Sale.service_schedules)
+        selectinload(models.Sale.service_schedules),
+        selectinload(models.Sale.stage_history),
+        selectinload(models.Sale.sale_payments),
+        selectinload(models.Sale.sale_documents),
+        selectinload(models.Sale.portal_tracking),
     ).filter(models.Sale.sale_id == sale_id)
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -198,7 +227,6 @@ async def get_delivery_status(db: AsyncSession, sale_id: int) -> dict:
         "receipt": sale.is_receipt_generated,
         "challan": sale.is_challan_generated,
         "service_schedule": sale.is_service_schedule_generated,
-        # "insurance": sale.is_insurance_generated # Insurance is NOT blocking for delivery per plan
     }
     
     # Check strict delivery rules: Receipt, Invoice, Challan, Service Schedule
@@ -247,3 +275,206 @@ async def update_checklist(db: AsyncSession, sale_id: int, payload) -> models.De
         
     await db.flush()
     return checklist
+
+
+# ==================== NEW WORKFLOW SERVICES ====================
+
+async def advance_sale_stage(
+    db: AsyncSession,
+    sale_id: int,
+    payload: sales_schemas.StageAdvanceRequest,
+    current_staff_id: int,
+) -> models.Sale:
+    """Advance a sale to a new stage with audit trail"""
+    sale = await get_sale(db, sale_id)
+    if not sale:
+        raise SalesError("Sale not found")
+
+    from_stage = sale.sale_stage
+    advanced = sale.advance_stage(payload.to_stage)
+    if not advanced:
+        raise SalesError(
+            f"Cannot advance from {from_stage} to {payload.to_stage}. "
+            f"Stage must be strictly forward."
+        )
+
+    # Record history
+    history = models.SaleStageHistory(
+        sale_id=sale_id,
+        from_stage=from_stage,
+        to_stage=payload.to_stage,
+        changed_by_staff_id=current_staff_id,
+        remarks=payload.remarks,
+    )
+    db.add(history)
+
+    # Auto-update sale_status based on stage
+    stage_status_map = {
+        "INVOICE": "INVOICED",
+        "DELIVERY": "DELIVERED",
+        "COMPLETED": "DELIVERED",
+    }
+    if payload.to_stage in stage_status_map:
+        sale.sale_status = stage_status_map[payload.to_stage]
+
+    await db.flush()
+    return sale
+
+
+async def add_sale_payment(
+    db: AsyncSession,
+    sale_id: int,
+    payload: sales_schemas.SalePaymentCreate,
+    current_staff_id: int,
+) -> models.SalePayment:
+    """Add a payment to a sale"""
+    sale = await get_sale(db, sale_id)
+    if not sale:
+        raise SalesError("Sale not found")
+
+    payment = models.SalePayment(
+        sale_id=sale_id,
+        payment_type=payload.payment_type,
+        payment_mode=payload.payment_mode,
+        amount=float(payload.amount),
+        reference_number=payload.reference_number,
+        payment_date=payload.payment_date or datetime.utcnow(),
+        bank_name=payload.bank_name,
+        remarks=payload.remarks,
+        created_by_staff_id=current_staff_id,
+    )
+    db.add(payment)
+    await db.flush()
+    return payment
+
+
+async def generate_sale_document(
+    db: AsyncSession,
+    sale_id: int,
+    payload: sales_schemas.SaleDocumentCreate,
+    current_staff_id: int,
+) -> models.SaleDocument:
+    """Generate a document for a sale (with unique document number)"""
+    sale = await get_sale(db, sale_id)
+    if not sale:
+        raise SalesError("Sale not found")
+
+    # Generate unique document number
+    year = datetime.now().year
+    prefix_map = {
+        "INVOICE": "INV",
+        "RECEIPT": "RCP",
+        "CHALLAN": "CH",
+        "INSURANCE": "INS",
+        "SERVICE_SCHEDULE": "SS",
+    }
+    prefix = prefix_map.get(payload.document_type, "DOC")
+    doc_number = f"{prefix}-{year}-{sale_id:04d}"
+
+    # Check if already exists for this sale+type
+    stmt = select(models.SaleDocument).filter_by(
+        sale_id=sale_id,
+        document_type=payload.document_type,
+    )
+    result = await db.execute(stmt)
+    existing = result.scalars().first()
+    if existing:
+        return existing  # Already generated
+
+    document = models.SaleDocument(
+        sale_id=sale_id,
+        document_type=payload.document_type,
+        document_number=doc_number,
+        generated_by_staff_id=current_staff_id,
+    )
+    db.add(document)
+
+    # Update sale document flags
+    flag_map = {
+        "INVOICE": "is_invoice_generated",
+        "CHALLAN": "is_challan_generated",
+        "INSURANCE": "is_insurance_generated",
+        "SERVICE_SCHEDULE": "is_service_schedule_generated",
+    }
+    flag_attr = flag_map.get(payload.document_type)
+    if flag_attr:
+        setattr(sale, flag_attr, True)
+
+    # For invoice, also set the invoice_number
+    if payload.document_type == "INVOICE":
+        sale.invoice_number = doc_number
+    elif payload.document_type == "CHALLAN":
+        sale.delivery_challan_number = doc_number
+
+    await db.flush()
+    return document
+
+
+async def get_portal_tracking(db: AsyncSession, sale_id: int) -> models.SalePortalTracking | None:
+    """Get portal tracking for a sale"""
+    stmt = select(models.SalePortalTracking).filter_by(sale_id=sale_id)
+    result = await db.execute(stmt)
+    return result.scalars().first()
+
+
+async def update_portal_tracking(
+    db: AsyncSession,
+    sale_id: int,
+    payload: sales_schemas.PortalTrackingUpdate,
+) -> models.SalePortalTracking:
+    """Update portal tracking statuses"""
+    portal = await get_portal_tracking(db, sale_id)
+    if not portal:
+        raise SalesError("Portal tracking not found for this sale")
+
+    status_fields = {
+        "insurance_status": ("insurance_completed_date", payload.insurance_status),
+        "subsidy_status": ("subsidy_completed_date", payload.subsidy_status),
+        "rto_status": ("rto_completed_date", payload.rto_status),
+        "celex_status": ("celex_completed_date", payload.celex_status),
+    }
+
+    for status_field, (date_field, value) in status_fields.items():
+        if value is not None:
+            setattr(portal, status_field, value)
+            if value == "COMPLETED":
+                setattr(portal, date_field, datetime.utcnow())
+
+    if payload.insurance_policy_number is not None:
+        portal.insurance_policy_number = payload.insurance_policy_number
+    if payload.subsidy_reference is not None:
+        portal.subsidy_reference = payload.subsidy_reference
+    if payload.registration_number is not None:
+        portal.registration_number = payload.registration_number
+    if payload.number_plate_ordered_date is not None:
+        portal.number_plate_ordered_date = payload.number_plate_ordered_date
+    if payload.number_plate_fixed_date is not None:
+        portal.number_plate_fixed_date = payload.number_plate_fixed_date
+    if payload.form_20_generated is not None:
+        portal.form_20_generated = payload.form_20_generated
+    if payload.helmet_invoice_generated is not None:
+        portal.helmet_invoice_generated = payload.helmet_invoice_generated
+
+    portal.updated_at = datetime.utcnow()
+    portal.check_completion()
+
+    await db.flush()
+    return portal
+
+
+async def get_sale_progress(db: AsyncSession, sale_id: int) -> dict:
+    """Get comprehensive sale progress including stage, payments, documents, portal"""
+    sale = await get_sale(db, sale_id)
+    if not sale:
+        raise SalesError("Sale not found")
+
+    return {
+        "sale_id": sale.sale_id,
+        "sale_stage": sale.sale_stage,
+        "completion_percentage": sale.completion_percentage,
+        "is_direct_sale": sale.is_direct_sale,
+        "stage_history": sale.stage_history or [],
+        "payments": sale.sale_payments or [],
+        "documents": sale.sale_documents or [],
+        "portal_tracking": sale.portal_tracking,
+    }

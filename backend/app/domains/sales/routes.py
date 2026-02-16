@@ -135,3 +135,102 @@ async def update_checklist(
         return await services.update_checklist(db, sale_id, data)
     except services.SalesError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ==================== NEW WORKFLOW ENDPOINTS ====================
+
+@router.post("/{sale_id}/stage", response_model=schemas.SaleResponse)
+async def advance_sale_stage(
+    sale_id: int,
+    data: schemas.StageAdvanceRequest,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """Advance sale to the next stage"""
+    try:
+        sale = await services.advance_sale_stage(
+            db, sale_id, data, current_staff_id=_staff["staff_id"]
+        )
+        return sale
+    except services.SalesError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post(
+    "/{sale_id}/payments",
+    response_model=schemas.SalePaymentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_sale_payment(
+    sale_id: int,
+    data: schemas.SalePaymentCreate,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """Add a payment to a sale"""
+    try:
+        return await services.add_sale_payment(
+            db, sale_id, data, current_staff_id=_staff["staff_id"]
+        )
+    except services.SalesError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post(
+    "/{sale_id}/documents",
+    response_model=schemas.SaleDocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def generate_sale_document(
+    sale_id: int,
+    data: schemas.SaleDocumentCreate,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """Generate a document (invoice, receipt, challan, etc.) for a sale"""
+    try:
+        return await services.generate_sale_document(
+            db, sale_id, data, current_staff_id=_staff["staff_id"]
+        )
+    except services.SalesError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/{sale_id}/portal", response_model=schemas.PortalTrackingResponse)
+async def get_portal_tracking(
+    sale_id: int,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """Get portal work tracking for a sale"""
+    portal = await services.get_portal_tracking(db, sale_id)
+    if not portal:
+        raise HTTPException(status_code=404, detail="Portal tracking not found")
+    return portal
+
+
+@router.patch("/{sale_id}/portal", response_model=schemas.PortalTrackingResponse)
+async def update_portal_tracking(
+    sale_id: int,
+    data: schemas.PortalTrackingUpdate,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """Update portal tracking (insurance, subsidy, RTO, CELEX, number plate)"""
+    try:
+        return await services.update_portal_tracking(db, sale_id, data)
+    except services.SalesError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/{sale_id}/progress", response_model=schemas.SaleProgressResponse)
+async def get_sale_progress(
+    sale_id: int,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """Get comprehensive sale progress: stage, payments, documents, portal status"""
+    try:
+        return await services.get_sale_progress(db, sale_id)
+    except services.SalesError as e:
+        raise HTTPException(status_code=404, detail=str(e))

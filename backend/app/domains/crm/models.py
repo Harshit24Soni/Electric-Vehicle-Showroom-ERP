@@ -1,15 +1,19 @@
+import enum
+from datetime import datetime, date, timedelta
+
 from sqlalchemy import (
     BigInteger,
     String,
     Text,
     Date,
+    Integer,
     TIMESTAMP,
     ForeignKey,
     CheckConstraint,
+    Boolean,
     Index,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import datetime
 
 from app.db.base import Base
 
@@ -44,6 +48,15 @@ class Enquiry(Base, SoftDeleteMixin):
     enquiry_status = relationship("EnquiryStatusMaster")
 
 
+class LeadStatusEnum(str, enum.Enum):
+    """Lead temperature / status classification"""
+    HOT = "HOT"
+    WARM = "WARM"
+    COLD = "COLD"
+    LOST = "LOST"
+    SOLD = "SOLD"
+
+
 class Lead(Base, SoftDeleteMixin):
     """Lead tracking - represents potential customer with interest"""
     __tablename__ = "lead"
@@ -67,11 +80,42 @@ class Lead(Base, SoftDeleteMixin):
     remarks: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
 
+    # --- NEW workflow columns ---
+    expected_purchase_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    next_followup_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    lead_status: Mapped[str | None] = mapped_column(String(20), nullable=True, default="WARM")
+    visit_date: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True)
+    is_converted: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)
+    converted_sale_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
     # Relationships
     vehicle_model = relationship("app.domains.master.models.VehicleModel", lazy="selectin")
-    lead_status = relationship("LeadStatusMaster")
+    lead_status_ref = relationship("LeadStatusMaster")
     enquiries = relationship("Enquiry", back_populates="lead", cascade="all, delete-orphan")
     test_rides = relationship("TestRide", back_populates="lead", cascade="all, delete-orphan")
+    lead_followups = relationship("LeadFollowup", back_populates="lead", cascade="all, delete-orphan", order_by="LeadFollowup.followup_date.desc()")
+
+    def calculate_next_followup(self) -> date | None:
+        """Calculate next followup date based on lead temperature."""
+        days_map = {
+            LeadStatusEnum.HOT: 1,
+            LeadStatusEnum.WARM: 3,
+            LeadStatusEnum.COLD: 7,
+        }
+        status = self.lead_status
+        if status in days_map:
+            self.next_followup_date = date.today() + timedelta(days=days_map[status])
+        elif status in (LeadStatusEnum.LOST, LeadStatusEnum.SOLD):
+            self.next_followup_date = None
+        return self.next_followup_date
+
+    @property
+    def is_overdue(self) -> bool:
+        """Check if lead followup is overdue."""
+        if self.next_followup_date is None:
+            return False
+        return date.today() > self.next_followup_date
+
 
     
 class LeadStatusMaster(Base):
@@ -165,3 +209,29 @@ class TestRide(Base, SoftDeleteMixin):
     # Relationships
     lead = relationship("Lead", back_populates="test_rides")
     vehicle_model = relationship("app.domains.master.models.VehicleModel", lazy="selectin")
+
+
+class LeadFollowup(Base):
+    """Lead followup log with mandatory remarks (min 10 chars)"""
+    __tablename__ = "lead_followup"
+    __table_args__ = ({"schema": "crm"},)
+
+    lead_followup_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    lead_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("crm.lead.lead_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    followup_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False, default=datetime.utcnow)
+    remarks: Mapped[str] = mapped_column(Text, nullable=False)
+    outcome_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    next_followup_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    staff_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("master.staff.staff_id"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
+    # Relationships
+    lead = relationship("Lead", back_populates="lead_followups")

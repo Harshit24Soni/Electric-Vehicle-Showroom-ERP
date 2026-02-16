@@ -36,7 +36,7 @@ router = APIRouter(
 async def login_with_pin(
     payload: PinLoginRequest,
     request: Request,
-    _rate_limit=Depends(rate_limit(max_requests=5, window=300)),
+    _rate_limit=Depends(rate_limit(max_requests=25, window=300)),
 ) -> dict:
     """
     Login with PIN using mobile number or email.

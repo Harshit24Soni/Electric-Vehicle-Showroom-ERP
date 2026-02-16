@@ -12,6 +12,7 @@ import {
   User,
   LogOut,
   ChevronDown,
+  CalendarCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -26,7 +27,8 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'DEALER', 'STAFF'] },
-  { path: '/crm', label: 'CRM / Leads', icon: MessageSquare, roles: ['ADMIN', 'DEALER', 'STAFF'] },
+  { path: '/crm', label: 'Leads', icon: MessageSquare, roles: ['ADMIN', 'DEALER', 'STAFF'] },
+  { path: '/followups', label: 'Follow-ups', icon: CalendarCheck, roles: ['ADMIN', 'DEALER', 'STAFF'] },
   { path: '/sales', label: 'Sales', icon: ShoppingCart, roles: ['ADMIN', 'DEALER', 'STAFF'] },
   { path: '/service', label: 'Service', icon: Wrench, roles: ['ADMIN', 'DEALER', 'STAFF'] },
   { path: '/procurement', label: 'Purchase', icon: ShoppingCart, roles: ['ADMIN', 'DEALER'] },

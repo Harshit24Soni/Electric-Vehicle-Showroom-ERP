@@ -85,5 +85,27 @@ export const leadsApi = {
 
     getPendingFollowups: async (): Promise<any[]> => {
         return api.get('/crm/followups/pending')
-    }
+    },
+
+    // Test ride methods
+    getTestRides: async (leadId: number): Promise<any[]> => {
+        return api.get(`/crm/leads/${leadId}/test-rides`)
+    },
+
+    addTestRide: async (leadId: number, data: {
+        vehicle_model_id: number
+        test_ride_date: string
+        customer_feedback?: string
+    }): Promise<any> => {
+        return api.post(`/crm/leads/${leadId}/test-rides`, data)
+    },
+
+    // Lead followup with mandatory remarks
+    addLeadFollowup: async (leadId: number, data: {
+        remarks: string
+        outcome_status: string
+        next_followup_date?: string
+    }): Promise<any> => {
+        return api.post(`/crm/leads/${leadId}/followups`, data)
+    },
 }
