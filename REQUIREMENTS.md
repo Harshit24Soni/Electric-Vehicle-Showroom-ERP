@@ -1,95 +1,155 @@
-# Project Requirements & Roadmap
+# Project Requirements & Feature Status
 
-## 1. Core Principles & Rules
-> **Source**: Originally from `CHANGES.md`. These rules are inviolable.
+> **Last Updated:** February 2026
 
-### General Rules
-1.  **CSS Styling**: Do not change the CSS styling of this app since I love the CSS and flows etc.
-2.  **Tab Structure**: Each tab must have all the details related to that tab. Example: Leads tab: Creation of new lead, followup of all the leads, messages sent to those leads, latest update, reports of the all the leads that exist.
-3.  **API Usage**: The frontend must and must use the APIs created in the backend folder only to fetch the data from the backend and not connect to the backend without them.
-4.  **API Flexibility**: You may change the APIs in order to meet my functionality of the frontend.
-5.  **Cleanup**: Always delete files that turn obsolete i.e. are no longer in use.
-
-### Module Specific Rules
-
-#### 1. Login Page
--   **No Staff ID Login**: I don't want the staff to be able to login using the staff id. The staff id is only meant for the database tracking and not to be displayed anywhere to the staff or the dealers as well. It can be accessed by the admin.
--   **Forgot PIN**: There should be an option to ping the admin that the staff has forgotten their login pin by clicking on a option such as forgot pin. If the dealer himself forgets the pin we must have an alternat route for him to access the portal and change the pin.
-
-#### 2. CRM
--   **Leads First**: The leads is very first task that is involved in the sales. When a customer arrives the staff ensures that they note their details as a lead and not first create a customer. This lead is then used to track followup calls in regards to purchase. When any customer agrees to buy the vehicle they will visit the showroom and we will convert that lead and use that leads data to sync with the customer records. We should be asked whether we need to use the name number etc that we stored of the lead or do we just want to reference that lead to this customer.
--   **Lead Conversion**: When that lead is converted then the form to fill the details of the customer is avilable in the customer tab itself with a proper marker stating that a new lead is converted and fill the necessary details to proceed.
--   **Nominee Details**: A few columns and a very important aspect of a customer is missing which is also missing from the database i.e. Nominee details for insurance. (We need details such as Nominee name, DOB, relation).
--   **CRM Tab Logic**: The CRM tab is mainly the one which shows follow up records i.e. Sales follow up against a lead, Service follow up for the vehicles which are due for service, Insurance follow up for the vehicles whose insurance will expire in a few days. These are the details that should be shown in the CRM tab.
--   **Enquiry Tab**: A enquiry in itself must be a different tab that allows to track the number of active enquiries what is the latest followup again a enquiry, what is the latest message that we have shared with that lead.
-
-#### 3. Customer
--   **Lead Reference**: Every new customer may or may not reference a lead that we created using the enquiry. We must have the option of add customer but along with that when we in the Leads tab to converted, it must get reflected into the customer tab and prompt us to enter all the necessary details to proceed with the billing.
--   **Direct Creation**: THere may also be a chance that no lead exists and we need to create the customer directly so we should be able to do that.
--   **Customer History**: The customer table must also show all the details such as exisiting customers with the number of vehicles they have and what is the status of that vehicle like when was it last serviced, or when was the last warranty processed etc.
--   **Definitions**: Lead is the partial data recorded of the customer as per their interest at that moment and a customer record is when they finally buy vehicle from us.
+This document tracks the implementation status of all business workflows and features in the Electric Vehicle Showroom ERP.
 
 ---
 
-## 2. Current Feature Status (Updated Feb 2026)
+## Completed Workflows
 
-### ✅ Completed Features
+### 1. Setup & Master Data ✅
 
-#### 1. Setup & Master Data
-- **Setup Module**: Centralized configuration for Banks, Brands, Payment Modes, etc.
-- **Soft Delete**: Implemented for Staff and all Setup tables. No data loss.
-- **Audit Trails**: `created_by`, `updated_by`, `created_at`, `updated_at` on all core tables.
-- **Serial Numbers**: UI updated to show sequential S.No. instead of Database IDs.
+The centralized **Setup Module** manages all reference data used across the system.
 
-#### 2. Authentication & Admin
-- **Role-Based Access**: Admin, Dealer, Staff roles functioning.
-- **PIN Reset**: Backend support for PIN reset requests.
-- **Staff Management**: Create, Edit, Soft Delete, Restore, List.
+| Entity | CRUD | Soft Delete | Restore | Audit Trail |
+|---|:---:|:---:|:---:|:---:|
+| Brands | ✅ | ✅ | ✅ | ✅ |
+| Banks | ✅ | ✅ | ✅ | ✅ |
+| Payment Modes | ✅ | ✅ | ✅ | ✅ |
+| Insurance Companies | ✅ | ✅ | ✅ | ✅ |
+| Document Types | ✅ | ✅ | ✅ | ✅ |
 
-#### 3. Backend Foundations
-- **CRM Backend**: Leads, Enquiries endpoints implemented.
-- **Middleware**: Rate limiting, CORS, Auth.
-- **Database**: Alembic migrations fully set up.
+- Generic `CrudTable` component handles all Setup entities with a unified UI.
+- Serial numbers displayed in UI instead of database IDs.
 
 ---
 
-## 3. High Priority Roadmap (Pending)
+### 2. Authentication & Staff Management ✅
 
-### 1. FRONTEND UPDATES (CRITICAL) 🔴
-**Status: ⏳ PENDING**
-#### 1.1 Login Page
-- [ ] Remove "Staff ID". Use Mobile/Email + PIN.
-- [ ] Add "Forgot PIN" and "Dealer PIN Reset" (OTP) flows.
-
-#### 1.2 CRM Module Restructuring
-- [ ] **Leads Tab**: Create, List, Followups, Convert (Frontend).
-- [ ] **Enquiries Tab**: Active list, stats (Frontend).
-- [ ] **Customers Tab**: List (w/ vehicles/service status), Add (Direct or via Lead), Nominee Mgmt.
-- [ ] **FollowUps Tab**: Aggregated dashboard (Sales, Service, Insurance).
-
-### 2. NOMINEE MANAGEMENT (HIGH PRIORITY) 🔴
-**Status: 🔄 IN PROGRESS**
-**File:** `backend/app/domains/master/routes.py`
-- [ ] Endpoints: CRUD for `/master/customers/{id}/nominees`.
-- [ ] Features: Multiple nominees, primary flag, relationship validation.
-- [ ] Customer Details API: Should include nominee list, vehicle count, last service/warranty dates.
-
-### 3. CUSTOMER DETAIL VIEW ENHANCEMENT 🔴
-**Status: ⏳ PENDING**
-- [ ] **Display**: Personal Info, Nominees (Manage), Vehicles (Service/Warranty status), Activity Timeline.
-
-### 4. VALIDATION & ERROR HANDLING 🟡
-**Status: ⏳ PENDING (Frontend)**
-- [ ] User-friendly error messages (Frontend).
-- [ ] Comprehensive form validation.
-
-### 5. STATE MANAGEMENT 🟡
-**Status: ⏳ PENDING**
-- [ ] Update Zustand stores (`leads`, `enquiries`) to match backend changes.
+| Feature | Status |
+|---|:---:|
+| JWT Auth (Access + Refresh tokens) | ✅ |
+| Role-Based Access (Admin / Dealer / Staff) | ✅ |
+| Staff PIN Login | ✅ |
+| Staff Create / Edit / Soft Delete / Restore | ✅ |
+| PIN Reset Request (notify Admin) | ✅ |
+| Dual-Delete (Soft by Dealer, Hard by Admin) | ✅ |
 
 ---
 
-## 4. Testing & Verification
-**Status: 🔄 IN PROGRESS**
-- [x] Backend Regression Tests (Setup, Staff, Auth).
-- [ ] Frontend E2E Tests for CRM flows.
+### 3. Pre-Sales — Lead Conversion Workflow ✅
+
+The complete lead-to-customer pipeline is implemented:
+
+```
+Enquiry → Lead Created → Follow-ups Scheduled → Lead Converted → Customer Record
+```
+
+| Feature | Backend | Frontend |
+|---|:---:|:---:|
+| Lead Creation (partial customer data) | ✅ | ✅ |
+| Lead Listing & Search | ✅ | ✅ |
+| Follow-up Scheduling & Tracking | ✅ | ✅ |
+| Lead → Customer Conversion (data sync/override) | ✅ | ✅ |
+| Enquiry Management | ✅ | ✅ |
+| Nominee Details (Name, DOB, Relation) | ✅ | ✅ |
+
+---
+
+### 4. Procurement — OEM Vehicle Intake ✅
+
+Vehicles received from OEMs are registered and tracked at chassis level.
+
+```
+Purchase Order → Vehicle Inward → Chassis Registered → Stock Available
+```
+
+| Feature | Backend | Frontend |
+|---|:---:|:---:|
+| Vehicle Inward Entry (Chassis, Model, Variant) | ✅ | ✅ |
+| Multi-Brand / Multi-Model Support | ✅ | ✅ |
+| Inventory Registration on Intake | ✅ | ✅ |
+| Batch & Colour Metadata | ✅ | ✅ |
+
+---
+
+### 5. Sales — Billing & Document Generation ✅
+
+The end-to-end sales pipeline from quotation to delivery.
+
+```
+Customer → Quotation → Booking → Invoice → Delivery → Documents Issued
+```
+
+| Feature | Backend | Frontend |
+|---|:---:|:---:|
+| Quotation Generation | ✅ | ✅ |
+| Booking Confirmation | ✅ | ✅ |
+| GST Invoice Generation | ✅ | ✅ |
+| Multi-Payment Mode (Cash, Finance, UPI, Cheque) | ✅ | ✅ |
+| Delivery Processing | ✅ | ✅ |
+| Document Issuance (RC, Insurance, etc.) | ✅ | ✅ |
+
+---
+
+### 6. Infrastructure ✅
+
+| Feature | Status |
+|---|:---:|
+| Alembic Migrations (full schema versioning) | ✅ |
+| Redis Caching & Rate Limiting | ✅ |
+| CORS Middleware | ✅ |
+| Centralized Error Handling | ✅ |
+| Audit Mixins (`created_by`, `updated_by`) | ✅ |
+| Soft-Delete Mixins (`is_deleted`, `deleted_at`, `deleted_by`) | ✅ |
+| Domain-Driven Folder Structure (19 domains) | ✅ |
+
+---
+
+## Roadmap (Pending)
+
+### Phase 1 — Service & Warranty
+
+| Feature | Priority |
+|---|---|
+| Digital Job Cards for vehicle servicing | High |
+| Service Follow-up Scheduling | High |
+| OEM Warranty Claim Processing | High |
+| Service History on Customer Profile | Medium |
+
+### Phase 2 — Finance & Reporting
+
+| Feature | Priority |
+|---|---|
+| Partial Payment & EMI Tracking | High |
+| Loan Disbursement Records | Medium |
+| Business Analytics Dashboard | Medium |
+| Revenue & Sales Reports | Medium |
+
+### Phase 3 — Insurance & Notifications
+
+| Feature | Priority |
+|---|---|
+| Insurance Policy CRUD & Renewal Tracking | High |
+| Insurance Expiry Alerts | Medium |
+| Service Reminder Notifications | Medium |
+| SMS / Email Integration | Low |
+
+### Phase 4 — Advanced CRM
+
+| Feature | Priority |
+|---|---|
+| Aggregated Follow-up Dashboard (Sales, Service, Insurance) | High |
+| Customer Lifetime Value Metrics | Low |
+| Lead Source Analytics | Low |
+
+---
+
+## Core Rules (Inviolable)
+
+1. **No Raw SQL** — All schema changes go through Alembic migrations.
+2. **No Hard Deletes** — All user-facing deletions use `SoftDeleteMixin`. Only Admins may hard-delete.
+3. **API-First** — Frontend must exclusively use backend REST APIs. No direct DB access.
+4. **Audit Everything** — All core tables inherit `AuditMixin`.
+5. **Preserve CSS** — The existing frontend styling and UX flows must not be altered without explicit approval.
