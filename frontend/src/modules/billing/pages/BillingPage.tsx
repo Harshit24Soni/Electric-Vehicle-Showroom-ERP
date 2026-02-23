@@ -4,11 +4,13 @@ import { billingApi, InvoiceCreate } from '../api/billingApi'
 import { Plus, Search, CheckCircle, XCircle } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import InvoiceForm from '../components/InvoiceForm'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function BillingPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const queryClient = useQueryClient()
 
   // Note: Backend doesn't have a GET endpoint for listing invoices
@@ -23,6 +25,21 @@ export default function BillingPage() {
       setShowForm(false)
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) =>
+      billingApi.deleteInvoice(id, hardDelete),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      setDeleteTarget(null)
+    },
+  })
+
+  const handleDeleteConfirm = (hardDelete: boolean) => {
+    if (deleteTarget) {
+      deleteMutation.mutate({ id: deleteTarget.invoice_id, hardDelete })
+    }
+  }
 
   const finalizeMutation = useMutation({
     mutationFn: (invoiceId: number) => billingApi.finalizeInvoice(invoiceId),
@@ -115,13 +132,12 @@ export default function BillingPage() {
                       </span>
                     </td>
                     <td>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        invoice.invoice_status === 'FINALIZED'
-                          ? 'bg-green-100 text-green-800'
-                          : invoice.invoice_status === 'CANCELLED'
+                      <span className={`px-2 py-1 text-xs rounded-full ${invoice.invoice_status === 'FINALIZED'
+                        ? 'bg-green-100 text-green-800'
+                        : invoice.invoice_status === 'CANCELLED'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                        }`}>
                         {invoice.invoice_status}
                       </span>
                     </td>
@@ -153,6 +169,14 @@ export default function BillingPage() {
           isLoading={createMutation.isPending}
         />
       )}
+
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        itemName={deleteTarget ? deleteTarget.invoice_number : ''}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   )
 }

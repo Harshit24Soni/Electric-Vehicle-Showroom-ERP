@@ -14,6 +14,22 @@ class SaleCreate(BaseModel):
     is_direct_sale: bool = False
 
 
+class SaleCreatePayload(BaseModel):
+    """Full sale creation payload with financials and initial payment"""
+    customer_id: int
+    chassis_no: str
+    sale_date: date = Field(default_factory=date.today)
+    base_price: Decimal = Field(..., gt=0)
+    taxes: Decimal = Field(default=Decimal("0"))
+    total_amount: Decimal = Field(..., gt=0)
+    payment_mode: str = Field(..., description="CASH, CARD, UPI, FINANCE")
+    financier_name: Optional[str] = None
+    down_payment_amount: Decimal = Field(..., ge=0)
+    remarks: Optional[str] = None
+    lead_id: Optional[int] = None
+    is_direct_sale: bool = True
+
+
 class ServiceScheduleResponse(BaseModel):
     schedule_id: int
     service_number: int

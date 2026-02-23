@@ -27,6 +27,9 @@ export interface FinanceResponse {
 
 export const financeApi = {
   createFinance: (data: FinanceCreate) => api.post<FinanceResponse>('/finance/', data),
+  getFinances: () => api.get<FinanceResponse[]>('/finance/'),
   updateFinanceStatus: (financeId: number, data: FinanceStatusUpdate) =>
     api.put(`/finance/${financeId}/status`, data),
+  deleteFinance: (financeId: number, hardDelete?: boolean) =>
+    api.delete(`/finance/${financeId}`, { params: { hard_delete: hardDelete } }),
 }

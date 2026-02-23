@@ -24,7 +24,7 @@ export interface LeadCreate {
     vehicle_model_id: number
     lead_source: string
     lead_status_id?: number
-    owner_staff_id: number
+    owner_staff_id?: number
     expected_purchase_date?: string
     remarks?: string
 }
@@ -38,6 +38,24 @@ export interface LeadUpdate {
     lead_status?: string
     expected_purchase_date?: string
     remarks?: string
+}
+
+export interface LeadConvertPayload {
+    name: string
+    phone: string
+    email?: string
+    customer_type: string
+    address_line1: string
+    city: string
+    state: string
+    pincode: string
+    aadhaar_no: string
+    pan_no: string
+    nominee: {
+        nominee_name: string
+        nominee_dob: string
+        relation: string
+    }
 }
 
 export const leadsApi = {
@@ -63,12 +81,12 @@ export const leadsApi = {
         return api.put(`/crm/leads/${id}`, data)
     },
 
-    delete: async (id: number): Promise<void> => {
-        return api.delete(`/crm/leads/${id}`)
+    delete: async (id: number, hardDelete?: boolean): Promise<void> => {
+        return api.delete(`/crm/leads/${id}`, { params: { hard_delete: hardDelete } })
     },
 
-    convert: async (id: number, useLeadData: boolean = true): Promise<any> => {
-        return api.post(`/crm/leads/${id}/convert`, { use_lead_data: useLeadData })
+    convert: async (id: number, payload: LeadConvertPayload): Promise<any> => {
+        return api.post(`/crm/leads/${id}/convert`, payload)
     },
 
     getActivities: async (id: number): Promise<any[]> => {

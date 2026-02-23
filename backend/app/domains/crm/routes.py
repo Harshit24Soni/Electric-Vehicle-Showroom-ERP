@@ -77,32 +77,32 @@ async def update_lead(
 @router.delete("/leads/{lead_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_lead(
     lead_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    current_staff=Depends(get_current_staff)
 ):
-    """Delete a lead"""
-    success = await services.delete_lead(db, lead_id)
+    """Delete a lead (soft delete by default)"""
+    success = await services.delete_lead(db, lead_id, current_staff, hard_delete)
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
     return None
 
 
-@router.post("/leads/{lead_id}/convert", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/leads/{lead_id}/convert",
+    response_model=schemas.LeadConvertResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def convert_lead_to_customer(
     lead_id: int,
-    data: schemas.LeadConversionRequest,
+    data: schemas.LeadConvertPayload,
     db: AsyncSession = Depends(get_db),
     current_staff=Depends(get_current_staff)
 ):
-    """Convert a lead to a customer"""
-    customer = await services.convert_lead_to_customer(db, lead_id, data)
-    if not customer:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found or already converted")
-    return {
-        "message": "Lead converted to customer successfully",
-        "customer_id": customer.customer_id,
-        "lead_reference_id": customer.lead_reference_id
-    }
+    """Convert a lead to a customer with full KYC + Nominee (atomic transaction)"""
+    return await services.convert_lead_to_customer(
+        db, lead_id, payload=data, current_user=current_staff
+    )
 
 
 @router.get("/leads/{lead_id}/activities", response_model=list)
@@ -183,6 +183,20 @@ async def update_enquiry(
     return enquiry
 
 
+@router.delete("/enquiries/{enquiry_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_enquiry(
+    enquiry_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Delete an enquiry (soft delete by default)"""
+    success = await services.delete_enquiry(db, enquiry_id, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Enquiry not found")
+    return None
+
+
 @router.get("/enquiries/stats/summary")
 async def get_enquiry_stats(
     db: AsyncSession = Depends(get_db),
@@ -227,6 +241,20 @@ async def pending_followups(
 ):
     """Get all pending followups"""
     return await services.list_pending_followups(db)
+
+
+@router.delete("/followups/{followup_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_followup(
+    followup_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Delete a followup (soft delete by default)"""
+    success = await services.delete_followup(db, followup_id, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Followup not found")
+    return None
 
 
 @router.get("/followups/dashboard")

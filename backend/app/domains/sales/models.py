@@ -17,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.mixins import SoftDeleteMixin
+from app.db.mixins import AuditMixin, SoftDeleteMixin
 
 
 class SaleStage(str, enum.Enum):
@@ -33,7 +33,7 @@ class SaleStage(str, enum.Enum):
     DELIVERY = "DELIVERY"
     COMPLETED = "COMPLETED"
 
-class Sale(Base, SoftDeleteMixin):
+class Sale(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "sale"
     __table_args__ = (
         Index("idx_sale_customer", "customer_id"),
@@ -64,7 +64,6 @@ class Sale(Base, SoftDeleteMixin):
     
     remarks: Mapped[str | None] = mapped_column(Text)
     created_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
     # --- NEW workflow columns ---
     sale_stage: Mapped[str | None] = mapped_column(String(50), nullable=True, default=SaleStage.ENQUIRY)
@@ -112,7 +111,7 @@ class Sale(Base, SoftDeleteMixin):
         return int(((idx + 1) / len(self._STAGE_ORDER)) * 100)
 
 
-class PaymentReceipt(Base, SoftDeleteMixin):
+class PaymentReceipt(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "payment_receipt"
     __table_args__ = ({"schema": "sales"},)
 
@@ -124,12 +123,11 @@ class PaymentReceipt(Base, SoftDeleteMixin):
     receipt_date: Mapped[datetime] = mapped_column(Date, default=datetime.utcnow)
     
     created_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
     sale = relationship("Sale", back_populates="receipts")
 
 
-class DeliveryChecklist(Base):
+class DeliveryChecklist(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "delivery_checklist"
     __table_args__ = ({"schema": "sales"},)
 
@@ -150,13 +148,11 @@ class DeliveryChecklist(Base):
     celex_details: Mapped[str | None] = mapped_column(Text)
     
     plate_fixation_date: Mapped[datetime | None] = mapped_column(Date)
-    
-    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     sale = relationship("Sale", back_populates="delivery_checklist")
 
 
-class ServiceSchedule(Base):
+class ServiceSchedule(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "service_schedule"
     __table_args__ = ({"schema": "sales"},)
 
@@ -168,12 +164,12 @@ class ServiceSchedule(Base):
     due_date: Mapped[Date] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="PENDING") # PENDING, COMPLETED, SKIPPED
     
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
     
     sale = relationship("Sale", back_populates="service_schedules")
 
 
-class SaleStageHistory(Base):
+class SaleStageHistory(Base, AuditMixin, SoftDeleteMixin):
     """Audit trail for sale stage transitions"""
     __tablename__ = "sale_stage_history"
     __table_args__ = ({"schema": "sales"},)
@@ -192,12 +188,12 @@ class SaleStageHistory(Base):
         nullable=False,
     )
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
 
     sale = relationship("Sale", back_populates="stage_history")
 
 
-class SalePayment(Base):
+class SalePayment(Base, AuditMixin, SoftDeleteMixin):
     """Payment tracking for sales with type and mode"""
     __tablename__ = "sale_payment"
     __table_args__ = ({"schema": "sales"},)
@@ -220,12 +216,12 @@ class SalePayment(Base):
         ForeignKey("master.staff.staff_id"),
         nullable=False,
     )
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
 
     sale = relationship("Sale", back_populates="sale_payments")
 
 
-class SaleDocument(Base):
+class SaleDocument(Base, AuditMixin, SoftDeleteMixin):
     """Generated documents for a sale (invoice, challan, receipt, etc.)"""
     __tablename__ = "sale_document"
     __table_args__ = ({"schema": "sales"},)
@@ -251,7 +247,7 @@ class SaleDocument(Base):
     sale = relationship("Sale", back_populates="sale_documents")
 
 
-class SalePortalTracking(Base):
+class SalePortalTracking(Base, AuditMixin, SoftDeleteMixin):
     """Portal work tracking: insurance, subsidy, RTO, CELEX, num-plate"""
     __tablename__ = "sale_portal_tracking"
     __table_args__ = ({"schema": "sales"},)
@@ -292,8 +288,7 @@ class SalePortalTracking(Base):
     helmet_invoice_generated: Mapped[bool] = mapped_column(Boolean, default=False)
     all_portals_completed: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
-    updated_at: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True)
+
 
     sale = relationship("Sale", back_populates="portal_tracking")
 

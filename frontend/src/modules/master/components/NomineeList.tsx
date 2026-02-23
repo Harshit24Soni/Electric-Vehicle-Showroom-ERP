@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { masterApi, Nominee, NomineeCreate } from '../api/masterApi'
 import { Plus, Trash2, Shield, AlertTriangle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 interface NomineeListProps {
     customerId: number
@@ -23,6 +24,7 @@ type NomineeFormData = z.infer<typeof nomineeSchema>
 export default function NomineeList({ customerId }: NomineeListProps) {
     const queryClient = useQueryClient()
     const [showForm, setShowForm] = useState(false)
+    const [deleteTarget, setDeleteTarget] = useState<Nominee | null>(null)
 
     const { data: nominees, isLoading } = useQuery({
         queryKey: ['nominees', customerId],
@@ -41,11 +43,19 @@ export default function NomineeList({ customerId }: NomineeListProps) {
 
     // Delete Mutation
     const deleteMutation = useMutation({
-        mutationFn: (nomineeId: number) => masterApi.deleteNominee(customerId, nomineeId),
+        mutationFn: ({ nomineeId, hardDelete }: { nomineeId: number; hardDelete?: boolean }) =>
+            masterApi.deleteNominee(customerId, nomineeId, hardDelete),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['nominees', customerId] })
         },
     })
+
+    const handleDeleteConfirm = (hardDelete: boolean) => {
+        if (deleteTarget) {
+            deleteMutation.mutate({ nomineeId: deleteTarget.nominee_id, hardDelete })
+        }
+        setDeleteTarget(null)
+    }
 
     // Form
     const {
@@ -154,7 +164,7 @@ export default function NomineeList({ customerId }: NomineeListProps) {
                                 </p>
                             </div>
                             <button
-                                onClick={() => deleteMutation.mutate(nominee.nominee_id)}
+                                onClick={() => setDeleteTarget(nominee)}
                                 className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
                                 title="Delete Nominee"
                             >
@@ -164,6 +174,14 @@ export default function NomineeList({ customerId }: NomineeListProps) {
                     ))}
                 </div>
             )}
+
+            <DeleteConfirmModal
+                isOpen={!!deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={handleDeleteConfirm}
+                itemName={deleteTarget?.nominee_name || ''}
+                isPending={deleteMutation.isPending}
+            />
         </div>
     )
 }

@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { serviceApi, JobCardCreate } from '../api/serviceApi'
-import { Plus, Search, CheckCircle, Wrench } from 'lucide-react'
+import { Plus, Search, CheckCircle, Wrench, Trash2 } from 'lucide-react'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import JobCardForm from '../components/JobCardForm'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function ServicePage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all')
   const [showForm, setShowForm] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const queryClient = useQueryClient()
 
   const { data: jobCards = [], isLoading } = useQuery({
@@ -30,6 +32,21 @@ export default function ServicePage() {
       queryClient.invalidateQueries({ queryKey: ['job-cards'] })
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) =>
+      serviceApi.deleteJobCard(id, hardDelete),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-cards'] })
+      setDeleteTarget(null)
+    },
+  })
+
+  const handleDeleteConfirm = (hardDelete: boolean) => {
+    if (deleteTarget) {
+      deleteMutation.mutate({ id: deleteTarget.job_card_id, hardDelete })
+    }
+  }
 
   // Status counts
   const openCount = jobCards.filter((j: any) => !j.out_datetime).length
@@ -143,22 +160,31 @@ export default function ServicePage() {
                     <td>{job.opening_km}</td>
                     <td>
                       <span className={`px-2 py-1 text-xs rounded-full ${job.out_datetime
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-yellow-100 text-yellow-800'
                         }`}>
                         {job.out_datetime ? 'Closed' : 'Open'}
                       </span>
                     </td>
                     <td>
-                      {!job.out_datetime && (
+                      <div className="flex items-center gap-1">
+                        {!job.out_datetime && (
+                          <button
+                            onClick={() => handleClose(job.job_card_id)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title="Close Job Card"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleClose(job.job_card_id)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded"
-                          title="Close Job Card"
+                          onClick={() => setDeleteTarget(job)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded"
+                          title="Delete Job Card"
                         >
-                          <CheckCircle className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -176,6 +202,14 @@ export default function ServicePage() {
           isLoading={createMutation.isPending}
         />
       )}
+
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        itemName={deleteTarget ? `Job Card ${deleteTarget.job_card_no}` : ''}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   )
 }

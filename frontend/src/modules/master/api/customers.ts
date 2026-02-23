@@ -80,4 +80,8 @@ export const customersApi = {
     update: async (id: number, data: CustomerUpdate): Promise<Customer> => {
         return api.put(`/master/customers/${id}`, data)
     },
+
+    delete: async (id: number, hardDelete?: boolean): Promise<void> => {
+        return api.delete(`/master/customers/${id}`, { params: { hard_delete: hardDelete } })
+    },
 }

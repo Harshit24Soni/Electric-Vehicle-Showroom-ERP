@@ -13,9 +13,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 
 from app.db.base import Base
+from app.db.mixins import AuditMixin, SoftDeleteMixin
 
 
-class Claim(Base):
+class Claim(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "claim"
     __table_args__ = (Index("idx_warranty_claim_status", "claim_status"), {"schema": "warranty"})
 
@@ -24,12 +25,11 @@ class Claim(Base):
     claim_status: Mapped[str] = mapped_column(String(30), nullable=False)
     portal_ref_no: Mapped[str | None] = mapped_column(String(100))
     approval_date: Mapped[Date | None] = mapped_column(Date)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
     so_number: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     remarks: Mapped[str | None] = mapped_column(Text)
 
 
-class Inward(Base):
+class Inward(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "inward"
     __table_args__ = ({"schema": "warranty"},)
 
@@ -37,10 +37,9 @@ class Inward(Base):
     oem_invoice_no: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     oem_invoice_date: Mapped[Date] = mapped_column(Date, nullable=False)
     remarks: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
 
-class InwardItem(Base):
+class InwardItem(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "inward_item"
     __table_args__ = ({"schema": "warranty"},)
 
@@ -49,10 +48,9 @@ class InwardItem(Base):
     spare_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("inventory.spare_master.spare_id", ondelete="RESTRICT"), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_cost: Mapped[float | None] = mapped_column(Numeric(12,2))
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
 
-class Shipment(Base):
+class Shipment(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "shipment"
     __table_args__ = ({"schema": "warranty"},)
 
@@ -61,10 +59,9 @@ class Shipment(Base):
     docket_no: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     dispatch_date: Mapped[Date] = mapped_column(Date, nullable=False)
     received_date: Mapped[Date | None] = mapped_column(Date)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
 
-class ShipmentItem(Base):
+class ShipmentItem(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "shipment_item"
     __table_args__ = ({"schema": "warranty"},)
 

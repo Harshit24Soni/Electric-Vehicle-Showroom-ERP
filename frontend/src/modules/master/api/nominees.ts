@@ -42,7 +42,7 @@ export const nomineesApi = {
         return api.put(`/master/customers/${customerId}/nominees/${nomineeId}`, data)
     },
 
-    delete: async (customerId: number, nomineeId: number): Promise<void> => {
-        return api.delete(`/master/customers/${customerId}/nominees/${nomineeId}`)
+    delete: async (customerId: number, nomineeId: number, hardDelete?: boolean): Promise<void> => {
+        return api.delete(`/master/customers/${customerId}/nominees/${nomineeId}`, { params: { hard_delete: hardDelete } })
     },
 }

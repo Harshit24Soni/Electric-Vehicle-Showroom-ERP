@@ -18,9 +18,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-from app.db.mixins import SoftDeleteMixin
+from app.db.mixins import AuditMixin, SoftDeleteMixin
 
-class Enquiry(Base, SoftDeleteMixin):
+class Enquiry(Base, AuditMixin, SoftDeleteMixin):
     """Enquiry tracking for leads - stores initial inquiry information"""
     __tablename__ = "enquiry"
     __table_args__ = (
@@ -41,7 +41,7 @@ class Enquiry(Base, SoftDeleteMixin):
     last_followup_date: Mapped[datetime | None] = mapped_column(Date)
     last_message_date: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     remarks: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
+
 
     # Relationships
     lead = relationship("Lead", back_populates="enquiries")
@@ -57,14 +57,10 @@ class LeadStatusEnum(str, enum.Enum):
     SOLD = "SOLD"
 
 
-class Lead(Base, SoftDeleteMixin):
+class Lead(Base, AuditMixin, SoftDeleteMixin):
     """Lead tracking - represents potential customer with interest"""
     __tablename__ = "lead"
-    __table_args__ = (
-        Index("idx_crm_lead_created", "created_at"),
-        Index("idx_crm_lead_status", "lead_status_id"),
-        {"schema": "crm"},
-    )
+    __table_args__ = {'schema': 'crm'}
 
     lead_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     customer_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
@@ -78,7 +74,7 @@ class Lead(Base, SoftDeleteMixin):
     created_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
     expected_purchase_date: Mapped[datetime | None] = mapped_column(Date)
     remarks: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
+
 
     # --- NEW workflow columns ---
     expected_purchase_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -134,7 +130,7 @@ class EnquiryStatusMaster(Base):
     display_order: Mapped[int] = mapped_column(BigInteger, default=0)
 
 
-class FollowupSchedule(Base, SoftDeleteMixin):
+class FollowupSchedule(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "followup_schedule"
     __table_args__ = (
         Index("idx_followup_schedule_date", "scheduled_date"),
@@ -148,13 +144,13 @@ class FollowupSchedule(Base, SoftDeleteMixin):
     followup_status: Mapped[str] = mapped_column(String(30), nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     remarks: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
+
 
     # Relationship
     lead = relationship("Lead")
 
 
-class LeadActivity(Base):
+class LeadActivity(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "lead_activity"
     __table_args__ = ({"schema": "crm"},)
 
@@ -165,10 +161,10 @@ class LeadActivity(Base):
     performed_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     outcome: Mapped[str | None] = mapped_column(Text)
     next_action_date: Mapped[datetime | None] = mapped_column(Date)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
 
 
-class LeadAssignmentHistory(Base):
+
+class LeadAssignmentHistory(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "lead_assignment_history"
     __table_args__ = ({"schema": "crm"},)
 
@@ -181,7 +177,7 @@ class LeadAssignmentHistory(Base):
     remarks: Mapped[str | None] = mapped_column(Text)
 
 
-class LeadStatusHistory(Base):
+class LeadStatusHistory(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "lead_status_history"
     __table_args__ = ({"schema": "crm"},)
 
@@ -194,7 +190,7 @@ class LeadStatusHistory(Base):
     remarks: Mapped[str | None] = mapped_column(Text)
 
 
-class TestRide(Base, SoftDeleteMixin):
+class TestRide(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "test_ride"
     __table_args__ = ({"schema": "crm"},)
 
@@ -204,14 +200,14 @@ class TestRide(Base, SoftDeleteMixin):
     test_ride_date: Mapped[Date] = mapped_column(Date, nullable=False)
     staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
     customer_feedback: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
 
     # Relationships
     lead = relationship("Lead", back_populates="test_rides")
     vehicle_model = relationship("app.domains.master.models.VehicleModel", lazy="selectin")
 
 
-class LeadFollowup(Base):
+class LeadFollowup(Base, AuditMixin, SoftDeleteMixin):
     """Lead followup log with mandatory remarks (min 10 chars)"""
     __tablename__ = "lead_followup"
     __table_args__ = ({"schema": "crm"},)
@@ -231,7 +227,7 @@ class LeadFollowup(Base):
         ForeignKey("master.staff.staff_id"),
         nullable=False,
     )
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
 
     # Relationships
     lead = relationship("Lead", back_populates="lead_followups")

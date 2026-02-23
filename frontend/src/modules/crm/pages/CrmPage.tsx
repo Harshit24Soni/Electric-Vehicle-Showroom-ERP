@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { leadsApi, LeadCreate } from '../api/leads'
-import { Plus, Search, Eye, ShoppingCart } from 'lucide-react'
+import { Plus, Search, Eye, UserPlus, Trash2, ClipboardList } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import LeadForm from '../components/LeadForm'
 import LeadConversionModal from '../components/LeadConversionModal'
+import LeadFollowupModal from '../components/LeadFollowupModal'
 import TestRideList from '../components/TestRideList'
 import { useCrmStore } from '@/store/crmStore'
 import { useMasterStore } from '@/store/masterStore'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function CrmPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -17,6 +19,8 @@ export default function CrmPage() {
   const [convertingLead, setConvertingLead] = useState<any>(null)
   const [selectedLead, setSelectedLead] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'leads' | 'testrides'>('leads')
+  const [deleteTarget, setDeleteTarget] = useState<any>(null)
+  const [followupLead, setFollowupLead] = useState<any>(null)
 
   const { leads, fetchLeads, isLoading: leadsLoading } = useCrmStore()
   const {
@@ -48,6 +52,21 @@ export default function CrmPage() {
       setShowForm(false)
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) =>
+      leadsApi.delete(id, hardDelete),
+    onSuccess: () => {
+      fetchLeads()
+      setDeleteTarget(null)
+    },
+  })
+
+  const handleDeleteConfirm = (hardDelete: boolean) => {
+    if (deleteTarget) {
+      deleteMutation.mutate({ id: deleteTarget.lead_id, hardDelete })
+    }
+  }
 
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch =
@@ -161,6 +180,7 @@ export default function CrmPage() {
                 <table className="table">
                   <thead>
                     <tr>
+                      <th>S.No.</th>
                       <th>Name</th>
                       <th>Phone</th>
                       <th>Source</th>
@@ -171,10 +191,11 @@ export default function CrmPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLeads.map((lead) => {
+                    {filteredLeads.map((lead, index) => {
                       const statusName = getLeadStatusName(lead.lead_status_id)
                       return (
                         <tr key={lead.lead_id}>
+                          <td className="text-gray-500 text-center">{index + 1}</td>
                           <td className="font-medium">{lead.name}</td>
                           <td>{lead.phone}</td>
                           <td className="text-gray-600">{lead.lead_source}</td>
@@ -184,7 +205,7 @@ export default function CrmPage() {
                             </span>
                           </td>
                           <td>{lead.expected_purchase_date ? formatDate(lead.expected_purchase_date) : '-'}</td>
-                          <td className="text-gray-600">{lead.assigned_staff_id || 'Unassigned'}</td>
+                          <td className="text-gray-600">{lead.owner_staff_id || 'Unassigned'}</td>
                           <td>
                             <div className="flex gap-2">
                               <button
@@ -195,11 +216,26 @@ export default function CrmPage() {
                                 <Eye className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => setConvertingLead(lead)}
-                                className="p-1 text-gray-500 hover:text-green-600"
-                                title="Convert to Sale"
+                                onClick={() => setFollowupLead(lead)}
+                                className="p-1 text-gray-500 hover:text-indigo-600"
+                                title="Log Follow-up"
                               >
-                                <ShoppingCart className="w-4 h-4" />
+                                <ClipboardList className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setConvertingLead(lead)}
+                                className={`p-1 ${(lead as any).is_converted ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-green-600'}`}
+                                title={(lead as any).is_converted ? 'Already Converted' : 'Convert to Customer'}
+                                disabled={(lead as any).is_converted}
+                              >
+                                <UserPlus className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTarget(lead)}
+                                className="p-1 text-gray-500 hover:text-red-600"
+                                title="Delete Lead"
+                              >
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -232,6 +268,23 @@ export default function CrmPage() {
               }}
             />
           )}
+
+          {/* Lead Follow-up Modal */}
+          {followupLead && (
+            <LeadFollowupModal
+              leadId={followupLead.lead_id}
+              leadName={followupLead.name}
+              onClose={() => setFollowupLead(null)}
+            />
+          )}
+
+          <DeleteConfirmModal
+            isOpen={!!deleteTarget}
+            onClose={() => setDeleteTarget(null)}
+            onConfirm={handleDeleteConfirm}
+            itemName={deleteTarget?.name || ''}
+            isPending={deleteMutation.isPending}
+          />
         </>
       )}
 

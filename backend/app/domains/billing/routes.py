@@ -1,13 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
 from app.auth.roles import require_roles
 from app.domains.billing.schemas import InvoiceCreate, InvoiceUpdate, InvoiceResponse
 from app.domains.billing import services
-from app.domains.billing.models import SalesInvoice
 
 router = APIRouter(
     prefix="/billing",
@@ -16,15 +14,14 @@ router = APIRouter(
 )
 
 
-
 @router.post("/invoice", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
-def create_invoice(
+async def create_invoice(
     data: InvoiceCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
     try:
-        invoice = services.generate_invoice(
+        invoice = await services.generate_invoice(
             db=db,
             sale_id=data.sale_id,
             taxable_amount=data.taxable_amount,
@@ -38,19 +35,28 @@ def create_invoice(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.put("/invoice/{invoice_id}", status_code=status.HTTP_200_OK)
-def update_invoice(
-    invoice_id: int,
-    data: InvoiceUpdate,
-    db: Session = Depends(get_db),
+@router.get("/invoices", response_model=list[InvoiceResponse])
+async def list_invoices(
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
-    invoice = db.get(SalesInvoice, invoice_id)
+    """List all invoices"""
+    return await services.list_invoices(db)
+
+
+@router.put("/invoice/{invoice_id}", status_code=status.HTTP_200_OK)
+async def update_invoice(
+    invoice_id: int,
+    data: InvoiceUpdate,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    invoice = await services.get_invoice(db, invoice_id)
     if not invoice:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found")
 
     try:
-        services.revise_invoice(
+        await services.revise_invoice(
             db=db,
             invoice=invoice,
             taxable_amount=data.taxable_amount,
@@ -63,18 +69,31 @@ def update_invoice(
 
 
 @router.post("/invoice/{invoice_id}/finalize", status_code=status.HTTP_200_OK)
-def finalize_invoice_api(
+async def finalize_invoice_api(
     invoice_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
-    invoice = db.get(SalesInvoice, invoice_id)
+    invoice = await services.get_invoice(db, invoice_id)
     if not invoice:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found")
 
     try:
-        services.finalize_invoice(db=db, invoice=invoice)
+        await services.finalize_invoice(db=db, invoice=invoice)
         return {"message": "Invoice finalized successfully"}
     except services.InvoiceNotFinalizableError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+
+@router.delete("/invoice/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_invoice(
+    invoice_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff),
+):
+    """Delete an invoice (soft delete by default)"""
+    success = await services.delete_invoice(db, invoice_id, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found")
+    return None

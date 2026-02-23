@@ -32,4 +32,6 @@ export const serviceApi = {
   consumeSpare: (jobCardId: number, data: SpareConsumeCreate) =>
     api.post(`/service/job-card/${jobCardId}/consume-spare`, data),
   closeJobCard: (jobCardId: number) => api.post(`/service/job-card/${jobCardId}/close`),
+  deleteJobCard: (jobCardId: number, hardDelete?: boolean) =>
+    api.delete(`/service/job-card/${jobCardId}`, { params: { hard_delete: hardDelete } }),
 }

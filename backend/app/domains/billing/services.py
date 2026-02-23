@@ -1,6 +1,8 @@
-from sqlalchemy.orm import Session
-from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, desc
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime
+from fastapi import HTTPException
 
 from app.domains.billing.models import SalesInvoice
 from app.domains.sales.models import Sale
@@ -22,8 +24,27 @@ class InvoiceNotFinalizableError(BillingError):
     pass
 
 
-def generate_invoice(
-    db: Session,
+async def get_invoice(db: AsyncSession, invoice_id: int) -> SalesInvoice | None:
+    """Get an invoice by ID (excludes soft-deleted)"""
+    stmt = select(SalesInvoice).filter(
+        SalesInvoice.invoice_id == invoice_id,
+        SalesInvoice.is_deleted == False
+    )
+    result = await db.execute(stmt)
+    return result.scalars().first()
+
+
+async def list_invoices(db: AsyncSession) -> list[SalesInvoice]:
+    """List all invoices (excludes soft-deleted)"""
+    stmt = select(SalesInvoice).filter(
+        SalesInvoice.is_deleted == False
+    ).order_by(desc(SalesInvoice.invoice_id))
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+async def generate_invoice(
+    db: AsyncSession,
     *,
     sale_id: int,
     taxable_amount: float,
@@ -31,11 +52,16 @@ def generate_invoice(
     remarks: str | None = None,
 ) -> SalesInvoice:
 
-    sale = db.get(Sale, sale_id)
+    sale = await db.get(Sale, sale_id)
     if not sale or getattr(sale, "sale_status", None) != "DELIVERED":
         raise BillingError("Invoice can only be generated after vehicle delivery")
 
-    existing = db.query(SalesInvoice).filter(SalesInvoice.sale_id == sale_id).first()
+    existing_stmt = select(SalesInvoice).filter(
+        SalesInvoice.sale_id == sale_id,
+        SalesInvoice.is_deleted == False
+    )
+    result = await db.execute(existing_stmt)
+    existing = result.scalars().first()
     if existing:
         raise InvoiceAlreadyExistsError("Invoice already exists for this sale")
 
@@ -56,15 +82,15 @@ def generate_invoice(
 
     try:
         db.add(invoice)
-        db.flush()
+        await db.flush()
     except IntegrityError as e:
         raise InvoiceAlreadyExistsError("Invoice creation failed due to unique constraint") from e
 
     return invoice
 
 
-def revise_invoice(
-    db: Session,
+async def revise_invoice(
+    db: AsyncSession,
     *,
     invoice: SalesInvoice,
     taxable_amount: float,
@@ -81,14 +107,39 @@ def revise_invoice(
     invoice.gst_amount = round(taxable_amount * gst_rate / 100, 2)
     invoice.total_amount = round(invoice.taxable_amount + invoice.gst_amount, 2)
     invoice.remarks = remarks
+    await db.flush()
 
     return invoice
 
 
-def finalize_invoice(db: Session, *, invoice: SalesInvoice):
+async def finalize_invoice(db: AsyncSession, *, invoice: SalesInvoice):
     if invoice.is_final:
         raise InvoiceNotFinalizableError("Invoice already finalized")
 
     invoice.is_final = True
+    await db.flush()
     return invoice
 
+
+# ==================== DELETE SERVICES ====================
+
+async def delete_invoice(
+    db: AsyncSession, invoice_id: int,
+    current_user: dict, hard_delete: bool = False
+) -> bool:
+    """Delete an invoice (soft by default, hard if authorized)"""
+    invoice = await get_invoice(db, invoice_id)
+    if not invoice:
+        return False
+
+    if hard_delete:
+        if current_user["designation"] not in ["Admin", "Dealer"]:
+            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+        await db.delete(invoice)
+    else:
+        invoice.is_deleted = True
+        invoice.deleted_at = datetime.utcnow()
+        invoice.deleted_by = current_user["staff_id"]
+
+    await db.flush()
+    return True

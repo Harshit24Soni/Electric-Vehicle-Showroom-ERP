@@ -147,8 +147,8 @@ export const masterApi = {
   createNominee: (customerId: number, data: NomineeCreate) => api.post<Nominee>(`/master/customers/${customerId}/nominees`, data),
   updateNominee: (customerId: number, nomineeId: number, data: Partial<NomineeCreate>) =>
     api.put<Nominee>(`/master/customers/${customerId}/nominees/${nomineeId}`, data),
-  deleteNominee: (customerId: number, nomineeId: number) =>
-    api.delete(`/master/customers/${customerId}/nominees/${nomineeId}`),
+  deleteNominee: (customerId: number, nomineeId: number, hardDelete?: boolean) =>
+    api.delete(`/master/customers/${customerId}/nominees/${nomineeId}`, { params: { hard_delete: hardDelete } }),
 
   // Vehicle Models
   getVehicleModels: () => api.get<VehicleModel[]>('/master/vehicle-models'),

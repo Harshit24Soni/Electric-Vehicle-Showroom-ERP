@@ -6,6 +6,7 @@ import { Plus, Search, RotateCcw, X } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import TempPinModal from '../../admin/components/TempPinModal'
 import { SkeletonTable } from '@/components/ui/SkeletonTable'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 interface Staff {
     staff_id: number
@@ -73,6 +74,7 @@ export default function StaffManager() {
     const [showPinModal, setShowPinModal] = useState(false)
     const [tempPin, setTempPin] = useState('')
     const [tempPinStaffName, setTempPinStaffName] = useState('')
+    const [deleteTarget, setDeleteTarget] = useState<Staff | null>(null)
 
     const queryClient = useQueryClient()
     const { hasRole, user } = useAuthStore()
@@ -95,7 +97,8 @@ export default function StaffManager() {
     })
 
     const deleteMutation = useMutation({
-        mutationFn: (id: number) => api.delete(`/admin/staff/${id}`),
+        mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) =>
+            api.delete(`/admin/staff/${id}`, { params: { hard_delete: hardDelete } }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['staff'] }),
     })
 
@@ -125,11 +128,16 @@ export default function StaffManager() {
                 await restoreMutation.mutateAsync(s.staff_id)
             }
         } else {
-            // Currently Active -> Delete
-            if (confirm(`Are you sure you want to deactivate/delete ${s.full_name}?`)) {
-                await deleteMutation.mutateAsync(s.staff_id)
-            }
+            // Currently Active -> Delete via modal
+            setDeleteTarget(s)
         }
+    }
+
+    const handleDeleteConfirm = async (hardDelete: boolean) => {
+        if (deleteTarget) {
+            await deleteMutation.mutateAsync({ id: deleteTarget.staff_id, hardDelete })
+        }
+        setDeleteTarget(null)
     }
 
     const handleResetPin = async (staffId: number, staffName: string) => {
@@ -467,6 +475,14 @@ export default function StaffManager() {
                     }}
                 />
             )}
+
+            <DeleteConfirmModal
+                isOpen={!!deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={handleDeleteConfirm}
+                itemName={deleteTarget?.full_name || ''}
+                isPending={deleteMutation.isPending}
+            />
         </div>
     )
 }

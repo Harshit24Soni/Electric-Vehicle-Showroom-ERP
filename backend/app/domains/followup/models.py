@@ -12,9 +12,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
 from app.db.base import Base
+from app.db.mixins import AuditMixin, SoftDeleteMixin
 
 
-class ServiceFollowup(Base):
+class ServiceFollowup(Base, AuditMixin, SoftDeleteMixin):
     """Tracks service follow-ups linked to job cards"""
     __tablename__ = "service_followup"
     __table_args__ = ({"schema": "service"},)
@@ -32,10 +33,9 @@ class ServiceFollowup(Base):
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     completed_date: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True)
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
 
-class InsuranceFollowup(Base):
+class InsuranceFollowup(Base, AuditMixin, SoftDeleteMixin):
     """Tracks insurance renewal follow-ups"""
     __tablename__ = "insurance_followup"
     __table_args__ = ({"schema": "insurance"},)
@@ -51,4 +51,3 @@ class InsuranceFollowup(Base):
     is_renewed: Mapped[bool] = mapped_column(Boolean, default=False)
     renewed_date: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True)
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)

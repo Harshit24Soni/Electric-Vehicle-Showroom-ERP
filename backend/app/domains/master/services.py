@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
 from datetime import datetime
+from fastapi import HTTPException
 
 from app.domains.master import models
 
@@ -38,8 +39,13 @@ async def create_customer(db: AsyncSession, payload) -> models.Customer:
 
 
 async def get_customer(db: AsyncSession, customer_id: int) -> models.Customer | None:
-    """Get a customer by ID"""
-    return await db.get(models.Customer, customer_id)
+    """Get a customer by ID (excludes soft-deleted)"""
+    stmt = select(models.Customer).filter(
+        models.Customer.customer_id == customer_id,
+        models.Customer.is_deleted == False
+    )
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
 
 async def get_customer_detailed(db: AsyncSession, customer_id: int) -> dict | None:
@@ -131,8 +137,10 @@ async def update_customer(db: AsyncSession, customer_id: int, payload) -> models
 
 
 async def list_customers(db: AsyncSession, limit: int = 100) -> list[models.Customer]:
-    """List all customers"""
-    stmt = select(models.Customer).order_by(desc(models.Customer.created_at)).limit(limit)
+    """List all customers (excludes soft-deleted)"""
+    stmt = select(models.Customer).filter(
+        models.Customer.is_deleted == False
+    ).order_by(desc(models.Customer.created_at)).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -186,21 +194,23 @@ async def create_nominee(db: AsyncSession, customer_id: int, payload) -> models.
 
 
 async def list_nominees(db: AsyncSession, customer_id: int) -> list[models.Nominee]:
-    """List all active nominees for a customer"""
+    """List all active nominees for a customer (excludes soft-deleted)"""
     stmt = select(models.Nominee).filter(
         models.Nominee.customer_id == customer_id,
-        models.Nominee.is_active == True
+        models.Nominee.is_active == True,
+        models.Nominee.is_deleted == False
     ).order_by(desc(models.Nominee.is_primary), desc(models.Nominee.created_at))
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
 async def get_nominee(db: AsyncSession, nominee_id: int, customer_id: int) -> models.Nominee | None:
-    """Get a specific nominee"""
+    """Get a specific nominee (excludes soft-deleted)"""
     stmt = select(models.Nominee).filter(
         models.Nominee.nominee_id == nominee_id,
         models.Nominee.customer_id == customer_id,
-        models.Nominee.is_active == True
+        models.Nominee.is_active == True,
+        models.Nominee.is_deleted == False
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -240,26 +250,49 @@ async def update_nominee(db: AsyncSession, nominee_id: int, customer_id: int, pa
     return nominee
 
 
-async def delete_nominee(db: AsyncSession, nominee_id: int, customer_id: int) -> bool:
-    """Soft delete a nominee"""
+async def delete_nominee(
+    db: AsyncSession, nominee_id: int, customer_id: int,
+    current_user: dict, hard_delete: bool = False
+) -> bool:
+    """Delete a nominee (soft by default, hard if authorized)"""
     nominee = await get_nominee(db, nominee_id, customer_id)
     if not nominee:
         return False
-    
-    nominee.is_active = False
-    
-    # If this was the primary nominee, set another as primary
-    if nominee.is_primary:
-        stmt = select(models.Nominee).filter(
-            models.Nominee.customer_id == customer_id,
-            models.Nominee.is_active == True,
-            models.Nominee.nominee_id != nominee_id
-        )
-        result = await db.execute(stmt)
-        next_nominee = result.scalars().first()
-        if next_nominee:
-            next_nominee.is_primary = True
-    
+
+    if hard_delete:
+        if current_user["designation"] not in ["Admin", "Dealer"]:
+            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+        # Reassign primary before hard delete
+        if nominee.is_primary:
+            stmt = select(models.Nominee).filter(
+                models.Nominee.customer_id == customer_id,
+                models.Nominee.is_active == True,
+                models.Nominee.is_deleted == False,
+                models.Nominee.nominee_id != nominee_id
+            )
+            result = await db.execute(stmt)
+            next_nominee = result.scalars().first()
+            if next_nominee:
+                next_nominee.is_primary = True
+        await db.delete(nominee)
+    else:
+        nominee.is_deleted = True
+        nominee.deleted_at = datetime.utcnow()
+        nominee.deleted_by = current_user["staff_id"]
+        nominee.is_active = False
+        # Reassign primary on soft delete
+        if nominee.is_primary:
+            stmt = select(models.Nominee).filter(
+                models.Nominee.customer_id == customer_id,
+                models.Nominee.is_active == True,
+                models.Nominee.is_deleted == False,
+                models.Nominee.nominee_id != nominee_id
+            )
+            result = await db.execute(stmt)
+            next_nominee = result.scalars().first()
+            if next_nominee:
+                next_nominee.is_primary = True
+
     await db.flush()
     return True
 
@@ -283,8 +316,11 @@ async def create_vehicle_model(db: AsyncSession, payload) -> models.VehicleModel
 
 
 async def list_vehicle_models(db: AsyncSession) -> list[models.VehicleModel]:
-    """List all active vehicle models"""
-    stmt = select(models.VehicleModel).filter(models.VehicleModel.is_active == True)
+    """List all active vehicle models (excludes soft-deleted)"""
+    stmt = select(models.VehicleModel).filter(
+        models.VehicleModel.is_active == True,
+        models.VehicleModel.is_deleted == False
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -306,8 +342,13 @@ async def create_vehicle(db: AsyncSession, payload) -> models.Vehicle:
 
 
 async def get_vehicle(db: AsyncSession, chassis_no: str) -> models.Vehicle | None:
-    """Get vehicle by chassis number"""
-    return await db.get(models.Vehicle, chassis_no)
+    """Get vehicle by chassis number (excludes soft-deleted)"""
+    stmt = select(models.Vehicle).filter(
+        models.Vehicle.chassis_no == chassis_no,
+        models.Vehicle.is_deleted == False
+    )
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
 
 # ==================== VENDOR SERVICES ====================
@@ -326,8 +367,11 @@ async def create_vendor(db: AsyncSession, payload) -> models.Vendor:
 
 
 async def list_vendors(db: AsyncSession) -> list[models.Vendor]:
-    """List all active vendors"""
-    stmt = select(models.Vendor).filter(models.Vendor.is_active == True)
+    """List all active vendors (excludes soft-deleted)"""
+    stmt = select(models.Vendor).filter(
+        models.Vendor.is_active == True,
+        models.Vendor.is_deleted == False
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -424,4 +468,105 @@ async def get_vehicle_price_history(db: AsyncSession, vehicle_model_id: int) -> 
     return result.scalars().all()
 
 
+# ==================== DELETE SERVICES ====================
+
+async def delete_customer(
+    db: AsyncSession, customer_id: int,
+    current_user: dict, hard_delete: bool = False
+) -> bool:
+    """Delete a customer (soft by default, hard if authorized)"""
+    customer = await get_customer(db, customer_id)
+    if not customer:
+        return False
+
+    if hard_delete:
+        if current_user["designation"] not in ["Admin", "Dealer"]:
+            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+        await db.delete(customer)
+    else:
+        customer.is_deleted = True
+        customer.deleted_at = datetime.utcnow()
+        customer.deleted_by = current_user["staff_id"]
+        customer.is_active = False
+
+    await db.flush()
+    return True
+
+
+async def delete_vehicle_model(
+    db: AsyncSession, vehicle_model_id: int,
+    current_user: dict, hard_delete: bool = False
+) -> bool:
+    """Delete a vehicle model (soft by default, hard if authorized)"""
+    stmt = select(models.VehicleModel).filter(
+        models.VehicleModel.vehicle_model_id == vehicle_model_id,
+        models.VehicleModel.is_deleted == False
+    )
+    result = await db.execute(stmt)
+    vm = result.scalars().first()
+    if not vm:
+        return False
+
+    if hard_delete:
+        if current_user["designation"] not in ["Admin", "Dealer"]:
+            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+        await db.delete(vm)
+    else:
+        vm.is_deleted = True
+        vm.deleted_at = datetime.utcnow()
+        vm.deleted_by = current_user["staff_id"]
+        vm.is_active = False
+
+    await db.flush()
+    return True
+
+
+async def delete_vehicle(
+    db: AsyncSession, chassis_no: str,
+    current_user: dict, hard_delete: bool = False
+) -> bool:
+    """Delete a vehicle (soft by default, hard if authorized)"""
+    vehicle = await get_vehicle(db, chassis_no)
+    if not vehicle:
+        return False
+
+    if hard_delete:
+        if current_user["designation"] not in ["Admin", "Dealer"]:
+            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+        await db.delete(vehicle)
+    else:
+        vehicle.is_deleted = True
+        vehicle.deleted_at = datetime.utcnow()
+        vehicle.deleted_by = current_user["staff_id"]
+
+    await db.flush()
+    return True
+
+
+async def delete_vendor(
+    db: AsyncSession, vendor_id: int,
+    current_user: dict, hard_delete: bool = False
+) -> bool:
+    """Delete a vendor (soft by default, hard if authorized)"""
+    stmt = select(models.Vendor).filter(
+        models.Vendor.vendor_id == vendor_id,
+        models.Vendor.is_deleted == False
+    )
+    result = await db.execute(stmt)
+    vendor = result.scalars().first()
+    if not vendor:
+        return False
+
+    if hard_delete:
+        if current_user["designation"] not in ["Admin", "Dealer"]:
+            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+        await db.delete(vendor)
+    else:
+        vendor.is_deleted = True
+        vendor.deleted_at = datetime.utcnow()
+        vendor.deleted_by = current_user["staff_id"]
+        vendor.is_active = False
+
+    await db.flush()
+    return True
 

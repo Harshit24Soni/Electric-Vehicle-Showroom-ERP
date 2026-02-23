@@ -11,6 +11,21 @@ export interface SaleCreate {
   is_direct_sale?: boolean
 }
 
+export interface SaleCreatePayload {
+  customer_id: number
+  chassis_no: string
+  sale_date: string
+  base_price: number
+  taxes: number
+  total_amount: number
+  payment_mode: string
+  financier_name?: string
+  down_payment_amount: number
+  remarks?: string
+  lead_id?: number | null
+  is_direct_sale?: boolean
+}
+
 export interface ServiceSchedule {
   schedule_id: number
   service_number: number
@@ -163,6 +178,7 @@ export interface DeliveryChecklist {
 
 export const salesApi = {
   createSale: (data: SaleCreate) => api.post<Sale>('/sales', data),
+  createSaleBilling: (data: SaleCreatePayload) => api.post<Sale>('/sales/billing', data),
   getSales: (status?: string) => api.get<Sale[]>(`/sales${status ? `?status=${status}` : ''}`),
   getSale: (id: number) => api.get<Sale>(`/sales/${id}`),
   addReceipt: (data: any) => api.post(`/sales/receipts`, data),
@@ -193,4 +209,6 @@ export const salesApi = {
   updatePortalTracking: (id: number, data: Partial<PortalTracking>) =>
     api.patch<PortalTracking>(`/sales/${id}/portal`, data),
   getSaleProgress: (id: number) => api.get<SaleProgress>(`/sales/${id}/progress`),
+  deleteSale: (id: number, hardDelete?: boolean) =>
+    api.delete(`/sales/${id}`, { params: { hard_delete: hardDelete } }),
 }

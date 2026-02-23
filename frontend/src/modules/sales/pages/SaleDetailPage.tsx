@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { salesApi, SaleProgress, PortalTracking } from '../api/salesApi'
-import { ArrowLeft, Truck, CreditCard, ChevronRight, Globe, FileText } from 'lucide-react'
+import {
+  ArrowLeft, Truck, CreditCard, ChevronRight, Globe, FileText,
+  Printer, Download, Shield, Car, Landmark, Hash, CalendarCheck
+} from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { SalesProgressBar } from '../components/SalesProgressBar'
 import PostDeliveryChecklist from '../components/PostDeliveryChecklist'
@@ -14,6 +17,144 @@ const STAGES = [
   'PAYMENT', 'INVOICE', 'PORTAL_WORK', 'DELIVERY', 'COMPLETED',
 ]
 
+// ————————————————————————————————
+// Reusable document print/download helpers
+// ————————————————————————————————
+
+/** Build a printable HTML string for a document */
+function buildDocumentHtml(
+  title: string,
+  number: string | undefined,
+  sale: any,
+  extra?: string,
+): string {
+  const customer = sale.customer || {}
+  const vehicle = sale.vehicle || {}
+  const modelName = vehicle.model?.model_name || 'N/A'
+  const brandName = vehicle.model?.brand?.brand_name || ''
+
+  return `
+    <div style="font-family: 'Inter', sans-serif; padding: 40px; max-width: 800px; margin: auto;">
+      <div style="text-align:center; margin-bottom: 32px;">
+        <h1 style="font-size: 24px; font-weight: bold; margin: 0;">${title}</h1>
+        ${number ? `<p style="color: #6b7280; margin-top: 4px;">${number}</p>` : ''}
+      </div>
+      <hr style="border-color: #e5e7eb; margin-bottom: 24px;" />
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280; width: 40%;">Customer Name</td>
+          <td style="padding: 8px 0; font-weight: 600;">${customer.name || '-'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Phone</td>
+          <td style="padding: 8px 0;">${customer.primary_phone || '-'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Address</td>
+          <td style="padding: 8px 0;">${[customer.address_line1, customer.city, customer.state, customer.pincode].filter(Boolean).join(', ') || '-'}</td>
+        </tr>
+        <tr><td colspan="2" style="padding: 12px 0;"><hr style="border-color: #e5e7eb;" /></td></tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Vehicle</td>
+          <td style="padding: 8px 0; font-weight: 600;">${brandName} ${modelName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Chassis No.</td>
+          <td style="padding: 8px 0; font-family: monospace;">${sale.chassis_no}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Color</td>
+          <td style="padding: 8px 0;">${vehicle.color || '-'}</td>
+        </tr>
+        <tr><td colspan="2" style="padding: 12px 0;"><hr style="border-color: #e5e7eb;" /></td></tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Sale Date</td>
+          <td style="padding: 8px 0;">${sale.sale_date || '-'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Total Amount</td>
+          <td style="padding: 8px 0; font-weight: 700; font-size: 16px;">₹${Number(sale.total_amount || 0).toLocaleString('en-IN')}</td>
+        </tr>
+      </table>
+      ${extra || ''}
+      <div style="margin-top: 48px; text-align: center; color: #9ca3af; font-size: 12px;">
+        Generated on ${new Date().toLocaleDateString('en-IN')} | Sale #${sale.sale_id}
+      </div>
+    </div>
+  `
+}
+
+function printDocument(html: string) {
+  const printWin = window.open('', '_blank', 'width=800,height=600')
+  if (!printWin) return
+  printWin.document.write(`
+    <html><head><title>Print Document</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    </head><body>${html}</body></html>
+  `)
+  printWin.document.close()
+  setTimeout(() => { printWin.print(); printWin.close() }, 400)
+}
+
+async function downloadPdf(html: string, filename: string) {
+  const html2pdf = (await import('html2pdf.js')).default
+  const container = document.createElement('div')
+  container.innerHTML = html
+  document.body.appendChild(container)
+  await html2pdf().from(container).set({
+    margin: 10,
+    filename: `${filename}.pdf`,
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+  }).save()
+  document.body.removeChild(container)
+}
+
+// ————————————————————————————————
+// Toggle Switch Component
+// ————————————————————————————————
+function ToggleSwitch({
+  checked, onChange, disabled, label, icon, description, children,
+}: {
+  checked: boolean
+  onChange: (val: boolean) => void
+  disabled?: boolean
+  label: string
+  icon?: React.ReactNode
+  description?: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div className={`p-4 rounded-xl border transition-all ${checked ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {icon && <div className={`p-2 rounded-lg ${checked ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'}`}>{icon}</div>}
+          <div>
+            <span className="font-medium text-sm text-gray-900">{label}</span>
+            {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          disabled={disabled}
+          onClick={() => onChange(!checked)}
+          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${checked ? 'bg-green-500' : 'bg-gray-300'
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'
+            }`} />
+        </button>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// ————————————————————————————————
+// Main Page Component
+// ————————————————————————————————
 export default function SaleDetailPage() {
   const { saleId } = useParams<{ saleId: string }>()
   const navigate = useNavigate()
@@ -88,12 +229,65 @@ export default function SaleDetailPage() {
       salesApi.updatePortalTracking(Number(saleId), data),
     onSuccess: () => {
       invalidateAll()
-      toast.success('Portal tracking updated')
+      toast.success('Tracking updated')
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail || 'Failed to update portal')
+      toast.error(err?.response?.data?.detail || 'Failed to update tracking')
     },
   })
+
+  // ——— Document Print/Download handlers ———
+  const handlePrint = useCallback((docType: string) => {
+    if (!sale) return
+    const titleMap: Record<string, string> = {
+      invoice: 'TAX INVOICE',
+      receipt: 'PAYMENT RECEIPT',
+      challan: 'DELIVERY CHALLAN',
+      schedule: 'SERVICE SCHEDULE',
+    }
+    const numberMap: Record<string, string | undefined> = {
+      invoice: sale.invoice_number,
+      receipt: undefined,
+      challan: sale.delivery_challan_number,
+      schedule: undefined,
+    }
+    let extra = ''
+    if (docType === 'schedule' && sale.service_schedules?.length) {
+      extra = `<table style="width:100%;border-collapse:collapse;margin-top:24px;font-size:14px;">
+        <tr style="background:#f3f4f6;"><th style="padding:8px;text-align:left;">Service #</th><th style="padding:8px;text-align:left;">Type</th><th style="padding:8px;text-align:left;">Due Date</th><th style="padding:8px;text-align:left;">Status</th></tr>
+        ${sale.service_schedules.map((s: any) => `<tr><td style="padding:8px;">${s.service_number}</td><td style="padding:8px;">${s.service_type}</td><td style="padding:8px;">${s.due_date}</td><td style="padding:8px;">${s.status}</td></tr>`).join('')}
+      </table>`
+    }
+    const html = buildDocumentHtml(titleMap[docType] || docType, numberMap[docType], sale, extra)
+    printDocument(html)
+  }, [sale])
+
+  const handleDownload = useCallback(async (docType: string) => {
+    if (!sale) return
+    const titleMap: Record<string, string> = {
+      invoice: 'TAX INVOICE',
+      receipt: 'PAYMENT RECEIPT',
+      challan: 'DELIVERY CHALLAN',
+      schedule: 'SERVICE SCHEDULE',
+    }
+    const numberMap: Record<string, string | undefined> = {
+      invoice: sale.invoice_number,
+      receipt: undefined,
+      challan: sale.delivery_challan_number,
+      schedule: undefined,
+    }
+    let extra = ''
+    if (docType === 'schedule' && sale.service_schedules?.length) {
+      extra = `<table style="width:100%;border-collapse:collapse;margin-top:24px;font-size:14px;">
+        <tr style="background:#f3f4f6;"><th style="padding:8px;text-align:left;">Service #</th><th style="padding:8px;text-align:left;">Type</th><th style="padding:8px;text-align:left;">Due Date</th><th style="padding:8px;text-align:left;">Status</th></tr>
+        ${sale.service_schedules.map((s: any) => `<tr><td style="padding:8px;">${s.service_number}</td><td style="padding:8px;">${s.service_type}</td><td style="padding:8px;">${s.due_date}</td><td style="padding:8px;">${s.status}</td></tr>`).join('')}
+      </table>`
+    }
+    const html = buildDocumentHtml(titleMap[docType] || docType, numberMap[docType], sale, extra)
+    const fname = `${titleMap[docType].replace(/\s/g, '_')}_${numberMap[docType] || `Sale-${sale.sale_id}`}`
+    await downloadPdf(html, fname)
+    toast.success(`${titleMap[docType]} downloaded as PDF`)
+  }, [sale])
 
   if (isLoading || statusLoading) {
     return (
@@ -123,6 +317,47 @@ export default function SaleDetailPage() {
     ? STAGES[currentStageIdx + 1]
     : null
   const portal = progress?.portal_tracking
+
+  // Document cards data
+  const docCards = [
+    {
+      key: 'invoice',
+      label: 'Tax Invoice',
+      number: sale.invoice_number,
+      generated: sale.is_invoice_generated,
+      onGenerate: () => generateInvoiceMutation.mutate(),
+      genPending: generateInvoiceMutation.isPending,
+      disabled: false,
+    },
+    {
+      key: 'receipt',
+      label: 'Payment Receipt',
+      number: sale.is_receipt_generated ? 'Generated' : undefined,
+      generated: sale.is_receipt_generated,
+      onGenerate: () => setShowPaymentModal(true),
+      genPending: false,
+      genLabel: 'Add Receipt',
+      disabled: false,
+    },
+    {
+      key: 'challan',
+      label: 'Delivery Challan',
+      number: sale.delivery_challan_number,
+      generated: sale.is_challan_generated,
+      onGenerate: () => generateChallanMutation.mutate(),
+      genPending: generateChallanMutation.isPending,
+      disabled: !sale.is_invoice_generated,
+    },
+    {
+      key: 'schedule',
+      label: 'Service Schedule',
+      number: sale.is_service_schedule_generated ? 'Generated' : undefined,
+      generated: sale.is_service_schedule_generated,
+      onGenerate: () => generateServiceScheduleMutation.mutate(),
+      genPending: generateServiceScheduleMutation.isPending,
+      disabled: false,
+    },
+  ]
 
   return (
     <div className="space-y-6">
@@ -211,8 +446,8 @@ export default function SaleDetailPage() {
               <label className="text-sm font-medium text-gray-600">Status</label>
               <p>
                 <span className={`px-2 py-1 text-xs rounded-full ${sale.sale_status === 'DELIVERED'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-yellow-100 text-yellow-800'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-yellow-100 text-yellow-800'
                   }`}>
                   {sale.sale_status}
                 </span>
@@ -229,96 +464,50 @@ export default function SaleDetailPage() {
           </div>
         </div>
 
-        {/* Documents Section */}
+        {/* ——— Delivery Documents — Print + Download PDF ——— */}
         <div className="card">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <FileText className="w-5 h-5" />
-            Documents
+            Delivery Documents
           </h2>
-          <div className="space-y-4">
-            {/* Invoice */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium">Tax Invoice</p>
-                <p className="text-xs text-gray-500">{sale.invoice_number || 'Not Generated'}</p>
-              </div>
-              {sale.is_invoice_generated ? (
-                <div className="flex gap-2 items-center">
-                  <span className="text-green-600 text-sm font-medium">Generated</span>
-                  <button onClick={() => window.open(`/print/sale/${saleId}/invoice`, '_blank')} className="text-blue-600 hover:underline text-sm">Print</button>
+          <div className="space-y-3">
+            {docCards.map((doc) => (
+              <div key={doc.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-sm">{doc.label}</p>
+                  <p className="text-xs text-gray-500">
+                    {doc.generated ? (doc.number || 'Generated') : 'Not Generated'}
+                  </p>
                 </div>
-              ) : (
-                <button
-                  onClick={() => generateInvoiceMutation.mutate()}
-                  disabled={generateInvoiceMutation.isPending}
-                  className="btn btn-sm btn-secondary"
-                >
-                  {generateInvoiceMutation.isPending ? '...' : 'Generate'}
-                </button>
-              )}
-            </div>
-
-            {/* Payment Receipt */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium">Payment Receipt</p>
-                <p className="text-xs text-gray-500">{sale.is_receipt_generated ? 'Generated' : 'Pending'}</p>
+                {doc.generated ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-xs font-medium bg-green-50 px-2 py-0.5 rounded-full">✓ Ready</span>
+                    <button
+                      onClick={() => handlePrint(doc.key)}
+                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title={`Print ${doc.label}`}
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDownload(doc.key)}
+                      className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                      title={`Download ${doc.label} PDF`}
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={doc.onGenerate}
+                    disabled={doc.genPending || doc.disabled}
+                    className="btn btn-sm btn-secondary"
+                  >
+                    {doc.genPending ? '...' : (doc.genLabel || 'Generate')}
+                  </button>
+                )}
               </div>
-              {sale.is_receipt_generated ? (
-                <span className="text-green-600 text-sm font-medium">Generated</span>
-              ) : (
-                <button
-                  onClick={() => setShowPaymentModal(true)}
-                  className="btn btn-sm btn-secondary"
-                >
-                  Add Receipt
-                </button>
-              )}
-            </div>
-
-            {/* Delivery Challan */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium">Delivery Challan</p>
-                <p className="text-xs text-gray-500">{sale.delivery_challan_number || 'Not Generated'}</p>
-              </div>
-              {sale.is_challan_generated ? (
-                <div className="flex gap-2 items-center">
-                  <span className="text-green-600 text-sm font-medium">Generated</span>
-                  <button onClick={() => window.open(`/print/sale/${saleId}/challan`, '_blank')} className="text-blue-600 hover:underline text-sm">Print</button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => generateChallanMutation.mutate()}
-                  disabled={generateChallanMutation.isPending || !sale.is_invoice_generated}
-                  className="btn btn-sm btn-secondary"
-                >
-                  {generateChallanMutation.isPending ? '...' : 'Generate'}
-                </button>
-              )}
-            </div>
-
-            {/* Service Schedule */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium">Service Schedule</p>
-                <p className="text-xs text-gray-500">{sale.is_service_schedule_generated ? 'Generated' : 'Pending'}</p>
-              </div>
-              {sale.is_service_schedule_generated ? (
-                <div className="flex gap-2 items-center">
-                  <span className="text-green-600 text-sm font-medium">Generated</span>
-                  <button onClick={() => window.open(`/print/sale/${saleId}/schedule`, '_blank')} className="text-blue-600 hover:underline text-sm">Print</button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => generateServiceScheduleMutation.mutate()}
-                  disabled={generateServiceScheduleMutation.isPending}
-                  className="btn btn-sm btn-secondary"
-                >
-                  {generateServiceScheduleMutation.isPending ? '...' : 'Generate'}
-                </button>
-              )}
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -368,68 +557,108 @@ export default function SaleDetailPage() {
         )}
       </div>
 
-      {/* ——— Portal Tracking ——— */}
+      {/* ——— Portal & Compliance Tracking ——— */}
       {portal && (
         <div className="card">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <Globe className="w-5 h-5" />
-            Portal Tracking
+            Portal & Compliance Tracking
             {portal.all_portals_completed && (
               <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full ml-2">All Complete</span>
             )}
           </h2>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Insurance */}
-            <PortalCard
-              title="Insurance"
-              status={portal.insurance_status}
-              details={portal.insurance_policy_number ? `Policy: ${portal.insurance_policy_number}` : undefined}
-              completedDate={portal.insurance_completed_date}
-              onUpdateStatus={(status) => updatePortalMutation.mutate({ insurance_status: status })}
+            <ToggleSwitch
+              checked={portal.insurance_status === 'COMPLETED'}
+              onChange={(val) => updatePortalMutation.mutate({ insurance_status: val ? 'COMPLETED' : 'PENDING' })}
+              disabled={updatePortalMutation.isPending}
+              label="Insurance"
+              icon={<Shield className="w-4 h-4" />}
+              description={portal.insurance_policy_number ? `Policy: ${portal.insurance_policy_number}` : 'Vehicle insurance filing'}
             />
-            {/* Subsidy */}
-            <PortalCard
-              title="Subsidy"
-              status={portal.subsidy_status}
-              details={portal.subsidy_reference ? `Ref: ${portal.subsidy_reference}` : undefined}
-              completedDate={portal.subsidy_completed_date}
-              onUpdateStatus={(status) => updatePortalMutation.mutate({ subsidy_status: status })}
+
+            {/* RTO Portal */}
+            <ToggleSwitch
+              checked={portal.rto_status === 'COMPLETED'}
+              onChange={(val) => updatePortalMutation.mutate({ rto_status: val ? 'COMPLETED' : 'PENDING' })}
+              disabled={updatePortalMutation.isPending}
+              label="RTO Portal"
+              icon={<Car className="w-4 h-4" />}
+              description={portal.registration_number ? `Reg: ${portal.registration_number}` : 'Vehicle registration'}
             />
-            {/* RTO */}
-            <PortalCard
-              title="RTO"
-              status={portal.rto_status}
-              details={portal.registration_number ? `Reg: ${portal.registration_number}` : undefined}
-              completedDate={portal.rto_completed_date}
-              onUpdateStatus={(status) => updatePortalMutation.mutate({ rto_status: status })}
+
+            {/* Subsidy Portal */}
+            <ToggleSwitch
+              checked={portal.subsidy_status === 'COMPLETED'}
+              onChange={(val) => updatePortalMutation.mutate({ subsidy_status: val ? 'COMPLETED' : 'PENDING' })}
+              disabled={updatePortalMutation.isPending}
+              label="Subsidy Portal"
+              icon={<Landmark className="w-4 h-4" />}
+              description={portal.subsidy_reference ? `Ref: ${portal.subsidy_reference}` : 'Government subsidy application'}
             />
-            {/* CELEX */}
-            <PortalCard
-              title="CELEX"
-              status={portal.celex_status}
-              details={portal.number_plate_ordered_date ? `Plate ordered: ${formatDate(portal.number_plate_ordered_date)}` : undefined}
-              completedDate={portal.celex_completed_date}
-              onUpdateStatus={(status) => updatePortalMutation.mutate({ celex_status: status })}
+
+            {/* CELEX / Number Plate Ordered */}
+            <ToggleSwitch
+              checked={portal.celex_status === 'COMPLETED'}
+              onChange={(val) => updatePortalMutation.mutate({ celex_status: val ? 'COMPLETED' : 'PENDING' })}
+              disabled={updatePortalMutation.isPending}
+              label="Number Plate Ordered"
+              icon={<Hash className="w-4 h-4" />}
+              description={portal.number_plate_ordered_date ? `Ordered: ${formatDate(portal.number_plate_ordered_date)}` : 'CELEX number plate order'}
             />
           </div>
+
+          {/* Number Plate Affixed — with date picker */}
+          <div className="mt-4">
+            <ToggleSwitch
+              checked={!!portal.number_plate_fixed_date}
+              onChange={(val) => {
+                if (val) {
+                  updatePortalMutation.mutate({ number_plate_fixed_date: new Date().toISOString().slice(0, 10) as any })
+                } else {
+                  updatePortalMutation.mutate({ number_plate_fixed_date: null as any })
+                }
+              }}
+              disabled={updatePortalMutation.isPending}
+              label="Number Plate Affixed"
+              icon={<CalendarCheck className="w-4 h-4" />}
+              description="Physical number plate has been installed on the vehicle"
+            >
+              {portal.number_plate_fixed_date && (
+                <div className="mt-3 flex items-center gap-2 ml-11">
+                  <label className="text-xs text-gray-600">Affixed Date:</label>
+                  <input
+                    type="date"
+                    value={typeof portal.number_plate_fixed_date === 'string' ? portal.number_plate_fixed_date.slice(0, 10) : ''}
+                    onChange={(e) => updatePortalMutation.mutate({ number_plate_fixed_date: e.target.value as any })}
+                    className="input text-sm py-1 px-2 w-auto"
+                  />
+                </div>
+              )}
+            </ToggleSwitch>
+          </div>
+
+          {/* Form 20 / Helmet Invoice toggles */}
           <div className="grid grid-cols-2 gap-4 mt-4">
-            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
               <input
                 type="checkbox"
                 checked={portal.form_20_generated}
                 onChange={(e) => updatePortalMutation.mutate({ form_20_generated: e.target.checked })}
-                className="w-4 h-4"
+                className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
               />
-              <span className="text-sm font-medium">Form 20 Generated</span>
+              <span className="text-sm font-medium text-gray-700">Form 20 Generated</span>
             </div>
-            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
               <input
                 type="checkbox"
                 checked={portal.helmet_invoice_generated}
                 onChange={(e) => updatePortalMutation.mutate({ helmet_invoice_generated: e.target.checked })}
-                className="w-4 h-4"
+                className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
               />
-              <span className="text-sm font-medium">Helmet Invoice Generated</span>
+              <span className="text-sm font-medium text-gray-700">Helmet Invoice Generated</span>
             </div>
           </div>
         </div>
@@ -475,58 +704,6 @@ export default function SaleDetailPage() {
       {/* ——— Payment Modal ——— */}
       {showPaymentModal && (
         <PaymentModal saleId={sale.sale_id} onClose={() => setShowPaymentModal(false)} />
-      )}
-    </div>
-  )
-}
-
-/* ——— Portal Card sub-component ——— */
-function PortalCard({
-  title,
-  status,
-  details,
-  completedDate,
-  onUpdateStatus,
-}: {
-  title: string
-  status: string
-  details?: string
-  completedDate?: string
-  onUpdateStatus: (status: string) => void
-}) {
-  const statusColors: Record<string, string> = {
-    PENDING: 'bg-yellow-100 text-yellow-700',
-    IN_PROGRESS: 'bg-blue-100 text-blue-700',
-    COMPLETED: 'bg-green-100 text-green-700',
-  }
-
-  return (
-    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-semibold text-gray-800">{title}</h3>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[status] || 'bg-gray-100 text-gray-600'}`}>
-          {status}
-        </span>
-      </div>
-      {details && <p className="text-xs text-gray-500 mb-2">{details}</p>}
-      {completedDate && <p className="text-xs text-gray-400">Completed: {formatDate(completedDate)}</p>}
-      {status !== 'COMPLETED' && (
-        <div className="mt-2 flex gap-2">
-          {status === 'PENDING' && (
-            <button
-              onClick={() => onUpdateStatus('IN_PROGRESS')}
-              className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Start
-            </button>
-          )}
-          <button
-            onClick={() => onUpdateStatus('COMPLETED')}
-            className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            Mark Complete
-          </button>
-        </div>
       )}
     </div>
   )

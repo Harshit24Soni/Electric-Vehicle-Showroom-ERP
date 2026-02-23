@@ -13,9 +13,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 
 from app.db.base import Base
+from app.db.mixins import AuditMixin, SoftDeleteMixin
 
 
-class InsuranceCompany(Base):
+class InsuranceCompany(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "insurance_company"
     __table_args__ = ({"schema": "insurance"},)
 
@@ -24,10 +25,9 @@ class InsuranceCompany(Base):
     contact_phone: Mapped[str | None] = mapped_column(String(15))
     contact_email: Mapped[str | None] = mapped_column(String(150))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
 
 
-class Policy(Base):
+class Policy(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "policy"
     __table_args__ = (
         CheckConstraint("policy_end_date > policy_start_date", name="chk_policy_date_valid"),
@@ -44,4 +44,3 @@ class Policy(Base):
     policy_end_date: Mapped[datetime] = mapped_column(Date, nullable=False)
     premium_amount: Mapped[float | None] = mapped_column(nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)

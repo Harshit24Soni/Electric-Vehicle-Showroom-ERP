@@ -47,4 +47,6 @@ export const warrantyApi = {
     api.get<Claim[]>('/warranty/claims', { params: { skip, limit } }),
   createInward: (data: InwardCreate) => api.post('/warranty/inwards', data),
   createShipment: (data: ShipmentCreate) => api.post('/warranty/shipments', data),
+  deleteClaim: (id: number, hardDelete?: boolean) =>
+    api.delete(`/warranty/claims/${id}`, { params: { hard_delete: hardDelete } }),
 }

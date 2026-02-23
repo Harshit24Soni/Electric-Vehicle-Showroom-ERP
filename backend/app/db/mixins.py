@@ -1,43 +1,40 @@
 from datetime import datetime
-from sqlalchemy import TIMESTAMP, ForeignKey, BigInteger
-from sqlalchemy.orm import Mapped, mapped_column, declarative_mixin
+from sqlalchemy import TIMESTAMP, ForeignKey, Boolean, BigInteger
+from sqlalchemy.orm import Mapped, mapped_column, declarative_mixin, declared_attr
+
+@declarative_mixin
+class AuditMixin:
+    """Comprehensive audit trails for all core tables."""
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), onupdate=datetime.utcnow, nullable=True)
+    
+    @declared_attr
+    def created_by(cls) -> Mapped[int | None]:
+        return mapped_column(BigInteger, ForeignKey("master.staff.staff_id", ondelete="SET NULL"), nullable=True)
+
+    @declared_attr
+    def updated_by(cls) -> Mapped[int | None]:
+        return mapped_column(BigInteger, ForeignKey("master.staff.staff_id", ondelete="SET NULL"), nullable=True)
 
 
 @declarative_mixin
 class SoftDeleteMixin:
-    """
-    Mixin for soft-deleting records.
+    """Robust Soft Delete architecture setting up future permanent deletion."""
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    
+    @declared_attr
+    def deleted_by(cls) -> Mapped[int | None]:
+        return mapped_column(BigInteger, ForeignKey("master.staff.staff_id", ondelete="SET NULL"), nullable=True)
 
-    Adds a `deleted_at` column. Records with a non-null `deleted_at`
-    are considered deleted but retained in the database.
-
-    Usage:
-        # Query only active records:
-        active_sales = Sale.active(db)
-
-        # Soft-delete a record:
-        sale.deleted_at = datetime.utcnow()
-        db.commit()
-    """
-    deleted_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP, nullable=True, default=None
-    )
+    # Restoration tracking
+    restored_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    
+    @declared_attr
+    def restored_by(cls) -> Mapped[int | None]:
+        return mapped_column(BigInteger, ForeignKey("master.staff.staff_id", ondelete="SET NULL"), nullable=True)
 
     @classmethod
     def active(cls, session):
-        """Query only active (non-deleted) records."""
-        return session.query(cls).filter(cls.deleted_at.is_(None))
-
-
-@declarative_mixin
-class AuditMixin:
-    """
-    Mixin for audit columns (created_at, updated_at, created_by, updated_by).
-    """
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
-    updated_at: Mapped[datetime | None] = mapped_column(TIMESTAMP, onupdate=datetime.utcnow)
-    
-    # Use string reference to avoid circular import/definition issues
-    created_by: Mapped[int | None] = mapped_column(ForeignKey("master.staff.staff_id"), nullable=True)
-    updated_by: Mapped[int | None] = mapped_column(ForeignKey("master.staff.staff_id"), nullable=True)
-
+        """Helper method to easily query only non-deleted records."""
+        return session.query(cls).filter(cls.is_deleted == False)

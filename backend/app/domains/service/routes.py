@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from typing import List
 
 from app.domains.service import services
@@ -55,8 +54,12 @@ async def consume_spare_api(
 
 
 @router.post("/job-card/{job_card_id}/close", status_code=status.HTTP_200_OK)
-async def close_job_card_api(job_card_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
-    job = await db.get(services.ServiceJobCard, job_card_id)
+async def close_job_card_api(
+    job_card_id: int,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    job = await services.get_job_card(db, job_card_id)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job card not found")
     try:
@@ -67,8 +70,23 @@ async def close_job_card_api(job_card_id: int, db: AsyncSession = Depends(get_db
 
 
 @router.get("/job-cards", response_model=List[JobCardListItem])
-async def list_job_cards(db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
-    stmt = select(services.ServiceJobCard).order_by(services.ServiceJobCard.opened_at.desc())
-    result = await db.execute(stmt)
-    jobs = result.scalars().all()
-    return jobs
+async def list_job_cards(
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """List all job cards (excludes soft-deleted)"""
+    return await services.list_job_cards(db)
+
+
+@router.delete("/job-card/{job_card_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_job_card(
+    job_card_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff),
+):
+    """Delete a job card (soft delete by default)"""
+    success = await services.delete_job_card(db, job_card_id, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job card not found")
+    return None

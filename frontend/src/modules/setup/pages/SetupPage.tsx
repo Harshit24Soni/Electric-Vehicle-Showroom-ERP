@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import StaffManager from '../components/StaffManager'
 import { SkeletonTable } from '@/components/ui/SkeletonTable'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 
 // ==================== GENERIC CRUD TABLE COMPONENT ====================
@@ -34,7 +35,7 @@ interface CrudTableProps<T> {
     fetchFn: () => Promise<T[]>
     createFn: (data: any) => Promise<T>
     updateFn: (id: number, data: any) => Promise<T>
-    deleteFn: (id: number) => Promise<any>
+    deleteFn: (id: number, hardDelete?: boolean) => Promise<any>
     restoreFn?: (id: number) => Promise<any>
     idField: string
     nameField: string
@@ -51,6 +52,7 @@ function CrudTable<T extends Record<string, any>>({
     const [showForm, setShowForm] = useState(false)
     const [editingItem, setEditingItem] = useState<T | null>(null)
     const [formData, setFormData] = useState<Record<string, any>>({})
+    const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
 
     const { data: items = [], isLoading } = useQuery({
         queryKey: [queryKey],
@@ -78,7 +80,7 @@ function CrudTable<T extends Record<string, any>>({
     })
 
     const deleteMut = useMutation({
-        mutationFn: (id: number) => deleteFn(id),
+        mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) => deleteFn(id, hardDelete),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [queryKey] })
             toast.success(enableSoftDelete ? `${title} deactivated` : `${title} deleted`)
@@ -125,22 +127,25 @@ function CrudTable<T extends Record<string, any>>({
     }
 
     const handleDelete = (item: T) => {
-        if (confirm(`Delete "${item[nameField]}"? This cannot be undone.`)) {
-            deleteMut.mutate(item[idField])
+        setDeleteTarget(item)
+    }
+
+    const handleDeleteConfirm = (hardDelete: boolean) => {
+        if (deleteTarget) {
+            deleteMut.mutate({ id: deleteTarget[idField], hardDelete })
         }
+        setDeleteTarget(null)
     }
 
     const handleToggleStatus = (item: T) => {
         if (!restoreFn) return
-        const isDeleted = item.is_deleted || !item.is_active // Fallback if is_deleted not populated yet
+        const isDeleted = item.is_deleted || !item.is_active
         if (isDeleted) {
             if (confirm(`Restore "${item[nameField]}"?`)) {
                 restoreMut.mutate(item[idField])
             }
         } else {
-            if (confirm(`Deactivate "${item[nameField]}"?`)) {
-                deleteMut.mutate(item[idField])
-            }
+            setDeleteTarget(item)
         }
     }
 
@@ -150,187 +155,197 @@ function CrudTable<T extends Record<string, any>>({
         : columns
 
     return (
-        <div>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <Icon className="w-6 h-6 text-primary-600" />
-                    <h2 className="text-xl font-semibold text-gray-800">{title}s</h2>
-                    <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                        {items.length}
-                    </span>
-                </div>
-                <button
-                    onClick={openCreate}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-                >
-                    <Plus className="w-4 h-4" />
-                    Add {title}
-                </button>
-            </div>
-
-            {/* Form Modal */}
-            {showForm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-                        <div className="flex items-center justify-between p-6 border-b">
-                            <h3 className="text-lg font-semibold">
-                                {editingItem ? `Edit ${title}` : `New ${title}`}
-                            </h3>
-                            <button onClick={resetForm} className="p-1 hover:bg-gray-100 rounded">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            {fields.map(field => (
-                                <div key={field.key}>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        {field.label}
-                                        {field.required && <span className="text-red-500 ml-1">*</span>}
-                                    </label>
-                                    {field.type === 'select' ? (
-                                        <select
-                                            value={formData[field.key] ?? ''}
-                                            onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                        >
-                                            <option value="">— Select —</option>
-                                            {field.options?.map(opt => (
-                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                            ))}
-                                        </select>
-                                    ) : field.type === 'checkbox' ? (
-                                        <input
-                                            type="checkbox"
-                                            checked={!!formData[field.key]}
-                                            onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.checked }))}
-                                            className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                                        />
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            value={formData[field.key] ?? ''}
-                                            onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                                            placeholder={field.placeholder}
-                                            required={field.required}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                        />
-                                    )}
-                                </div>
-                            ))}
-                            <div className="flex gap-3 pt-2">
-                                <button
-                                    type="submit"
-                                    disabled={createMut.isPending || updateMut.isPending}
-                                    className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium"
-                                >
-                                    {createMut.isPending || updateMut.isPending ? 'Saving...' : editingItem ? 'Update' : 'Create'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={resetForm}
-                                    className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </form>
+        <>
+            <div>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <Icon className="w-6 h-6 text-primary-600" />
+                        <h2 className="text-xl font-semibold text-gray-800">{title}s</h2>
+                        <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {items.length}
+                        </span>
                     </div>
-                </div>
-            )}
-
-            {/* Table */}
-            {isLoading ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-6">
-                    <SkeletonTable rows={5} />
-                </div>
-            ) : items.length === 0 ? (
-                <div className="text-center py-12">
-                    <Icon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">No {title.toLowerCase()}s yet</p>
-                    <button onClick={openCreate} className="text-primary-600 hover:underline text-sm mt-2">
-                        Create your first {title.toLowerCase()}
+                    <button
+                        onClick={openCreate}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add {title}
                     </button>
                 </div>
-            ) : (
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200">
-                                {displayColumns.map(col => (
-                                    <th key={col.key} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                        {col.label}
-                                    </th>
+
+                {/* Form Modal */}
+                {showForm && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+                            <div className="flex items-center justify-between p-6 border-b">
+                                <h3 className="text-lg font-semibold">
+                                    {editingItem ? `Edit ${title}` : `New ${title}`}
+                                </h3>
+                                <button onClick={resetForm} className="p-1 hover:bg-gray-100 rounded">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                                {fields.map(field => (
+                                    <div key={field.key}>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            {field.label}
+                                            {field.required && <span className="text-red-500 ml-1">*</span>}
+                                        </label>
+                                        {field.type === 'select' ? (
+                                            <select
+                                                value={formData[field.key] ?? ''}
+                                                onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                            >
+                                                <option value="">— Select —</option>
+                                                {field.options?.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                        ) : field.type === 'checkbox' ? (
+                                            <input
+                                                type="checkbox"
+                                                checked={!!formData[field.key]}
+                                                onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.checked }))}
+                                                className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                                            />
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                value={formData[field.key] ?? ''}
+                                                onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                                placeholder={field.placeholder}
+                                                required={field.required}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                            />
+                                        )}
+                                    </div>
                                 ))}
-                                {enableSoftDelete && (
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                        Status
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={createMut.isPending || updateMut.isPending}
+                                        className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium"
+                                    >
+                                        {createMut.isPending || updateMut.isPending ? 'Saving...' : editingItem ? 'Update' : 'Create'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={resetForm}
+                                        className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Table */}
+                {isLoading ? (
+                    <div className="bg-white rounded-xl border border-gray-200 p-6">
+                        <SkeletonTable rows={5} />
+                    </div>
+                ) : items.length === 0 ? (
+                    <div className="text-center py-12">
+                        <Icon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500">No {title.toLowerCase()}s yet</p>
+                        <button onClick={openCreate} className="text-primary-600 hover:underline text-sm mt-2">
+                            Create your first {title.toLowerCase()}
+                        </button>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="bg-gray-50 border-b border-gray-200">
+                                    {displayColumns.map(col => (
+                                        <th key={col.key} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                            {col.label}
+                                        </th>
+                                    ))}
+                                    {enableSoftDelete && (
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                    )}
+                                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                        Actions
                                     </th>
-                                )}
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {items.map((item, index) => {
-                                const isDeleted = item.is_deleted || !item.is_active
-                                return (
-                                    <tr key={item[idField]} className={`hover:bg-gray-50 transition-colors ${isDeleted ? 'bg-gray-50' : ''}`}>
-                                        {displayColumns.map(col => (
-                                            <td key={col.key} className="px-4 py-3 text-sm text-gray-700">
-                                                {col.render ? col.render(item, index) : String(item[col.key] ?? '—')}
-                                            </td>
-                                        ))}
-                                        {enableSoftDelete && (
-                                            <td className="px-4 py-3 text-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => handleToggleStatus(item)}
-                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${!isDeleted ? 'bg-green-500' : 'bg-gray-300'
-                                                            }`}
-                                                    >
-                                                        <span
-                                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${!isDeleted ? 'translate-x-6' : 'translate-x-1'
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {items.map((item, index) => {
+                                    const isDeleted = item.is_deleted || !item.is_active
+                                    return (
+                                        <tr key={item[idField]} className={`hover:bg-gray-50 transition-colors ${isDeleted ? 'bg-gray-50' : ''}`}>
+                                            {displayColumns.map(col => (
+                                                <td key={col.key} className="px-4 py-3 text-sm text-gray-700">
+                                                    {col.render ? col.render(item, index) : String(item[col.key] ?? '—')}
+                                                </td>
+                                            ))}
+                                            {enableSoftDelete && (
+                                                <td className="px-4 py-3 text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => handleToggleStatus(item)}
+                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${!isDeleted ? 'bg-green-500' : 'bg-gray-300'
                                                                 }`}
-                                                        />
-                                                    </button>
-                                                    <span className={`text-xs ${isDeleted ? 'text-gray-500' : 'text-green-700 font-medium'}`}>
-                                                        {isDeleted ? 'Inactive' : 'Active'}
-                                                    </span>
+                                                        >
+                                                            <span
+                                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${!isDeleted ? 'translate-x-6' : 'translate-x-1'
+                                                                    }`}
+                                                            />
+                                                        </button>
+                                                        <span className={`text-xs ${isDeleted ? 'text-gray-500' : 'text-green-700 font-medium'}`}>
+                                                            {isDeleted ? 'Inactive' : 'Active'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            )}
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    {!isDeleted && (
+                                                        <button
+                                                            onClick={() => openEdit(item)}
+                                                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                                                            title="Edit"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {!enableSoftDelete && (
+                                                        <button
+                                                            onClick={() => handleDelete(item)}
+                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
-                                        )}
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                {!isDeleted && (
-                                                    <button
-                                                        onClick={() => openEdit(item)}
-                                                        className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        <Pencil className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                                {!enableSoftDelete && (
-                                                    <button
-                                                        onClick={() => handleDelete(item)}
-                                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </div>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            <DeleteConfirmModal
+                isOpen={!!deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={handleDeleteConfirm}
+                itemName={deleteTarget ? String(deleteTarget[nameField]) : ''}
+                isPending={deleteMut.isPending}
+            />
+        </>
     )
 }
 

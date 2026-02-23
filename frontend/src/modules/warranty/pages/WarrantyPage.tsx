@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { warrantyApi, ClaimCreate } from '../api/warrantyApi'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import ClaimForm from '../components/ClaimForm'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function WarrantyPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const queryClient = useQueryClient()
 
   const { data: claims = [], isLoading } = useQuery({
@@ -23,6 +25,21 @@ export default function WarrantyPage() {
       setShowForm(false)
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) =>
+      warrantyApi.deleteClaim(id, hardDelete),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warranty-claims'] })
+      setDeleteTarget(null)
+    },
+  })
+
+  const handleDeleteConfirm = (hardDelete: boolean) => {
+    if (deleteTarget) {
+      deleteMutation.mutate({ id: deleteTarget.claim_id, hardDelete })
+    }
+  }
 
   const filteredClaims = claims.filter((claim) => {
     const matchesSearch =
@@ -90,6 +107,7 @@ export default function WarrantyPage() {
                   <th>Status</th>
                   <th>Approval Date</th>
                   <th>Created</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,18 +117,26 @@ export default function WarrantyPage() {
                     <td className="font-medium">{claim.so_number}</td>
                     <td>{claim.portal_ref_no || '-'}</td>
                     <td>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        claim.claim_status === 'APPROVED'
+                      <span className={`px-2 py-1 text-xs rounded-full ${claim.claim_status === 'APPROVED'
                           ? 'bg-green-100 text-green-800'
                           : claim.claim_status === 'REJECTED'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {claim.claim_status}
                       </span>
                     </td>
                     <td>{claim.approval_date ? formatDate(claim.approval_date) : '-'}</td>
                     <td>{formatDate(claim.created_at)}</td>
+                    <td>
+                      <button
+                        onClick={() => setDeleteTarget(claim)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded"
+                        title="Delete Claim"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -126,6 +152,14 @@ export default function WarrantyPage() {
           isLoading={createMutation.isPending}
         />
       )}
+
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        itemName={deleteTarget ? `Claim SO: ${deleteTarget.so_number}` : ''}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   )
 }

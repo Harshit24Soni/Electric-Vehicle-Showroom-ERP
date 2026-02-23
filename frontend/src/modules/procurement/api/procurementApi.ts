@@ -96,5 +96,38 @@ export const procurementApi = {
     getVehiclePurchases: async () => {
         const response = await api.get<any[]>('/procurement/purchases/vehicles')
         return response
-    }
+    },
+
+    deleteSparePurchase: async (id: number, hardDelete?: boolean) => {
+        const response = await api.delete(`/procurement/purchases/spares/${id}`, { params: { hard_delete: hardDelete } })
+        return response
+    },
+
+    deleteVehiclePurchase: async (id: number, hardDelete?: boolean) => {
+        const response = await api.delete(`/procurement/purchases/vehicles/${id}`, { params: { hard_delete: hardDelete } })
+        return response
+    },
+
+    // Vehicle Intake (OEM)
+    intakeVehicles: async (data: VehicleIntakePayload) => {
+        return api.post('/procurement/purchases/vehicles/intake', data)
+    },
+}
+
+// ==================== Vehicle Intake Types ====================
+
+export interface VehicleIntakeItem {
+    chassis_no: string
+    motor_no?: string
+    vehicle_model_id: number
+    color: string
+    battery_serial_no?: string
+    purchase_price: number
+}
+
+export interface VehicleIntakePayload {
+    oem_invoice_no: string
+    oem_invoice_date: string
+    vendor_id: number
+    vehicles: VehicleIntakeItem[]
 }

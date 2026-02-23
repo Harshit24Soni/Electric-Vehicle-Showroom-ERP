@@ -13,8 +13,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
 from app.db.base import Base
+from app.db.mixins import AuditMixin, SoftDeleteMixin
 
-class VehicleStockMovement(Base):
+class VehicleStockMovement(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "vehicle_stock_movement"
     __table_args__ = (
         CheckConstraint(
@@ -79,7 +80,7 @@ class VehicleStockMovement(Base):
     vehicle = relationship("app.domains.master.models.Vehicle")
 
 
-class SpareMaster(Base):
+class SpareMaster(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_master"
     __table_args__ = {"schema": "inventory"}
 
@@ -114,7 +115,7 @@ class SpareMaster(Base):
     remarks: Mapped[str | None] = mapped_column(Text)
 
 
-class SpareSerial(Base):
+class SpareSerial(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_serial"
     __table_args__ = (
         Index("idx_spare_serial_code", "serial_no"),
@@ -141,7 +142,7 @@ class SpareSerial(Base):
     spare: Mapped["SpareMaster"] = relationship("SpareMaster")
 
 
-class SpareStockMovement(Base):
+class SpareStockMovement(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_stock_movement"
     __table_args__ = (
         CheckConstraint(

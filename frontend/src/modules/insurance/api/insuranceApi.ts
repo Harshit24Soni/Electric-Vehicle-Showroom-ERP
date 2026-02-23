@@ -44,4 +44,8 @@ export const insuranceApi = {
   getCompanies: () => api.get<InsuranceCompany[]>('/insurance/companies'),
   createPolicy: (data: PolicyCreate) => api.post<Policy>('/insurance/policies', data),
   getPolicies: () => api.get<Policy[]>('/insurance/policies'),
+  deleteCompany: (id: number, hardDelete?: boolean) =>
+    api.delete(`/insurance/companies/${id}`, { params: { hard_delete: hardDelete } }),
+  deletePolicy: (id: number, hardDelete?: boolean) =>
+    api.delete(`/insurance/policies/${id}`, { params: { hard_delete: hardDelete } }),
 }

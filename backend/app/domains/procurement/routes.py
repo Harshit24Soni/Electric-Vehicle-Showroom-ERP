@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -29,6 +29,20 @@ async def create_vehicle_purchase(
     return await services.create_vehicle_purchase(db, data)
 
 
+@router.post(
+    "/purchases/vehicles/intake",
+    response_model=schemas.VehicleIntakeResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def intake_vehicles(
+    data: schemas.VehicleIntakePayload,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("DEALER", "ADMIN")),
+):
+    """Bulk-register vehicles from an OEM invoice into inventory"""
+    return await services.process_vehicle_intake(db, payload=data, current_user=current_staff)
+
+
 @router.get("/purchases/spares", response_model=list[schemas.SparePurchaseResponse])
 async def list_spare_purchases(
     db: AsyncSession = Depends(get_db),
@@ -44,6 +58,34 @@ async def list_vehicle_purchases(
 ):
     """List Vehicle Purchases"""
     return await services.list_vehicle_purchases(db)
+
+
+@router.delete("/purchases/spares/{spare_purchase_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_spare_purchase(
+    spare_purchase_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Delete a spare purchase (soft delete by default)"""
+    success = await services.delete_spare_purchase(db, spare_purchase_id, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spare purchase not found")
+    return None
+
+
+@router.delete("/purchases/vehicles/{vehicle_purchase_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_vehicle_purchase(
+    vehicle_purchase_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Delete a vehicle purchase (soft delete by default)"""
+    success = await services.delete_vehicle_purchase(db, vehicle_purchase_id, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle purchase not found")
+    return None
 
 
 @router.post("/temporary-items", response_model=schemas.TemporaryItemResponse, status_code=status.HTTP_201_CREATED)
@@ -71,6 +113,3 @@ async def approve_temporary_item(
 ):
     """Approve temporary item (Admin only)"""
     return await services.approve_temporary_item(db, spare_id)
-    
-# Temporary Items Endpoints (To be implemented)
-# POST /procurement/temporary-items

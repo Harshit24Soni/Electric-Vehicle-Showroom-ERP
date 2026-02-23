@@ -1,15 +1,19 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { salesApi, VehicleSaleCreate } from '../api/salesApi'
-import { Plus, Search, Eye, Truck, FileText } from 'lucide-react'
+import { Plus, Search, Eye, Truck, FileText, Trash2, DollarSign } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import SaleForm from '../components/SaleForm'
+import NewSaleModal from '../components/NewSaleModal'
 import { useNavigate } from 'react-router-dom'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function SalesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+  const [showBillingModal, setShowBillingModal] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
@@ -25,6 +29,21 @@ export default function SalesPage() {
       setShowForm(false)
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) =>
+      salesApi.deleteSale(id, hardDelete),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] })
+      setDeleteTarget(null)
+    },
+  })
+
+  const handleDeleteConfirm = (hardDelete: boolean) => {
+    if (deleteTarget) {
+      deleteMutation.mutate({ id: deleteTarget.sale_id, hardDelete })
+    }
+  }
 
   const filteredSales = sales.filter((sale) =>
     sale.chassis_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -58,10 +77,16 @@ export default function SalesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Sales</h1>
           <p className="text-gray-500 text-sm mt-1">Manage vehicle sales and deliveries</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2">
-          <Plus className="w-5 h-5" />
-          New Sale
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowBillingModal(true)} className="btn btn-primary flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            New Sale / Billing
+          </button>
+          <button onClick={() => setShowForm(true)} className="btn btn-secondary flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            Quick Sale
+          </button>
+        </div>
       </div>
 
       {/* Status Tabs */}
@@ -179,6 +204,13 @@ export default function SalesPage() {
                               <Truck className="w-4 h-4" />
                             </button>
                           )}
+                          <button
+                            onClick={() => setDeleteTarget(sale)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            title="Delete Sale"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -198,6 +230,19 @@ export default function SalesPage() {
           isLoading={createMutation.isPending}
         />
       )}
+
+      {/* New Sale / Billing Modal */}
+      {showBillingModal && (
+        <NewSaleModal onClose={() => setShowBillingModal(false)} />
+      )}
+
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        itemName={deleteTarget ? `Sale #${deleteTarget.sale_id}` : ''}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   )
 }

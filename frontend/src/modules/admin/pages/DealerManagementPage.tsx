@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Plus, Search, Trash2, RefreshCcw, X } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 interface Staff {
     staff_id: number
@@ -61,6 +62,7 @@ export default function DealerManagementPage() {
     const [createdPin, setCreatedPin] = useState('')
     const queryClient = useQueryClient()
     const { hasRole } = useAuthStore()
+    const [deleteTarget, setDeleteTarget] = useState<Staff | null>(null)
 
     // Only Admin can access this page
     if (!hasRole(['ADMIN'])) {
@@ -76,7 +78,8 @@ export default function DealerManagementPage() {
     })
 
     const deleteMutation = useMutation({
-        mutationFn: (id: number) => api.delete(`/admin/staff/${id}`),
+        mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) =>
+            api.delete(`/admin/staff/${id}`, { params: { hard_delete: hardDelete } }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dealers'] }),
     })
 
@@ -92,10 +95,15 @@ export default function DealerManagementPage() {
         },
     })
 
-    const handleDelete = async (id: number) => {
-        if (confirm('Are you sure you want to delete this dealer?')) {
-            await deleteMutation.mutateAsync(id)
+    const handleDelete = async (s: Staff) => {
+        setDeleteTarget(s)
+    }
+
+    const handleDeleteConfirm = async (hardDelete: boolean) => {
+        if (deleteTarget) {
+            await deleteMutation.mutateAsync({ id: deleteTarget.staff_id, hardDelete })
         }
+        setDeleteTarget(null)
     }
 
     const handleRestore = async (id: number) => {
@@ -234,7 +242,7 @@ export default function DealerManagementPage() {
                                                 </button>
                                             ) : (
                                                 <button
-                                                    onClick={() => handleDelete(s.staff_id)}
+                                                    onClick={() => handleDelete(s)}
                                                     className="text-red-600 hover:text-red-800"
                                                     title="Delete"
                                                 >
@@ -387,6 +395,14 @@ export default function DealerManagementPage() {
                     </div>
                 </div>
             )}
+
+            <DeleteConfirmModal
+                isOpen={!!deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={handleDeleteConfirm}
+                itemName={deleteTarget?.full_name || ''}
+                isPending={deleteMutation.isPending}
+            />
         </div>
     )
 }

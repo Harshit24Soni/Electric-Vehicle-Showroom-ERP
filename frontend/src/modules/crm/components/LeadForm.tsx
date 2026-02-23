@@ -7,6 +7,7 @@ import { useMasterStore } from '@/store/masterStore'
 import { useQuery } from '@tanstack/react-query'
 import { masterApi } from '../../master/api/masterApi'
 import { useAuthStore } from '../../../store/authStore'
+import { api } from '@/lib/api'
 
 /**
  * Lead Form - Per Master Plan:
@@ -14,6 +15,10 @@ import { useAuthStore } from '../../../store/authStore'
  * - Lead creator = default owner (auto-assigned)
  * - NO customer required at lead creation
  * - Customer is created only at Lead → Sale conversion
+ *
+ * RBAC:
+ * - STAFF: "Assign To" is hidden; backend auto-assigns to the creator.
+ * - ADMIN / DEALER: "Assign To" dropdown is shown so they can assign to another staff member.
  */
 
 const leadSchema = z.object({
@@ -25,6 +30,7 @@ const leadSchema = z.object({
   lead_status_id: z.coerce.number().optional(),
   expected_purchase_date: z.string().optional(),
   remarks: z.string().optional(),
+  owner_staff_id: z.coerce.number().optional(),
 })
 
 type LeadFormData = z.infer<typeof leadSchema>
@@ -49,9 +55,22 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
   const { user } = useAuthStore()
   const { leadStatuses } = useMasterStore()
 
+  const isAdminOrDealer =
+    user?.designation === 'ADMIN' ||
+    user?.designation === 'DEALER' ||
+    user?.designation === 'Admin' ||
+    user?.designation === 'Dealer'
+
   const { data: models = [] } = useQuery({
     queryKey: ['vehicle-models'],
     queryFn: masterApi.getVehicleModels,
+  })
+
+  // Fetch staff list only for Admin/Dealer
+  const { data: staffList = [] } = useQuery({
+    queryKey: ['admin-staff-list'],
+    queryFn: () => api.get<any[]>('/admin/staff'),
+    enabled: isAdminOrDealer,
   })
 
   const {
@@ -73,7 +92,8 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
       vehicle_model_id: data.vehicle_model_id,
       lead_source: data.lead_source,
       lead_status_id: data.lead_status_id,
-      owner_staff_id: user?.staff_id || 0, // Auto-assign to creator per Master Plan
+      // Admin/Dealer: send selected staff; Staff: omit so backend auto-assigns
+      owner_staff_id: isAdminOrDealer ? data.owner_staff_id || undefined : undefined,
       expected_purchase_date: data.expected_purchase_date,
       remarks: data.remarks,
     })
@@ -153,6 +173,21 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
               <input type="date" {...register('expected_purchase_date')} className="input" />
             </div>
           </div>
+
+          {/* Assign To — Only visible to Admin/Dealer */}
+          {isAdminOrDealer && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
+              <select {...register('owner_staff_id', { valueAsNumber: true })} className="input">
+                <option value="">Auto-assign to me</option>
+                {staffList.map((staff: any) => (
+                  <option key={staff.staff_id} value={staff.staff_id}>
+                    {staff.full_name} ({staff.designation})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>

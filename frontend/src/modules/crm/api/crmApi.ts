@@ -60,4 +60,8 @@ export const crmApi = {
   updateFollowup: (id: number, data: Partial<Followup>) => api.put<Followup>(`/crm/followups/${id}`, data),
   getFollowupDashboard: (type: string = 'ALL') => api.get<{ sales_followups: any[] }>(`/crm/followups/dashboard?followup_type=${type}`),
   addActivity: (data: ActivityCreate) => api.post('/crm/activities', data),
+  deleteLead: (leadId: number, hardDelete?: boolean) =>
+    api.delete(`/crm/leads/${leadId}`, { params: { hard_delete: hardDelete } }),
+  deleteFollowup: (id: number, hardDelete?: boolean) =>
+    api.delete(`/crm/followups/${id}`, { params: { hard_delete: hardDelete } }),
 }

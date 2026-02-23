@@ -3,11 +3,13 @@ from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
 from datetime import datetime
 from typing import Optional
+from fastapi import HTTPException
 
 from app.domains.sales import models
 from app.domains.sales import schemas as sales_schemas
 from app.domains.master import models as master_models
 from app.domains.crm import models as crm_models
+from app.domains.inventory import models as inventory_models
 
 class SalesError(Exception):
     pass
@@ -94,7 +96,131 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
 
     return sale
 
+
+async def create_sale_transaction(
+    db: AsyncSession,
+    payload: sales_schemas.SaleCreatePayload,
+    current_user: dict,
+) -> models.Sale:
+    """Full Sales & Billing transaction — atomic.
+
+    Steps:
+      a. Verify vehicle is AVAILABLE / IN_STOCK.
+      b. Create Sale.
+      c. Mark vehicle SOLD + link customer.
+      d. Generate SalesInvoice (SaleDocument).
+      e. Record initial SalePayment (down payment).
+      f. Insert OUTWARD VehicleStockMovement.
+      g. Initialize SalePortalTracking.
+      h. Commit atomically.
+    """
+    staff_id = current_user["staff_id"]
+
+    # (a) Verify vehicle
+    vehicle = await db.get(master_models.Vehicle, payload.chassis_no)
+    if not vehicle:
+        raise HTTPException(status_code=400, detail="Vehicle not found.")
+    if vehicle.current_status not in ("IN_STOCK", "AVAILABLE"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Vehicle not available for sale (current status: {vehicle.current_status}).",
+        )
+
+    # Verify customer exists
+    customer = await db.get(master_models.Customer, payload.customer_id)
+    if not customer:
+        raise HTTPException(status_code=400, detail="Customer not found.")
+
+    is_direct = getattr(payload, "is_direct_sale", True) or payload.lead_id is None
+
+    # (b) Create Sale
+    sale = models.Sale(
+        lead_id=payload.lead_id if not is_direct else None,
+        customer_id=payload.customer_id,
+        chassis_no=payload.chassis_no,
+        sale_date=payload.sale_date,
+        total_amount=float(payload.total_amount),
+        sale_status="INVOICED",
+        remarks=payload.remarks,
+        created_by_staff_id=staff_id,
+        created_at=datetime.utcnow(),
+        sale_stage=models.SaleStage.PAYMENT.value,
+        stage_updated_at=datetime.utcnow(),
+        is_direct_sale=is_direct,
+        is_invoice_generated=True,
+        is_receipt_generated=True,
+    )
+    db.add(sale)
+    await db.flush()  # get sale_id
+
+    # (c) Mark vehicle SOLD + link customer
+    vehicle.current_status = "SOLD"
+    vehicle.customer_id = payload.customer_id
+
+    # (d) Generate invoice document
+    year = datetime.now().year
+    inv_number = f"INV-{year}-{sale.sale_id:04d}"
+    sale.invoice_number = inv_number
+
+    invoice_doc = models.SaleDocument(
+        sale_id=sale.sale_id,
+        document_type="INVOICE",
+        document_number=inv_number,
+        generated_by_staff_id=staff_id,
+    )
+    db.add(invoice_doc)
+
+    # (e) Record down payment
+    if payload.down_payment_amount and float(payload.down_payment_amount) > 0:
+        payment = models.SalePayment(
+            sale_id=sale.sale_id,
+            payment_type="BOOKING",
+            payment_mode=payload.payment_mode,
+            amount=float(payload.down_payment_amount),
+            bank_name=payload.financier_name if payload.payment_mode == "FINANCE" else None,
+            remarks=f"Down payment at sale creation",
+            created_by_staff_id=staff_id,
+            payment_date=datetime.utcnow(),
+        )
+        db.add(payment)
+
+    # (f) Outward stock movement
+    movement = inventory_models.VehicleStockMovement(
+        chassis_no=payload.chassis_no,
+        movement_type="DELIVERED",
+        from_location="SHOWROOM",
+        to_location="CUSTOMER",
+        reference_type="SALE",
+        reference_id=sale.sale_id,
+        movement_datetime=datetime.utcnow(),
+        remarks=f"Sale #{sale.sale_id} — {inv_number}",
+    )
+    db.add(movement)
+
+    # (g) Initialize portal tracking + delivery checklist
+    portal = models.SalePortalTracking(sale_id=sale.sale_id)
+    db.add(portal)
+
+    checklist = models.DeliveryChecklist(sale_id=sale.sale_id)
+    db.add(checklist)
+
+    # Stage history
+    history = models.SaleStageHistory(
+        sale_id=sale.sale_id,
+        from_stage=None,
+        to_stage=models.SaleStage.PAYMENT.value,
+        changed_by_staff_id=staff_id,
+        remarks="Sale created with billing",
+    )
+    db.add(history)
+
+    # (h) Commit atomically
+    await db.commit()
+    await db.refresh(sale)
+    return sale
+
 async def get_sale(db: AsyncSession, sale_id: int) -> models.Sale | None:
+    """Get a sale by ID (excludes soft-deleted)"""
     stmt = select(models.Sale).options(
         selectinload(models.Sale.lead),
         selectinload(models.Sale.customer),
@@ -106,14 +232,20 @@ async def get_sale(db: AsyncSession, sale_id: int) -> models.Sale | None:
         selectinload(models.Sale.sale_payments),
         selectinload(models.Sale.sale_documents),
         selectinload(models.Sale.portal_tracking),
-    ).filter(models.Sale.sale_id == sale_id)
+    ).filter(
+        models.Sale.sale_id == sale_id,
+        models.Sale.is_deleted == False
+    )
     result = await db.execute(stmt)
     return result.scalars().first()
 
 async def list_sales(db: AsyncSession) -> list[models.Sale]:
+    """List all sales (excludes soft-deleted)"""
     stmt = select(models.Sale).options(
         selectinload(models.Sale.customer),
         selectinload(models.Sale.vehicle)
+    ).filter(
+        models.Sale.is_deleted == False
     ).order_by(desc(models.Sale.created_at))
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -478,3 +610,27 @@ async def get_sale_progress(db: AsyncSession, sale_id: int) -> dict:
         "documents": sale.sale_documents or [],
         "portal_tracking": sale.portal_tracking,
     }
+
+
+# ==================== DELETE SERVICES ====================
+
+async def delete_sale(
+    db: AsyncSession, sale_id: int,
+    current_user: dict, hard_delete: bool = False
+) -> bool:
+    """Delete a sale (soft by default, hard if authorized)"""
+    sale = await get_sale(db, sale_id)
+    if not sale:
+        return False
+
+    if hard_delete:
+        if current_user["designation"] not in ["Admin", "Dealer"]:
+            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+        await db.delete(sale)
+    else:
+        sale.is_deleted = True
+        sale.deleted_at = datetime.utcnow()
+        sale.deleted_by = current_user["staff_id"]
+
+    await db.flush()
+    return True

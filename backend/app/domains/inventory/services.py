@@ -142,7 +142,7 @@ async def add_spare_movement(
 ) -> SpareStockMovement:
 
     spare = await db.get(SpareMaster, spare_id)
-    if not spare:
+    if not spare or spare.is_deleted:
         raise InventoryError("Invalid spare_id")
 
     _validate_spare_movement(spare, quantity, serial_id)

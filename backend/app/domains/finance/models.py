@@ -9,8 +9,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 
 from app.db.base import Base
+from app.db.mixins import AuditMixin, SoftDeleteMixin
 
-class VehicleFinance(Base):
+class VehicleFinance(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "vehicle_finance"
     __table_args__ = {"schema": "finance"}
 
@@ -50,13 +51,4 @@ class VehicleFinance(Base):
         String(100)
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, default=datetime.utcnow
-    )
-
-    updated_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP
-    )
-
     remarks: Mapped[str | None] = mapped_column(String)
-

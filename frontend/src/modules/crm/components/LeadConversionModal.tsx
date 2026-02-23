@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, User, Car, DollarSign } from 'lucide-react'
-import { masterApi, Customer, Vehicle } from '../../master/api/masterApi'
-import { salesApi, SaleCreate } from '../../sales/api/salesApi'
-import { Lead } from '../api/leads' // Assuming Lead type is exported from here or correct path
+import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { X } from 'lucide-react'
+import { leadsApi, Lead, LeadConvertPayload } from '../api/leads'
+import { useCrmStore } from '@/store/crmStore'
 
 interface LeadConversionModalProps {
     lead: Lead
@@ -11,285 +10,249 @@ interface LeadConversionModalProps {
     onSuccess: () => void
 }
 
+/**
+ * Lead → Customer Conversion Modal
+ *
+ * "Buyer vs. Rider" flow: pre-fills from Lead data but allows editing
+ * (e.g., son enquired but father is the actual buyer).
+ *
+ * Captures: Customer details + KYC (Aadhaar/PAN) + Address + Nominee
+ * in a single atomic transaction.
+ */
 export default function LeadConversionModal({ lead, onClose, onSuccess }: LeadConversionModalProps) {
     const queryClient = useQueryClient()
-    const [step, setStep] = useState<1 | 2>(1)
-    const [customerMode, setCustomerMode] = useState<'new' | 'existing'>('new')
-    const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null)
-    const [selectedChassisNo, setSelectedChassisNo] = useState<string>('')
-    const [totalAmount, setTotalAmount] = useState<number>(0)
-    const [remarks, setRemarks] = useState('')
     const [error, setError] = useState<string | null>(null)
 
-    // Customer Form State (for new customer)
-    const [customerData, setCustomerData] = useState({
-        name: lead.name,
-        primary_phone: lead.phone,
-        email: lead.email || '',
-        customer_type: 'INDIVIDUAL' as const
-    })
+    // Customer details — pre-filled from Lead but editable
+    const [name, setName] = useState(lead.name)
+    const [phone, setPhone] = useState(lead.phone)
+    const [email, setEmail] = useState(lead.email || '')
+    const [customerType, setCustomerType] = useState('INDIVIDUAL')
 
-    // Fetch Data
-    const { data: vehicles } = useQuery({
-        queryKey: ['vehicles', 'IN_STOCK'],
-        queryFn: () => masterApi.getVehicles('IN_STOCK'),
-    })
+    // KYC
+    const [aadhaarNo, setAadhaarNo] = useState('')
+    const [panNo, setPanNo] = useState('')
 
-    const { data: customers } = useQuery({
-        queryKey: ['customers'],
-        queryFn: masterApi.getCustomers,
-        enabled: customerMode === 'existing'
-    })
+    // Address
+    const [addressLine1, setAddressLine1] = useState('')
+    const [city, setCity] = useState('')
+    const [state, setState] = useState('')
+    const [pincode, setPincode] = useState('')
 
-    const createCustomerMutation = useMutation({
-        mutationFn: masterApi.createCustomer,
-    })
+    // Nominee
+    const [nomineeName, setNomineeName] = useState('')
+    const [nomineeRelation, setNomineeRelation] = useState('')
+    const [nomineeDob, setNomineeDob] = useState('')
 
-    const createSaleMutation = useMutation({
-        mutationFn: salesApi.createSale,
+    const convertMutation = useMutation({
+        mutationFn: (payload: LeadConvertPayload) => leadsApi.convert(lead.lead_id, payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leads'] })
-            queryClient.invalidateQueries({ queryKey: ['sales'] })
-            queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+            queryClient.invalidateQueries({ queryKey: ['customers'] })
+            useCrmStore.getState().fetchLeads()
             onSuccess()
             onClose()
         },
         onError: (err: any) => {
-            setError(err.response?.data?.detail || 'Failed to create sale')
-        }
+            setError(err?.response?.data?.detail || 'Failed to convert lead.')
+        },
     })
 
-    const handleSubmit = async () => {
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
         setError(null)
-        try {
-            let finalCustomerId = selectedCustomerId
 
-            // Step 1: Create Customer if New
-            if (customerMode === 'new') {
-                const newCustomer = await createCustomerMutation.mutateAsync({
-                    name: customerData.name,
-                    primary_phone: customerData.primary_phone,
-                    email: customerData.email,
-                    customer_type: customerData.customer_type
-                })
-                finalCustomerId = newCustomer.customer_id
-            }
-
-            if (!finalCustomerId) {
-                setError("Please select or create a customer")
-                return
-            }
-
-            if (!selectedChassisNo) {
-                setError("Please select a vehicle")
-                return
-            }
-
-            if (totalAmount <= 0) {
-                setError("Please enter a valid sale amount")
-                return
-            }
-
-            // Step 2: Create Sale
-            await createSaleMutation.mutateAsync({
-                lead_id: lead.lead_id,
-                customer_id: finalCustomerId,
-                chassis_no: selectedChassisNo,
-                sale_date: new Date().toISOString().split('T')[0],
-                total_amount: totalAmount,
-                remarks: remarks
-            })
-
-        } catch (err: any) {
-            setError(err.response?.data?.detail || 'An error occurred')
+        // Client-side guards
+        if (!name.trim() || !phone.trim()) {
+            setError('Name and Phone are required.')
+            return
         }
+        if (aadhaarNo.length !== 12) {
+            setError('Aadhaar must be exactly 12 digits.')
+            return
+        }
+        if (panNo.length !== 10) {
+            setError('PAN must be exactly 10 characters.')
+            return
+        }
+        if (!addressLine1.trim() || !city.trim() || !state.trim() || !pincode.trim()) {
+            setError('Complete address is required.')
+            return
+        }
+        if (!nomineeName.trim() || !nomineeRelation.trim() || !nomineeDob) {
+            setError('All nominee fields are required.')
+            return
+        }
+
+        convertMutation.mutate({
+            name: name.trim(),
+            phone: phone.trim(),
+            email: email.trim() || undefined,
+            customer_type: customerType,
+            address_line1: addressLine1.trim(),
+            city: city.trim(),
+            state: state.trim(),
+            pincode: pincode.trim(),
+            aadhaar_no: aadhaarNo.trim(),
+            pan_no: panNo.trim().toUpperCase(),
+            nominee: {
+                nominee_name: nomineeName.trim(),
+                nominee_dob: nomineeDob,
+                relation: nomineeRelation.trim(),
+            },
+        })
     }
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                    <h2 className="text-xl font-bold text-gray-900">Convert Lead to Sale</h2>
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900">Convert Lead to Customer</h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Complete KYC & Nominee for {lead.name}</p>
+                    </div>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6">
-                    {/* Progress Steps */}
-                    <div className="flex items-center justify-center mb-6">
-                        <div className={`flex items-center gap-2 ${step === 1 ? 'text-blue-600 font-bold' : 'text-gray-500'}`}>
-                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-sm">1</div>
-                            Customer
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* ── Buyer Details ── */}
+                    <fieldset>
+                        <legend className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">
+                            Buyer Details
+                        </legend>
+                        <p className="text-xs text-gray-400 mb-3">
+                            Pre-filled from lead — edit if the actual buyer is different (e.g., son inquired, father is buying).
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name <span className="text-red-500">*</span></label>
+                                <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="input" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone <span className="text-red-500">*</span></label>
+                                <input type="text" required value={phone} onChange={(e) => setPhone(e.target.value)} className="input" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Customer Type</label>
+                                <select value={customerType} onChange={(e) => setCustomerType(e.target.value)} className="input">
+                                    <option value="INDIVIDUAL">Individual</option>
+                                    <option value="BUSINESS">Business</option>
+                                </select>
+                            </div>
                         </div>
-                        <div className="w-16 h-px bg-gray-300 mx-4"></div>
-                        <div className={`flex items-center gap-2 ${step === 2 ? 'text-blue-600 font-bold' : 'text-gray-500'}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${step === 2 ? 'bg-blue-100' : 'bg-gray-100'}`}>2</div>
-                            Details
-                        </div>
-                    </div>
+                    </fieldset>
 
+                    {/* ── KYC ── */}
+                    <fieldset>
+                        <legend className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">
+                            KYC Documents
+                        </legend>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Aadhaar No. <span className="text-red-500">*</span></label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={aadhaarNo}
+                                    onChange={(e) => setAadhaarNo(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                                    className="input"
+                                    placeholder="12-digit Aadhaar"
+                                    maxLength={12}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">PAN No. <span className="text-red-500">*</span></label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={panNo}
+                                    onChange={(e) => setPanNo(e.target.value.toUpperCase().slice(0, 10))}
+                                    className="input"
+                                    placeholder="10-char PAN"
+                                    maxLength={10}
+                                />
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    {/* ── Address ── */}
+                    <fieldset>
+                        <legend className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">
+                            Address
+                        </legend>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 1 <span className="text-red-500">*</span></label>
+                                <input type="text" required value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} className="input" />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">City <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={city} onChange={(e) => setCity(e.target.value)} className="input" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">State <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={state} onChange={(e) => setState(e.target.value)} className="input" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pincode <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={pincode}
+                                        onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                        className="input"
+                                        maxLength={6}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    {/* ── Insurance Nominee ── */}
+                    <fieldset>
+                        <legend className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">
+                            Insurance Nominee
+                        </legend>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nominee Name <span className="text-red-500">*</span></label>
+                                <input type="text" required value={nomineeName} onChange={(e) => setNomineeName(e.target.value)} className="input" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Relation <span className="text-red-500">*</span></label>
+                                <input type="text" required value={nomineeRelation} onChange={(e) => setNomineeRelation(e.target.value)} className="input" placeholder="e.g. Spouse, Father" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth <span className="text-red-500">*</span></label>
+                                <input type="date" required value={nomineeDob} onChange={(e) => setNomineeDob(e.target.value)} className="input" />
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    {/* Error */}
                     {error && (
-                        <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm border border-red-200">
+                        <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
                             {error}
                         </div>
                     )}
 
-                    {step === 1 && (
-                        <div className="space-y-4">
-                            <div className="flex gap-4 mb-4">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="customerMode"
-                                        checked={customerMode === 'new'}
-                                        onChange={() => setCustomerMode('new')}
-                                        className="text-blue-600"
-                                    />
-                                    <span className="font-medium">Create New Customer</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="customerMode"
-                                        checked={customerMode === 'existing'}
-                                        onChange={() => setCustomerMode('existing')}
-                                        className="text-blue-600"
-                                    />
-                                    <span className="font-medium">Select Existing</span>
-                                </label>
-                            </div>
-
-                            {customerMode === 'new' ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="label">Full Name</label>
-                                        <input
-                                            type="text"
-                                            value={customerData.name}
-                                            onChange={(e) => setCustomerData({ ...customerData, name: e.target.value })}
-                                            className="input"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="label">Phone Number</label>
-                                        <input
-                                            type="text"
-                                            value={customerData.primary_phone}
-                                            onChange={(e) => setCustomerData({ ...customerData, primary_phone: e.target.value })}
-                                            className="input"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="label">Email (Optional)</label>
-                                        <input
-                                            type="email"
-                                            value={customerData.email}
-                                            onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })}
-                                            className="input"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="label">Type</label>
-                                        <select
-                                            value={customerData.customer_type}
-                                            onChange={(e) => setCustomerData({ ...customerData, customer_type: e.target.value as any })}
-                                            className="input"
-                                        >
-                                            <option value="INDIVIDUAL">Individual</option>
-                                            <option value="BUSINESS">Business</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div>
-                                    <label className="label">Select Customer</label>
-                                    <select
-                                        value={selectedCustomerId || ''}
-                                        onChange={(e) => setSelectedCustomerId(Number(e.target.value))}
-                                        className="input"
-                                    >
-                                        <option value="">-- Select Customer --</option>
-                                        {customers?.map(c => (
-                                            <option key={c.customer_id} value={c.customer_id}>
-                                                {c.name} ({c.primary_phone})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-
-                            <div className="flex justify-end mt-6">
-                                <button onClick={() => setStep(2)} className="btn btn-primary">
-                                    Next: Sale Details
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {step === 2 && (
-                        <div className="space-y-4">
-                            <div>
-                                <label className="label flex items-center gap-2">
-                                    <Car className="w-4 h-4" />
-                                    Select Vehicle
-                                </label>
-                                <select
-                                    value={selectedChassisNo}
-                                    onChange={(e) => setSelectedChassisNo(e.target.value)}
-                                    className="input"
-                                >
-                                    <option value="">-- Select Vehicle in Stock --</option>
-                                    {vehicles?.map(v => (
-                                        <option key={v.chassis_no} value={v.chassis_no}>
-                                            {v.chassis_no}
-                                        </option>
-                                    ))}
-                                </select>
-                                {vehicles?.length === 0 && (
-                                    <p className="text-xs text-red-500 mt-1">No vehicles available in stock!</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="label flex items-center gap-2">
-                                    <DollarSign className="w-4 h-4" />
-                                    Total Sale Amount
-                                </label>
-                                <input
-                                    type="number"
-                                    value={totalAmount}
-                                    onChange={(e) => setTotalAmount(Number(e.target.value))}
-                                    className="input"
-                                    min="0"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="label">Remarks</label>
-                                <textarea
-                                    value={remarks}
-                                    onChange={(e) => setRemarks(e.target.value)}
-                                    className="input h-20"
-                                    placeholder="Any additional notes..."
-                                />
-                            </div>
-
-                            <div className="flex justify-between mt-6">
-                                <button onClick={() => setStep(1)} className="btn btn-secondary">
-                                    Back
-                                </button>
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={createSaleMutation.isPending || createCustomerMutation.isPending}
-                                    className="btn btn-primary"
-                                >
-                                    {(createSaleMutation.isPending || createCustomerMutation.isPending) ? 'Processing...' : 'Confirm Sale'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    {/* Actions */}
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                        <button type="button" onClick={onClose} className="btn btn-secondary">
+                            Cancel
+                        </button>
+                        <button type="submit" disabled={convertMutation.isPending} className="btn btn-primary">
+                            {convertMutation.isPending ? 'Converting...' : 'Convert to Customer'}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     )

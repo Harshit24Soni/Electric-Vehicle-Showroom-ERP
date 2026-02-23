@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -62,6 +62,20 @@ async def update_customer(
     return c
 
 
+@router.delete("/customers/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_customer(
+    customer_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Delete a customer (soft delete by default)"""
+    success = await services.delete_customer(db, customer_id, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    return None
+
+
 # ==================== NOMINEE ENDPOINTS ====================
 
 @router.post("/customers/{customer_id}/nominees", response_model=schemas.NomineeResponse, status_code=status.HTTP_201_CREATED)
@@ -122,11 +136,12 @@ async def update_nominee(
 async def delete_nominee(
     customer_id: int,
     nominee_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    current_staff=Depends(get_current_staff)
 ):
-    """Delete a nominee (soft delete)"""
-    success = await services.delete_nominee(db, nominee_id, customer_id)
+    """Delete a nominee (soft delete by default)"""
+    success = await services.delete_nominee(db, nominee_id, customer_id, current_staff, hard_delete)
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nominee not found")
     return None
@@ -152,6 +167,20 @@ async def list_vehicle_models(
 ):
     """List all vehicle models"""
     return await services.list_vehicle_models(db)
+
+
+@router.delete("/vehicle-models/{vehicle_model_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_vehicle_model(
+    vehicle_model_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Delete a vehicle model (soft delete by default)"""
+    success = await services.delete_vehicle_model(db, vehicle_model_id, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle model not found")
+    return None
 
 
 # ==================== VEHICLE ENDPOINTS ====================
@@ -180,6 +209,20 @@ async def get_vehicle(
     return v
 
 
+@router.delete("/vehicles/{chassis_no}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_vehicle(
+    chassis_no: str,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Delete a vehicle (soft delete by default)"""
+    success = await services.delete_vehicle(db, chassis_no, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
+    return None
+
+
 # ==================== VENDOR ENDPOINTS ====================
 
 @router.post("/vendors", response_model=schemas.VendorResponse, status_code=status.HTTP_201_CREATED)
@@ -200,6 +243,20 @@ async def list_vendors(
 ):
     """List all vendors"""
     return await services.list_vendors(db)
+
+
+@router.delete("/vendors/{vendor_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_vendor(
+    vendor_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Delete a vendor (soft delete by default)"""
+    success = await services.delete_vendor(db, vendor_id, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vendor not found")
+    return None
 
 
 # ==================== PRICING ENDPOINTS ====================

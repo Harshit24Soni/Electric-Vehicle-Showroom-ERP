@@ -9,8 +9,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 
 from app.db.base import Base
+from app.db.mixins import AuditMixin, SoftDeleteMixin
 
-class ServiceJobCard(Base):
+class ServiceJobCard(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "job_card"
     __table_args__ = {"schema": "service"}
 
@@ -38,7 +39,7 @@ class ServiceJobCard(Base):
 
     remarks: Mapped[str | None] = mapped_column(String)
 
-class ServiceSpareConsumption(Base):
+class ServiceSpareConsumption(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_consumption"
     __table_args__ = {"schema": "service"}
 
@@ -64,4 +65,3 @@ class ServiceSpareConsumption(Base):
         BigInteger,
         ForeignKey("inventory.spare_serial.serial_id", ondelete="RESTRICT"),
     )
-

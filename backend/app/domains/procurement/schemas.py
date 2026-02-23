@@ -121,3 +121,34 @@ class VehiclePurchaseResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ==================== VEHICLE INTAKE (OEM) SCHEMAS ====================
+
+class VehicleIntakeItem(BaseModel):
+    """Single vehicle row in a bulk OEM intake"""
+    chassis_no: str = Field(..., min_length=1, max_length=50)
+    motor_no: Optional[str] = Field(None, max_length=100)
+    vehicle_model_id: int
+    color: str = Field(..., min_length=1, max_length=50)
+    battery_serial_no: Optional[str] = Field(None, max_length=100)
+    purchase_price: Decimal = Field(..., gt=0)
+
+
+class VehicleIntakePayload(BaseModel):
+    """Bulk vehicle intake from OEM — creates VehiclePurchase + master.vehicle records"""
+    oem_invoice_no: str = Field(..., min_length=1, max_length=100)
+    oem_invoice_date: date
+    vendor_id: int
+    vehicles: List[VehicleIntakeItem] = Field(..., min_length=1)
+
+
+class VehicleIntakeResponse(BaseModel):
+    """Response for a successful vehicle intake"""
+    message: str
+    vehicle_purchase_id: int
+    vehicles_added: int
+
+    class Config:
+        from_attributes = True
+

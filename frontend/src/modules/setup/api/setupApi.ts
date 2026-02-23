@@ -85,7 +85,7 @@ export const setupApi = {
     listBrands: () => api.get<Brand[]>('/setup/brands'),
     createBrand: (data: { brand_name: string }) => api.post<Brand>('/setup/brands', data),
     updateBrand: (id: number, data: Partial<Brand>) => api.put<Brand>(`/setup/brands/${id}`, data),
-    deleteBrand: (id: number) => api.delete(`/setup/brands/${id}`),
+    deleteBrand: (id: number, hardDelete?: boolean) => api.delete(`/setup/brands/${id}`, { params: { hard_delete: hardDelete } }),
     restoreBrand: (id: number) => api.post(`/setup/brands/${id}/restore`),
 
     // Payment Modes
@@ -94,7 +94,7 @@ export const setupApi = {
         api.post<PaymentMode>('/setup/payment-modes', data),
     updatePaymentMode: (id: number, data: Partial<PaymentMode>) =>
         api.put<PaymentMode>(`/setup/payment-modes/${id}`, data),
-    deletePaymentMode: (id: number) => api.delete(`/setup/payment-modes/${id}`),
+    deletePaymentMode: (id: number, hardDelete?: boolean) => api.delete(`/setup/payment-modes/${id}`, { params: { hard_delete: hardDelete } }),
     restorePaymentMode: (id: number) => api.post(`/setup/payment-modes/${id}/restore`),
 
     // Expense Categories
@@ -103,7 +103,7 @@ export const setupApi = {
         api.post<ExpenseCategory>('/setup/expense-categories', data),
     updateExpenseCategory: (id: number, data: Partial<ExpenseCategory>) =>
         api.put<ExpenseCategory>(`/setup/expense-categories/${id}`, data),
-    deleteExpenseCategory: (id: number) => api.delete(`/setup/expense-categories/${id}`),
+    deleteExpenseCategory: (id: number, hardDelete?: boolean) => api.delete(`/setup/expense-categories/${id}`, { params: { hard_delete: hardDelete } }),
     restoreExpenseCategory: (id: number) => api.post(`/setup/expense-categories/${id}/restore`),
 
     // Job Card Categories
@@ -112,7 +112,7 @@ export const setupApi = {
         api.post<JobCardCategory>('/setup/job-card-categories', data),
     updateJobCardCategory: (id: number, data: Partial<JobCardCategory>) =>
         api.put<JobCardCategory>(`/setup/job-card-categories/${id}`, data),
-    deleteJobCardCategory: (id: number) => api.delete(`/setup/job-card-categories/${id}`),
+    deleteJobCardCategory: (id: number, hardDelete?: boolean) => api.delete(`/setup/job-card-categories/${id}`, { params: { hard_delete: hardDelete } }),
     restoreJobCardCategory: (id: number) => api.post(`/setup/job-card-categories/${id}/restore`),
 
     // Insurance Companies
@@ -121,14 +121,14 @@ export const setupApi = {
         api.post<InsuranceCompany>('/setup/insurance-companies', data),
     updateInsuranceCompany: (id: number, data: Partial<InsuranceCompany>) =>
         api.put<InsuranceCompany>(`/setup/insurance-companies/${id}`, data),
-    deleteInsuranceCompany: (id: number) => api.delete(`/setup/insurance-companies/${id}`),
+    deleteInsuranceCompany: (id: number, hardDelete?: boolean) => api.delete(`/setup/insurance-companies/${id}`, { params: { hard_delete: hardDelete } }),
     restoreInsuranceCompany: (id: number) => api.post(`/setup/insurance-companies/${id}/restore`),
 
     // Banks
     listBanks: () => api.get<Bank[]>('/setup/banks'),
     createBank: (data: Partial<Bank>) => api.post<Bank>('/setup/banks', data),
     updateBank: (id: number, data: Partial<Bank>) => api.put<Bank>(`/setup/banks/${id}`, data),
-    deleteBank: (id: number) => api.delete(`/setup/banks/${id}`),
+    deleteBank: (id: number, hardDelete?: boolean) => api.delete(`/setup/banks/${id}`, { params: { hard_delete: hardDelete } }),
     restoreBank: (id: number) => api.post(`/setup/banks/${id}/restore`),
 
     // Document Types
@@ -137,7 +137,7 @@ export const setupApi = {
         api.post<DocumentType>('/setup/document-types', data),
     updateDocumentType: (id: number, data: Partial<DocumentType>) =>
         api.put<DocumentType>(`/setup/document-types/${id}`, data),
-    deleteDocumentType: (id: number) => api.delete(`/setup/document-types/${id}`),
+    deleteDocumentType: (id: number, hardDelete?: boolean) => api.delete(`/setup/document-types/${id}`, { params: { hard_delete: hardDelete } }),
     restoreDocumentType: (id: number) => api.post(`/setup/document-types/${id}/restore`),
 
     // Staff Summary

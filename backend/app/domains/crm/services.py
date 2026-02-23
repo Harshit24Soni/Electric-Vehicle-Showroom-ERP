@@ -3,6 +3,7 @@ from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
 from datetime import datetime, date
 from typing import Optional
+from fastapi import HTTPException
 
 from app.domains.crm import models
 from app.domains.crm import schemas as crm_schemas
@@ -43,11 +44,11 @@ async def create_lead(db: AsyncSession, *, payload, current_staff_id: int) -> mo
 
 
 async def list_leads(db: AsyncSession, status_id: int = None, owner_id: int = None) -> list[models.Lead]:
-    """List leads with optional filters"""
+    """List leads with optional filters (excludes soft-deleted)"""
     stmt = select(models.Lead).options(
         selectinload(models.Lead.vehicle_model),
         selectinload(models.Lead.lead_status_ref)
-    )
+    ).filter(models.Lead.is_deleted == False)
     
     if status_id:
         stmt = stmt.filter(models.Lead.lead_status_id == status_id)
@@ -61,14 +62,17 @@ async def list_leads(db: AsyncSession, status_id: int = None, owner_id: int = No
 
 
 async def get_lead(db: AsyncSession, lead_id: int) -> models.Lead | None:
-    """Get a single lead by ID with relationships"""
+    """Get a single lead by ID with relationships (excludes soft-deleted)"""
     stmt = select(models.Lead).options(
         selectinload(models.Lead.vehicle_model),
         selectinload(models.Lead.lead_status_ref),
         selectinload(models.Lead.enquiries),
         selectinload(models.Lead.test_rides),
         selectinload(models.Lead.lead_followups),
-    ).filter(models.Lead.lead_id == lead_id)
+    ).filter(
+        models.Lead.lead_id == lead_id,
+        models.Lead.is_deleted == False
+    )
     
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -105,66 +109,113 @@ async def update_lead(db: AsyncSession, lead_id: int, payload) -> models.Lead | 
     return lead
 
 
-async def delete_lead(db: AsyncSession, lead_id: int) -> bool:
-    """Delete a lead"""
+async def delete_lead(
+    db: AsyncSession, lead_id: int,
+    current_user: dict, hard_delete: bool = False
+) -> bool:
+    """Delete a lead (soft by default, hard if authorized)"""
     lead = await get_lead(db, lead_id)
     if not lead:
         return False
-    
-    await db.delete(lead)
+
+    if hard_delete:
+        if current_user["designation"] not in ["Admin", "Dealer"]:
+            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+        await db.delete(lead)
+    else:
+        lead.is_deleted = True
+        lead.deleted_at = datetime.utcnow()
+        lead.deleted_by = current_user["staff_id"]
+
     await db.flush()
     return True
 
 
-async def convert_lead_to_customer(db: AsyncSession, lead_id: int, payload) -> Optional['Customer']:
-    """Convert a lead to a customer"""
+async def convert_lead_to_customer(
+    db: AsyncSession,
+    lead_id: int,
+    payload: crm_schemas.LeadConvertPayload,
+    current_user: dict,
+) -> dict:
+    """Convert a Lead into a Customer + Nominee in a single atomic transaction.
+
+    Supports the 'Buyer vs. Rider' scenario: the payload may differ from
+    the original lead data (e.g., son enquired but father is buying).
+
+    Steps:
+      a. Fetch Lead, guard against double-conversion.
+      b. Create Customer with full KYC & address.
+      c. Create primary Nominee for insurance.
+      d. Mark Lead as converted and update status to CONVERTED/SOLD.
+      e. Commit everything atomically.
+    """
     from app.domains.master import models as master_models
-    
+
+    # (a) Fetch Lead & guard
     lead = await get_lead(db, lead_id)
     if not lead:
-        return None
-    
-    # Check if already converted
-    if lead.customer_id:
-        result = await db.execute(select(master_models.Customer).filter_by(customer_id=lead.customer_id))
-        return result.scalars().first()
-    
-    # Create customer with lead data if requested
-    if payload.use_lead_data:
-        customer = master_models.Customer(
-            lead_reference_id=lead_id,
-            name=lead.name,
-            primary_phone=lead.phone,
-            email=lead.email,
-            customer_type="INDIVIDUAL",
-            created_at=datetime.utcnow(),
-            is_active=True
-        )
-    else:
-        customer = master_models.Customer(
-            lead_reference_id=lead_id,
-            customer_type="INDIVIDUAL",
-            created_at=datetime.utcnow(),
-            is_active=True
-        )
-    
+        raise HTTPException(status_code=404, detail="Lead not found")
+    if lead.is_converted:
+        raise HTTPException(status_code=400, detail="This lead has already been converted to a customer.")
+
+    # (b) Create Customer
+    customer = master_models.Customer(
+        lead_reference_id=lead_id,
+        name=payload.name,
+        primary_phone=payload.phone,
+        email=payload.email,
+        customer_type=payload.customer_type,
+        address_line1=payload.address_line1,
+        city=payload.city,
+        state=payload.state,
+        pincode=payload.pincode,
+        aadhaar_no=payload.aadhaar_no,
+        pan_no=payload.pan_no,
+        is_active=True,
+        created_at=datetime.utcnow(),
+        created_by=current_user["staff_id"],
+    )
     db.add(customer)
-    await db.flush()
-    
-    # Update lead with customer_id and status (5 = CONVERTED)
+    await db.flush()  # get customer_id
+
+    # (c) Create primary Nominee
+    nominee = master_models.Nominee(
+        customer_id=customer.customer_id,
+        nominee_name=payload.nominee.nominee_name,
+        nominee_dob=payload.nominee.nominee_dob,
+        relation=payload.nominee.relation,
+        is_primary=True,
+        is_active=True,
+        created_at=datetime.utcnow(),
+        created_by=current_user["staff_id"],
+    )
+    db.add(nominee)
+    await db.flush()  # get nominee_id
+
+    # (d) Update Lead — mark converted
+    lead.is_converted = True
     lead.customer_id = customer.customer_id
-    
-    # TODO: Fetch status ID dynamically or use constant
-    stmt = select(models.LeadStatusMaster).filter_by(status_name='CONVERTED')
+
+    # Fetch CONVERTED / SOLD status from master
+    stmt = select(models.LeadStatusMaster).filter(
+        models.LeadStatusMaster.status_name.in_(("CONVERTED", "SOLD"))
+    )
     result = await db.execute(stmt)
     converted_status = result.scalars().first()
-    
     if converted_status:
         lead.lead_status_id = converted_status.status_id
-        
-    await db.flush()
-    
-    return customer
+    lead.lead_status = "SOLD"
+    lead.next_followup_date = None  # No more follow-ups needed
+
+    # (e) Commit atomically
+    await db.commit()
+
+    return {
+        "message": "Lead converted to customer successfully",
+        "customer_id": customer.customer_id,
+        "lead_id": lead_id,
+        "nominee_id": nominee.nominee_id,
+    }
 
 
 async def assign_lead(db: AsyncSession, lead_id: int, new_owner_id: int, changed_by: int):
@@ -189,9 +240,12 @@ async def assign_lead(db: AsyncSession, lead_id: int, new_owner_id: int, changed
 
 
 async def get_lead_activities(db: AsyncSession, lead_id: int) -> list[models.LeadActivity]:
-    """Get all activities for a lead"""
+    """Get all activities for a lead (excludes soft-deleted)"""
     stmt = select(models.LeadActivity)\
-        .filter(models.LeadActivity.lead_id == lead_id)\
+        .filter(
+            models.LeadActivity.lead_id == lead_id,
+            models.LeadActivity.is_deleted == False
+        )\
         .order_by(desc(models.LeadActivity.activity_time))
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -222,8 +276,10 @@ async def create_enquiry(db: AsyncSession, payload, current_staff_id: int) -> mo
 
 
 async def list_enquiries(db: AsyncSession, status_id: int = None) -> list[models.Enquiry]:
-    """List enquiries with optional filters"""
-    stmt = select(models.Enquiry).options(selectinload(models.Enquiry.enquiry_status))
+    """List enquiries with optional filters (excludes soft-deleted)"""
+    stmt = select(models.Enquiry).options(
+        selectinload(models.Enquiry.enquiry_status)
+    ).filter(models.Enquiry.is_deleted == False)
     
     if status_id:
         stmt = stmt.filter(models.Enquiry.enquiry_status_id == status_id)
@@ -234,8 +290,13 @@ async def list_enquiries(db: AsyncSession, status_id: int = None) -> list[models
 
 
 async def get_enquiry(db: AsyncSession, enquiry_id: int) -> models.Enquiry | None:
-    """Get a single enquiry"""
-    return await db.get(models.Enquiry, enquiry_id)
+    """Get a single enquiry (excludes soft-deleted)"""
+    stmt = select(models.Enquiry).filter(
+        models.Enquiry.enquiry_id == enquiry_id,
+        models.Enquiry.is_deleted == False
+    )
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
 
 async def update_enquiry(db: AsyncSession, enquiry_id: int, payload: dict) -> models.Enquiry | None:
@@ -266,8 +327,10 @@ async def get_enquiry_statuses(db: AsyncSession):
 
 
 async def get_enquiry_stats(db: AsyncSession) -> dict:
-    """Get enquiry statistics"""
-    result = await db.execute(select(models.Enquiry))
+    """Get enquiry statistics (excludes soft-deleted)"""
+    result = await db.execute(
+        select(models.Enquiry).filter(models.Enquiry.is_deleted == False)
+    )
     total = len(result.scalars().all())
     return {"total_enquiries": total}
 
@@ -290,16 +353,25 @@ async def add_followup(db: AsyncSession, payload, current_staff_id: int) -> mode
 
 
 async def list_pending_followups(db: AsyncSession) -> list[models.FollowupSchedule]:
-    """Get all pending followups"""
+    """Get all pending followups (excludes soft-deleted)"""
     stmt = select(models.FollowupSchedule)\
-        .filter(models.FollowupSchedule.followup_status.in_(("PENDING", "MISSED")))\
+        .filter(
+            models.FollowupSchedule.followup_status.in_(("PENDING", "MISSED")),
+            models.FollowupSchedule.is_deleted == False
+        )\
         .order_by(models.FollowupSchedule.scheduled_date)
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
 async def get_followup(db: AsyncSession, followup_id: int) -> models.FollowupSchedule | None:
-    return await db.get(models.FollowupSchedule, followup_id)
+    """Get a followup by ID (excludes soft-deleted)"""
+    stmt = select(models.FollowupSchedule).filter(
+        models.FollowupSchedule.followup_id == followup_id,
+        models.FollowupSchedule.is_deleted == False
+    )
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
 
 async def update_followup(db: AsyncSession, followup_id: int, payload) -> models.FollowupSchedule:
@@ -338,7 +410,10 @@ async def get_followup_dashboard(db: AsyncSession, followup_type: str = "ALL") -
     
     if followup_type in ("ALL", "SALES"):
         stmt = select(models.FollowupSchedule)\
-            .filter(models.FollowupSchedule.followup_status.in_(("PENDING", "MISSED")))\
+            .filter(
+                models.FollowupSchedule.followup_status.in_(("PENDING", "MISSED")),
+                models.FollowupSchedule.is_deleted == False
+            )\
             .order_by(models.FollowupSchedule.scheduled_date)
         result = await db.execute(stmt)
         sales_followups = result.scalars().all()
@@ -396,6 +471,13 @@ async def add_lead_followup(
     if not lead:
         raise CRMError("Lead not found")
 
+    # Strict validation: remarks must not be empty or whitespace-only
+    if not payload.remarks or not payload.remarks.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="A remark is strictly mandatory for logging a follow-up.",
+        )
+
     # Double-check remarks length (schema already validates, but belt & suspenders)
     if len(payload.remarks.strip()) < 10:
         raise CRMError("Remarks must be at least 10 characters")
@@ -422,10 +504,13 @@ async def add_lead_followup(
 
 
 async def get_lead_followups(db: AsyncSession, lead_id: int) -> list[models.LeadFollowup]:
-    """Get all followup entries for a lead"""
+    """Get all followup entries for a lead (excludes soft-deleted)"""
     stmt = (
         select(models.LeadFollowup)
-        .filter(models.LeadFollowup.lead_id == lead_id)
+        .filter(
+            models.LeadFollowup.lead_id == lead_id,
+            models.LeadFollowup.is_deleted == False
+        )
         .order_by(desc(models.LeadFollowup.followup_date))
     )
     result = await db.execute(stmt)
@@ -441,7 +526,7 @@ async def get_lead_followup_dashboard(
 
     base_stmt = select(models.Lead).filter(
         models.Lead.is_converted != True,  # noqa: E712
-        models.Lead.deleted_at.is_(None),
+        models.Lead.is_deleted == False,
         models.Lead.next_followup_date.isnot(None),
     )
     if staff_id:
@@ -495,3 +580,49 @@ async def add_test_ride(
     db.add(test_ride)
     await db.flush()
     return test_ride
+
+
+# ==================== DELETE SERVICES ====================
+
+async def delete_enquiry(
+    db: AsyncSession, enquiry_id: int,
+    current_user: dict, hard_delete: bool = False
+) -> bool:
+    """Delete an enquiry (soft by default, hard if authorized)"""
+    enquiry = await get_enquiry(db, enquiry_id)
+    if not enquiry:
+        return False
+
+    if hard_delete:
+        if current_user["designation"] not in ["Admin", "Dealer"]:
+            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+        await db.delete(enquiry)
+    else:
+        enquiry.is_deleted = True
+        enquiry.deleted_at = datetime.utcnow()
+        enquiry.deleted_by = current_user["staff_id"]
+
+    await db.flush()
+    return True
+
+
+async def delete_followup(
+    db: AsyncSession, followup_id: int,
+    current_user: dict, hard_delete: bool = False
+) -> bool:
+    """Delete a followup schedule (soft by default, hard if authorized)"""
+    followup = await get_followup(db, followup_id)
+    if not followup:
+        return False
+
+    if hard_delete:
+        if current_user["designation"] not in ["Admin", "Dealer"]:
+            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+        await db.delete(followup)
+    else:
+        followup.is_deleted = True
+        followup.deleted_at = datetime.utcnow()
+        followup.deleted_by = current_user["staff_id"]
+
+    await db.flush()
+    return True

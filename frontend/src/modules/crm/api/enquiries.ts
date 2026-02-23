@@ -51,4 +51,8 @@ export const enquiriesApi = {
     getStats: async (): Promise<EnquiryStats> => {
         return api.get('/crm/enquiries/stats/summary')
     },
+
+    delete: async (id: number, hardDelete?: boolean): Promise<void> => {
+        return api.delete(`/crm/enquiries/${id}`, { params: { hard_delete: hardDelete } })
+    },
 }

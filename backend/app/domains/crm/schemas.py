@@ -187,3 +187,45 @@ class TestRideCreate(BaseModel):
     vehicle_model_id: int
     test_ride_date: date
     customer_feedback: Optional[str] = None
+
+
+# ==================== LEAD CONVERSION SCHEMAS ====================
+
+class NomineeInput(BaseModel):
+    """Nested nominee input for lead conversion"""
+    nominee_name: str = Field(..., min_length=1, max_length=150)
+    nominee_dob: date
+    relation: str = Field(..., min_length=1, max_length=100)
+
+
+class LeadConvertPayload(BaseModel):
+    """Payload for converting a Lead into a Customer + Nominee in one atomic transaction.
+    Supports the 'Buyer vs. Rider' scenario: fields are pre-filled from the Lead
+    but the user can override them (e.g. son enquired, father is buying).
+    """
+    # Customer details
+    name: str = Field(..., min_length=1, max_length=150)
+    phone: str = Field(..., min_length=10, max_length=15)
+    email: Optional[str] = None
+    customer_type: str = Field(default="INDIVIDUAL")
+    address_line1: str = Field(..., min_length=1)
+    city: str = Field(..., min_length=1, max_length=100)
+    state: str = Field(..., min_length=1, max_length=100)
+    pincode: str = Field(..., min_length=6, max_length=10)
+    aadhaar_no: str = Field(..., min_length=12, max_length=12, description="12-digit Aadhaar number")
+    pan_no: str = Field(..., min_length=10, max_length=10, description="10-character PAN")
+
+    # Nominee (mandatory for insurance)
+    nominee: NomineeInput
+
+
+class LeadConvertResponse(BaseModel):
+    """Response after successful lead conversion"""
+    message: str
+    customer_id: int
+    lead_id: int
+    nominee_id: int
+
+    class Config:
+        from_attributes = True
+

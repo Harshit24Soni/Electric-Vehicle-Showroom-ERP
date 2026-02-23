@@ -22,6 +22,16 @@ async def create_sale(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
+@router.post("/billing", response_model=schemas.SaleResponse, status_code=status.HTTP_201_CREATED)
+async def create_sale_billing(
+    data: schemas.SaleCreatePayload,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff),
+):
+    """Full Sales & Billing transaction: Sale + Invoice + Payment + Vehicle SOLD"""
+    return await services.create_sale_transaction(db, payload=data, current_user=current_staff)
+
+
 @router.get("/", response_model=List[schemas.SaleResponse])
 async def list_sales(
     db: AsyncSession = Depends(get_db),
@@ -42,6 +52,20 @@ async def get_sale(
     if not sale:
         raise HTTPException(status_code=404, detail="Sale not found")
     return sale
+
+
+@router.delete("/{sale_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sale(
+    sale_id: int,
+    hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Delete a sale (soft delete by default)"""
+    success = await services.delete_sale(db, sale_id, current_staff, hard_delete)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
+    return None
 
 
 @router.post("/receipts", response_model=schemas.ReceiptResponse)

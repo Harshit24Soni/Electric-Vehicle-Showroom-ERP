@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { masterApi, Customer, CustomerCreate } from '../api/masterApi'
-import { Plus, Search, Edit, Eye } from 'lucide-react'
+import { customersApi } from '../api/customers'
+import { Plus, Search, Edit, Eye, Trash2 } from 'lucide-react'
 import { formatDate } from '../../../lib/utils'
 import CustomerForm from '../components/CustomerForm'
 import CustomerDetailModal from '../components/CustomerDetailModal'
 import { SkeletonTable } from '@/components/ui/SkeletonTable'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -13,6 +15,7 @@ export default function CustomersPage() {
   const [showDetail, setShowDetail] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null)
   const queryClient = useQueryClient()
 
   const { data: customers = [], isLoading } = useQuery({
@@ -28,6 +31,21 @@ export default function CustomersPage() {
       setSelectedCustomer(null)
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) =>
+      customersApi.delete(id, hardDelete),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      setDeleteTarget(null)
+    },
+  })
+
+  const handleDeleteConfirm = (hardDelete: boolean) => {
+    if (deleteTarget) {
+      deleteMutation.mutate({ id: deleteTarget.customer_id, hardDelete })
+    }
+  }
 
   const filteredCustomers = customers.filter((customer) =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -123,6 +141,13 @@ export default function CustomersPage() {
                         >
                           <Edit className="w-4 h-4" />
                         </button>
+                        <button
+                          onClick={() => setDeleteTarget(customer)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded"
+                          title="Delete Customer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -154,6 +179,14 @@ export default function CustomersPage() {
           }}
         />
       )}
+
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        itemName={deleteTarget?.name || ''}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   )
 }

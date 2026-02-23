@@ -45,4 +45,6 @@ export const billingApi = {
   updateInvoice: (invoiceId: number, data: InvoiceUpdate) =>
     api.put(`/billing/invoice/${invoiceId}`, data),
   finalizeInvoice: (invoiceId: number) => api.post(`/billing/invoice/${invoiceId}/finalize`),
+  deleteInvoice: (invoiceId: number, hardDelete?: boolean) =>
+    api.delete(`/billing/invoice/${invoiceId}`, { params: { hard_delete: hardDelete } }),
 }

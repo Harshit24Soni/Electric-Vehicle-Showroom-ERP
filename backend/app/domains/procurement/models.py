@@ -4,8 +4,9 @@ from sqlalchemy import BigInteger, String, Date, Text, Boolean, Integer, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.db.mixins import AuditMixin, SoftDeleteMixin
 
-class SparePurchase(Base):
+class SparePurchase(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_purchase"
     __table_args__ = {"schema": "procurement"}
 
@@ -16,14 +17,13 @@ class SparePurchase(Base):
     purchase_date: Mapped[date] = mapped_column(Date)
     remarks: Mapped[Optional[str]] = mapped_column(Text)
     include_in_accounting: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     # Relationships
     vendor = relationship("Vendor")
     items: Mapped[List["SparePurchaseItem"]] = relationship("SparePurchaseItem", back_populates="purchase", cascade="all, delete-orphan")
 
 
-class SparePurchaseItem(Base):
+class SparePurchaseItem(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_purchase_item"
     __table_args__ = {"schema": "procurement"}
 
@@ -34,14 +34,13 @@ class SparePurchaseItem(Base):
     unit_cost: Mapped[float] = mapped_column(Numeric(12, 2))
     gst_percentage: Mapped[Optional[float]] = mapped_column(Numeric(5, 2))
     total_cost: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     # Relationships
     purchase: Mapped["SparePurchase"] = relationship("SparePurchase", back_populates="items")
     spare = relationship("SpareMaster")
 
 
-class VehiclePurchase(Base):
+class VehiclePurchase(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "vehicle_purchase"
     __table_args__ = {"schema": "procurement"}
 
@@ -51,14 +50,13 @@ class VehiclePurchase(Base):
     invoice_date: Mapped[date] = mapped_column(Date)
     invoice_amount: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
     include_in_accounting: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     # Relationships
     vendor = relationship("Vendor")
     details: Mapped[List["VehiclePurchaseDetail"]] = relationship("VehiclePurchaseDetail", back_populates="purchase", cascade="all, delete-orphan")
 
 
-class VehiclePurchaseDetail(Base):
+class VehiclePurchaseDetail(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "vehicle_purchase_detail"
     __table_args__ = {"schema": "procurement"}
 
@@ -66,7 +64,6 @@ class VehiclePurchaseDetail(Base):
     vehicle_purchase_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("procurement.vehicle_purchase.vehicle_purchase_id"))
     chassis_no: Mapped[str] = mapped_column(String(50), ForeignKey("master.vehicle.chassis_no"))
     cost_price: Mapped[Optional[float]] = mapped_column(Numeric(12, 2))
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     # Relationships
     purchase: Mapped["VehiclePurchase"] = relationship("VehiclePurchase", back_populates="details")

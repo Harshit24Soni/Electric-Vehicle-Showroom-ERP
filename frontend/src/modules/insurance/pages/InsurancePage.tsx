@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { insuranceApi, PolicyCreate, InsuranceCompanyCreate } from '../api/insuranceApi'
-import { Plus, Search, Building2 } from 'lucide-react'
+import { Plus, Search, Building2, Trash2 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import PolicyForm from '../components/PolicyForm'
 import { useForm } from 'react-hook-form'
 import { X } from 'lucide-react'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function InsurancePage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showPolicyForm, setShowPolicyForm] = useState(false)
   const [showCompanyForm, setShowCompanyForm] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'policy' | 'company'; id: number; name: string } | null>(null)
   const queryClient = useQueryClient()
 
   const { data: policies = [], isLoading: policiesLoading } = useQuery({
@@ -38,6 +40,21 @@ export default function InsurancePage() {
       setShowCompanyForm(false)
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ type, id, hardDelete }: { type: 'policy' | 'company'; id: number; hardDelete?: boolean }) =>
+      type === 'policy' ? insuranceApi.deletePolicy(id, hardDelete) : insuranceApi.deleteCompany(id, hardDelete),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [deleteTarget?.type === 'policy' ? 'policies' : 'insurance-companies'] })
+      setDeleteTarget(null)
+    },
+  })
+
+  const handleDeleteConfirm = (hardDelete: boolean) => {
+    if (deleteTarget) {
+      deleteMutation.mutate({ type: deleteTarget.type, id: deleteTarget.id, hardDelete })
+    }
+  }
 
   const filteredPolicies = policies.filter((policy) =>
     policy.policy_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -100,6 +117,7 @@ export default function InsurancePage() {
                   <th>Premium</th>
                   <th>Status</th>
                   <th>Created</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -111,15 +129,23 @@ export default function InsurancePage() {
                     <td>{formatDate(policy.policy_end_date)}</td>
                     <td>{policy.premium_amount ? formatCurrency(policy.premium_amount) : '-'}</td>
                     <td>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        policy.is_active
+                      <span className={`px-2 py-1 text-xs rounded-full ${policy.is_active
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
-                      }`}>
+                        }`}>
                         {policy.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td>{formatDate(policy.created_at)}</td>
+                    <td>
+                      <button
+                        onClick={() => setDeleteTarget({ type: 'policy', id: policy.policy_id, name: policy.policy_number })}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded"
+                        title="Delete Policy"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -143,6 +169,14 @@ export default function InsurancePage() {
           isLoading={createCompanyMutation.isPending}
         />
       )}
+
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        itemName={deleteTarget ? deleteTarget.name : ''}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   )
 }
