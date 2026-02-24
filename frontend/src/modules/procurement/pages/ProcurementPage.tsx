@@ -68,24 +68,6 @@ export default function ProcurementPage() {
                     </div>
                 )}
 
-                {/* Vehicle Purchase Card */}
-                {hasRole(['DEALER', 'ADMIN']) && (
-                    <div className="card hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/procurement/vehicles/new')}>
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="p-3 bg-green-100 text-green-600 rounded-lg">
-                                <Car className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-semibold">Vehicle Purchase</h3>
-                                <p className="text-sm text-gray-500">Inward new vehicles</p>
-                            </div>
-                        </div>
-                        <button className="btn btn-primary w-full flex items-center justify-center gap-2">
-                            <Plus className="w-4 h-4" />
-                            New Entry
-                        </button>
-                    </div>
-                )}
 
                 {/* Temporary Items Card - Admin Only */}
                 {hasRole(['ADMIN']) && (

@@ -58,66 +58,6 @@ async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.Spar
     await db.refresh(purchase)
     return purchase
 
-async def create_vehicle_purchase(db: AsyncSession, data: procurement_schemas.VehiclePurchaseCreate):
-    # 1. Create Purchase Record
-    purchase = procurement_models.VehiclePurchase(
-        vendor_id=data.vendor_id,
-        invoice_number=data.invoice_number,
-        invoice_date=data.invoice_date,
-        invoice_amount=data.invoice_amount,
-        include_in_accounting=data.include_in_accounting,
-        created_at=datetime.utcnow()
-    )
-    db.add(purchase)
-    await db.flush()
-
-    # 2. Process Vehicles
-    for v_data in data.vehicles:
-        # check chassis uniqueness
-        existing = await db.execute(select(master_models.Vehicle).filter_by(chassis_no=v_data.chassis_no))
-        if existing.scalars().first():
-             raise HTTPException(status_code=400, detail=f"Chassis {v_data.chassis_no} already exists")
-
-        # Create Vehicle Master Record
-        new_vehicle = master_models.Vehicle(
-            chassis_no=v_data.chassis_no,
-            vehicle_model_id=v_data.vehicle_model_id,
-            motor_serial_no=v_data.motor_serial_no,
-            convertor_serial_no=v_data.convertor_serial_no,
-            charger_serial_no=v_data.charger_serial_no,
-            controller_serial_no=v_data.controller_serial_no,
-            battery_serial_no=v_data.battery_serial_no,
-            date_of_manufacture=v_data.date_of_manufacture,
-            current_status="IN_STOCK",
-            created_at=datetime.utcnow()
-        )
-        db.add(new_vehicle)
-        
-        # Purchase Detail
-        detail = procurement_models.VehiclePurchaseDetail(
-            vehicle_purchase_id=purchase.vehicle_purchase_id,
-            chassis_no=v_data.chassis_no,
-            cost_price=v_data.cost_price
-        )
-        db.add(detail)
-        
-        # Inventory Movement
-        movement = inventory_models.VehicleStockMovement(
-            chassis_no=v_data.chassis_no,
-            movement_type="INWARD", # Or PURCHASE/INWARD defined in constraint
-            # Inventory model constraint says: 'INWARD','AVAILABLE', etc. 
-            # 'INWARD' seems appropriate for purchase.
-            movement_datetime=datetime.utcnow(),
-            reference_type="PROCUREMENT",
-            reference_id=purchase.vehicle_purchase_id,
-            remarks=f"Purchase from Vendor {data.vendor_id}"
-        )
-        db.add(movement)
-
-    await db.commit()
-    await db.refresh(purchase)
-    return purchase
-
 
 async def create_temporary_item(db: AsyncSession, data: procurement_schemas.TemporaryItemCreate, user_id: int) -> inventory_models.SpareMaster:
     """Create a temporary spare item"""

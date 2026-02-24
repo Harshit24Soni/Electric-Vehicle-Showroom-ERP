@@ -19,15 +19,6 @@ async def create_spare_purchase(
     return await services.create_spare_purchase(db, data)
 
 
-@router.post("/purchases/vehicles", response_model=schemas.PurchaseResponse, status_code=status.HTTP_201_CREATED)
-async def create_vehicle_purchase(
-    data: schemas.VehiclePurchaseCreate,
-    db: AsyncSession = Depends(get_db),
-    current_staff=Depends(require_roles("DEALER", "ADMIN"))
-):
-    """Create a new Vehicle Purchase (Dealer/Admin)"""
-    return await services.create_vehicle_purchase(db, data)
-
 
 @router.post(
     "/purchases/vehicles/intake",

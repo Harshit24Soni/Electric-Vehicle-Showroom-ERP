@@ -26,7 +26,6 @@ import VendorsPage from './modules/master/pages/VendorsPage'
 // Procurement
 import ProcurementPage from './modules/procurement/pages/ProcurementPage'
 import SparePurchasePage from './modules/procurement/pages/SparePurchasePage'
-import VehiclePurchasePage from './modules/procurement/pages/VehiclePurchasePage'
 import TemporaryItemPage from './modules/procurement/pages/TemporaryItemPage'
 
 // Admin
@@ -90,11 +89,6 @@ function App() {
           <Route path="procurement/spares/new" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'DEALER']}>
               <SparePurchasePage />
-            </ProtectedRoute>
-          } />
-          <Route path="procurement/vehicles/new" element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'DEALER']}>
-              <VehiclePurchasePage />
             </ProtectedRoute>
           } />
           <Route path="procurement/temporary-items" element={

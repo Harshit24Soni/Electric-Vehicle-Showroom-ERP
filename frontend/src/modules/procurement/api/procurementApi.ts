@@ -30,15 +30,6 @@ export interface VehicleDetail {
     cost_price?: number
 }
 
-export interface VehiclePurchaseCreate {
-    vendor_id: number
-    invoice_number: string
-    invoice_date: string
-    invoice_amount?: number
-    include_in_accounting: boolean
-    details: VehicleDetail[]
-}
-
 export interface TemporaryItemCreate {
     part_code: string
     description: string
@@ -66,11 +57,6 @@ export const procurementApi = {
         return response
     },
 
-    // Vehicles
-    createVehiclePurchase: async (data: VehiclePurchaseCreate) => {
-        const response = await api.post('/procurement/purchases/vehicles', data)
-        return response
-    },
 
     // Temporary Items
     createTemporaryItem: async (data: TemporaryItemCreate) => {

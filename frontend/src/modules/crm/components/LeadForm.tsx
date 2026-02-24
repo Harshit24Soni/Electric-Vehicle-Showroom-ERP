@@ -30,7 +30,7 @@ const leadSchema = z.object({
   lead_status_id: z.coerce.number().optional(),
   expected_purchase_date: z.string().optional(),
   remarks: z.string().optional(),
-  owner_staff_id: z.coerce.number().optional(),
+  owner_staff_id: z.coerce.number().optional().or(z.literal('')),
 })
 
 type LeadFormData = z.infer<typeof leadSchema>
@@ -85,6 +85,12 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
   })
 
   const onFormSubmit = (data: LeadFormData) => {
+    // Sanitize owner_staff_id — strip empty/NaN/0 so backend auto-assigns
+    const cleanOwnerId =
+      typeof data.owner_staff_id === 'number' && !isNaN(data.owner_staff_id) && data.owner_staff_id > 0
+        ? data.owner_staff_id
+        : undefined
+
     onSubmit({
       name: data.name,
       phone: data.phone,
@@ -93,7 +99,7 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
       lead_source: data.lead_source,
       lead_status_id: data.lead_status_id,
       // Admin/Dealer: send selected staff; Staff: omit so backend auto-assigns
-      owner_staff_id: isAdminOrDealer ? data.owner_staff_id || undefined : undefined,
+      owner_staff_id: isAdminOrDealer ? cleanOwnerId : undefined,
       expected_purchase_date: data.expected_purchase_date,
       remarks: data.remarks,
     })
@@ -179,7 +185,7 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
               <select {...register('owner_staff_id', { valueAsNumber: true })} className="input">
-                <option value="">Auto-assign to me</option>
+                <option value="">-- Auto Assign to Me --</option>
                 {staffList.map((staff: any) => (
                   <option key={staff.staff_id} value={staff.staff_id}>
                     {staff.full_name} ({staff.designation})

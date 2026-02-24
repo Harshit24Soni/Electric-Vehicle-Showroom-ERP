@@ -71,11 +71,20 @@ export const useAuthStore = create<AuthState>()(
         set({ token: null, user: null, isAuthenticated: false })
       },
 
-      hasRole: (roles: UserRole[]) => {
+      hasRole: (roles: UserRole[] | UserRole) => {
         const { user } = get()
-        if (!user) return false
+        if (!user || !user.role) return false
+
+        // Admin bypasses all checks in frontend
+        if (user.role.toUpperCase() === 'ADMIN' || user.designation?.toUpperCase() === 'ADMIN') {
+          return true;
+        }
+
+        // Add array-type safety to prevent .includes crash
+        const rolesArray = Array.isArray(roles) ? roles : [roles]
+
         // Check exact match OR uppercase match (for legacy state)
-        return roles.includes(user.role as UserRole) || roles.includes(user.role.toUpperCase() as UserRole)
+        return rolesArray.includes(user.role as UserRole) || rolesArray.includes(user.role.toUpperCase() as UserRole)
       },
 
       setAuth: (user: User, token: string) => {

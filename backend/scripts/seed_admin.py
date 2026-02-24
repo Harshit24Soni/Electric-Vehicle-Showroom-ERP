@@ -27,7 +27,7 @@ async def seed_admin():
             full_name="System Admin",
             mobile_no="9999999999",
             email="admin@showroom.com",
-            designation="Admin",
+            designation="ADMIN",
             is_active=True,
             pin_hash=hash_pin("123456"),
             failed_attempts=0,
