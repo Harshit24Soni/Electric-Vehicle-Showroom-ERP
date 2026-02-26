@@ -56,3 +56,18 @@ class SpareMovementCreate(BaseModel):
     reference_id: Optional[int] = None
     remarks: Optional[str] = None
 
+
+class SpareMasterResponse(BaseModel):
+    spare_id: int
+    spare_code: str
+    spare_name: str
+    category: Optional[str] = None
+    is_serialized: bool
+    is_temporary: bool
+    is_verified: bool
+    is_active: bool = True
+    is_deleted: bool = False
+
+    class Config:
+        from_attributes = True
+

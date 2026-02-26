@@ -19,7 +19,6 @@ from app.domains.service.models import *  # noqa: F401, F403
 from app.domains.warranty.models import *  # noqa: F401, F403
 from app.domains.insurance.models import *  # noqa: F401, F403
 from app.domains.master.models import *  # noqa: F401, F403
-from app.domains.staff.models import *  # noqa: F401, F403
 from app.domains.followup.models import *  # noqa: F401, F403
 
 

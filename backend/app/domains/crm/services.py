@@ -568,10 +568,16 @@ async def add_test_ride(
     lead = await get_lead(db, lead_id)
     if not lead:
         raise CRMError("Lead not found")
+        
+    from app.domains.master import models as master_models
+    vehicle = await db.get(master_models.Vehicle, payload.chassis_no)
+    if not vehicle:
+        raise CRMError("Vehicle not found")
 
     test_ride = models.TestRide(
         lead_id=lead_id,
-        vehicle_model_id=payload.vehicle_model_id,
+        vehicle_model_id=vehicle.vehicle_model_id,
+        chassis_no=payload.chassis_no,
         test_ride_date=payload.test_ride_date,
         staff_id=current_staff_id,
         customer_feedback=payload.customer_feedback,

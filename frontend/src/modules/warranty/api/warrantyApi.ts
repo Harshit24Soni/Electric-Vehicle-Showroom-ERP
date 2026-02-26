@@ -6,6 +6,15 @@ export interface ClaimCreate {
   remarks?: string
 }
 
+export interface ComponentSwapRequest {
+  job_card_id: number
+  chassis_no: string
+  component_type: 'battery' | 'motor' | 'controller' | 'charger' | 'convertor'
+  old_serial_no: string
+  new_serial_no: string
+  remarks?: string
+}
+
 export interface Claim {
   claim_id: number
   job_spare_id: number
@@ -43,6 +52,7 @@ export interface ShipmentCreate {
 
 export const warrantyApi = {
   createClaim: (data: ClaimCreate) => api.post<Claim>('/warranty/claims', data),
+  swapComponent: (data: ComponentSwapRequest) => api.post<Claim>('/warranty/swap-component', data),
   getClaims: (skip?: number, limit?: number) =>
     api.get<Claim[]>('/warranty/claims', { params: { skip, limit } }),
   createInward: (data: InwardCreate) => api.post('/warranty/inwards', data),

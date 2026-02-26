@@ -6,10 +6,80 @@ from fastapi import HTTPException
 
 from app.domains.warranty import models as wm
 from app.domains.warranty import schemas as ws
-
+from app.domains.master import models as mm
+from app.domains.inventory import models as im
+from app.domains.inventory import services as isrv
 
 class WarrantyError(Exception):
     pass
+
+async def swap_vehicle_component(db: AsyncSession, payload: ws.ComponentSwapRequest) -> wm.Claim:
+    # 1. Fetch Vehicle
+    stmt = select(mm.Vehicle).filter_by(chassis_no=payload.chassis_no, is_deleted=False)
+    result = await db.execute(stmt)
+    vehicle = result.scalars().first()
+    if not vehicle:
+        raise WarrantyError(f"Vehicle {payload.chassis_no} not found")
+
+    # 2. Verify Old Serial No matches the component type
+    attr_name = f"{payload.component_type}_serial_no"
+    current_serial = getattr(vehicle, attr_name, None)
+    if current_serial != payload.old_serial_no:
+        raise WarrantyError(f"Vehicle {payload.component_type} serial mismatch. Expected: {payload.old_serial_no}, Found: {current_serial}")
+
+    # 3. Find SpareSerial for new_serial_no
+    stmt = select(im.SpareSerial).filter_by(serial_no=payload.new_serial_no, is_deleted=False)
+    result = await db.execute(stmt)
+    new_serial_record = result.scalars().first()
+    if not new_serial_record:
+        raise WarrantyError(f"New serial {payload.new_serial_no} not found in inventory")
+    
+    # Also find SpareSerial for old_serial_no to create a movement for it
+    stmt = select(im.SpareSerial).filter_by(serial_no=payload.old_serial_no, is_deleted=False)
+    result = await db.execute(stmt)
+    old_serial_record = result.scalars().first()
+    if not old_serial_record:
+        raise WarrantyError(f"Old serial {payload.old_serial_no} not found in inventory")
+
+    # 4. Create inward stock movement for defective component (WARRANTY_INWARD)
+    defective_movement = await isrv.add_spare_movement(
+        db,
+        spare_id=old_serial_record.spare_id,
+        quantity=1,
+        movement_type="WARRANTY_INWARD",
+        reference_type="SERVICE",
+        reference_id=payload.job_card_id,
+        serial_id=old_serial_record.serial_id,
+        remarks=f"Defective {payload.component_type} recovered",
+    )
+
+    # 5. Create outward stock movement for new component (WARRANTY_OUTWARD)
+    await isrv.add_spare_movement(
+        db,
+        spare_id=new_serial_record.spare_id,
+        quantity=-1,
+        movement_type="WARRANTY_OUTWARD",
+        reference_type="SERVICE",
+        reference_id=payload.job_card_id,
+        serial_id=new_serial_record.serial_id,
+        remarks=f"Replacement {payload.component_type} issued",
+    )
+
+    # 6. Update Vehicle Master
+    setattr(vehicle, attr_name, payload.new_serial_no)
+
+    # 7. Create Claim record (using the defective movement's ID as job_spare_id to bridge it)
+    claim = wm.Claim(
+        job_spare_id=defective_movement.movement_id,
+        claim_status="pending",
+        so_number=f"WAR-SWAP-{payload.job_card_id}-{int(datetime.utcnow().timestamp())}",
+        remarks=payload.remarks or f"Swap {payload.old_serial_no} -> {payload.new_serial_no}",
+        created_at=datetime.utcnow(),
+    )
+    db.add(claim)
+    await db.flush()
+    return claim
+
 
 
 async def create_claim(db: AsyncSession, payload: ws.ClaimCreate) -> wm.Claim:

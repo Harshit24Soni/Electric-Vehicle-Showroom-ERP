@@ -3,6 +3,7 @@ from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
 from datetime import datetime
 from fastapi import HTTPException
+from typing import Optional
 
 from app.domains.master import models
 
@@ -306,7 +307,10 @@ async def create_vehicle_model(db: AsyncSession, payload) -> models.VehicleModel
         model_name=payload.model_name,
         material_number=payload.material_number,
         colour=payload.colour,
-        battery_type=payload.battery_type,
+        battery_type=getattr(payload, 'battery_type', None),
+        laden_weight=getattr(payload, 'laden_weight', None),
+        unladen_weight=getattr(payload, 'unladen_weight', None),
+        hsn_code=getattr(payload, 'hsn_code', None),
         is_active=True,
         created_at=datetime.utcnow(),
     )
@@ -315,14 +319,86 @@ async def create_vehicle_model(db: AsyncSession, payload) -> models.VehicleModel
     return vm
 
 
-async def list_vehicle_models(db: AsyncSession) -> list[models.VehicleModel]:
-    """List all active vehicle models (excludes soft-deleted)"""
+async def get_vehicle_model(db: AsyncSession, vehicle_model_id: int) -> models.VehicleModel | None:
+    """Get a single vehicle model by ID (excludes soft-deleted)"""
     stmt = select(models.VehicleModel).filter(
-        models.VehicleModel.is_active == True,
+        models.VehicleModel.vehicle_model_id == vehicle_model_id,
         models.VehicleModel.is_deleted == False
     )
     result = await db.execute(stmt)
-    return result.scalars().all()
+    return result.scalars().first()
+
+
+async def list_vehicle_models(db: AsyncSession, include_deleted: bool = False) -> list[dict]:
+    """List vehicle models with brand_name resolved.
+    When include_deleted=False, only active non-deleted records are returned.
+    """
+    stmt = (
+        select(
+            models.VehicleModel,
+            models.Brand.brand_name,
+        )
+        .outerjoin(models.Brand, models.VehicleModel.brand_id == models.Brand.brand_id)
+    )
+    if not include_deleted:
+        stmt = stmt.filter(
+            models.VehicleModel.is_deleted == False,
+        )
+    stmt = stmt.order_by(desc(models.VehicleModel.created_at))
+    result = await db.execute(stmt)
+    rows = result.all()
+    out = []
+    for vm, brand_name in rows:
+        d = {
+            "vehicle_model_id": vm.vehicle_model_id,
+            "brand_id": vm.brand_id,
+            "brand_name": brand_name or "",
+            "model_name": vm.model_name,
+            "material_number": vm.material_number,
+            "colour": vm.colour,
+            "battery_type": vm.battery_type,
+            "laden_weight": vm.laden_weight,
+            "unladen_weight": vm.unladen_weight,
+            "hsn_code": vm.hsn_code,
+            "is_active": vm.is_active,
+            "is_deleted": vm.is_deleted,
+            "created_at": vm.created_at,
+        }
+        out.append(d)
+    return out
+
+
+async def update_vehicle_model(db: AsyncSession, vehicle_model_id: int, payload) -> models.VehicleModel | None:
+    """Update a vehicle model (partial update, only set supplied fields)"""
+    vm = await get_vehicle_model(db, vehicle_model_id)
+    if not vm:
+        return None
+    update_data = payload.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(vm, field, value)
+    vm.updated_at = datetime.utcnow()
+    await db.flush()
+    return vm
+
+
+async def restore_vehicle_model(db: AsyncSession, vehicle_model_id: int, staff_id: int) -> bool:
+    """Restore a soft-deleted vehicle model"""
+    stmt = select(models.VehicleModel).filter(
+        models.VehicleModel.vehicle_model_id == vehicle_model_id,
+        models.VehicleModel.is_deleted == True
+    )
+    result = await db.execute(stmt)
+    vm = result.scalars().first()
+    if not vm:
+        return False
+    vm.is_deleted = False
+    vm.is_active = True
+    vm.deleted_at = None
+    vm.deleted_by = None
+    vm.restored_at = datetime.utcnow()
+    vm.restored_by = staff_id
+    await db.flush()
+    return True
 
 
 # ==================== VEHICLE SERVICES ====================
@@ -351,13 +427,38 @@ async def get_vehicle(db: AsyncSession, chassis_no: str) -> models.Vehicle | Non
     return result.scalars().first()
 
 
+async def list_vehicles(
+    db: AsyncSession, status: Optional[str] = None, vehicle_model_id: Optional[int] = None
+) -> list[models.Vehicle]:
+    """List vehicles with optional status and model filters"""
+    stmt = select(models.Vehicle).filter(models.Vehicle.is_deleted == False)
+    
+    if status:
+        statuses = [s.strip() for s in status.split(',')]
+        stmt = stmt.filter(models.Vehicle.current_status.in_(statuses))
+        
+    if vehicle_model_id:
+        stmt = stmt.filter(models.Vehicle.vehicle_model_id == vehicle_model_id)
+        
+    stmt = stmt.order_by(desc(models.Vehicle.created_at))
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
 # ==================== VENDOR SERVICES ====================
 
 async def create_vendor(db: AsyncSession, payload) -> models.Vendor:
     """Create a new vendor"""
     v = models.Vendor(
         vendor_name=payload.vendor_name,
-        vendor_type=payload.vendor_type,
+        vendor_type=payload.vendor_type.value if hasattr(payload.vendor_type, 'value') else payload.vendor_type,
+        gstin=getattr(payload, 'gstin', None),
+        pan_no=getattr(payload, 'pan_no', None),
+        address_line1=getattr(payload, 'address_line1', None),
+        address_line2=getattr(payload, 'address_line2', None),
+        city=getattr(payload, 'city', None),
+        state=getattr(payload, 'state', None),
+        pincode=getattr(payload, 'pincode', None),
         is_active=True,
         created_at=datetime.utcnow(),
     )
@@ -366,14 +467,61 @@ async def create_vendor(db: AsyncSession, payload) -> models.Vendor:
     return v
 
 
-async def list_vendors(db: AsyncSession) -> list[models.Vendor]:
-    """List all active vendors (excludes soft-deleted)"""
+async def get_vendor(db: AsyncSession, vendor_id: int) -> models.Vendor | None:
+    """Get a single vendor by ID (excludes soft-deleted)"""
     stmt = select(models.Vendor).filter(
-        models.Vendor.is_active == True,
+        models.Vendor.vendor_id == vendor_id,
         models.Vendor.is_deleted == False
     )
     result = await db.execute(stmt)
+    return result.scalars().first()
+
+
+async def list_vendors(db: AsyncSession, include_deleted: bool = False) -> list[models.Vendor]:
+    """List vendors. When include_deleted=False, only active non-deleted records are returned."""
+    stmt = select(models.Vendor)
+    if not include_deleted:
+        stmt = stmt.filter(
+            models.Vendor.is_deleted == False,
+        )
+    stmt = stmt.order_by(desc(models.Vendor.created_at))
+    result = await db.execute(stmt)
     return result.scalars().all()
+
+
+async def update_vendor(db: AsyncSession, vendor_id: int, payload) -> models.Vendor | None:
+    """Update a vendor (partial update, only set supplied fields)"""
+    vendor = await get_vendor(db, vendor_id)
+    if not vendor:
+        return None
+    update_data = payload.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if field == 'vendor_type' and hasattr(value, 'value'):
+            value = value.value
+        setattr(vendor, field, value)
+    vendor.updated_at = datetime.utcnow()
+    await db.flush()
+    return vendor
+
+
+async def restore_vendor(db: AsyncSession, vendor_id: int, staff_id: int) -> bool:
+    """Restore a soft-deleted vendor"""
+    stmt = select(models.Vendor).filter(
+        models.Vendor.vendor_id == vendor_id,
+        models.Vendor.is_deleted == True
+    )
+    result = await db.execute(stmt)
+    vendor = result.scalars().first()
+    if not vendor:
+        return False
+    vendor.is_deleted = False
+    vendor.is_active = True
+    vendor.deleted_at = None
+    vendor.deleted_by = None
+    vendor.restored_at = datetime.utcnow()
+    vendor.restored_by = staff_id
+    await db.flush()
+    return True
 
 
 # ==================== PRICING SERVICES ====================

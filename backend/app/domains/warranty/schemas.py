@@ -9,6 +9,16 @@ class ClaimCreate(BaseModel):
     so_number: str
     remarks: Optional[str] = None
 
+from typing import Literal
+
+class ComponentSwapRequest(BaseModel):
+    job_card_id: int
+    chassis_no: str
+    component_type: Literal['battery', 'motor', 'controller', 'charger', 'convertor']
+    old_serial_no: str
+    new_serial_no: str
+    remarks: Optional[str] = None
+
 
 class ClaimResponse(BaseModel):
     claim_id: int

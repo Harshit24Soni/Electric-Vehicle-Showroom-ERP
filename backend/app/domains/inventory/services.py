@@ -174,3 +174,15 @@ async def add_spare_movement(
 
     return movement
 
+
+async def list_spares(
+    db: AsyncSession, include_deleted: bool = False
+) -> list[SpareMaster]:
+    """List all spare master records."""
+    stmt = select(SpareMaster)
+    if not include_deleted:
+        stmt = stmt.filter(SpareMaster.is_deleted == False)
+    stmt = stmt.order_by(SpareMaster.spare_name)
+    result = await db.execute(stmt)
+    return result.scalars().all()
+

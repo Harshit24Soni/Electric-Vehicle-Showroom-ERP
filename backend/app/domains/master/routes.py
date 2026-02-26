@@ -162,11 +162,39 @@ async def create_vehicle_model(
 
 @router.get("/vehicle-models", response_model=list[schemas.VehicleModelResponse])
 async def list_vehicle_models(
+    include_deleted: bool = Query(False, description="Include soft-deleted records"),
     db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff)
 ):
     """List all vehicle models"""
-    return await services.list_vehicle_models(db)
+    return await services.list_vehicle_models(db, include_deleted=include_deleted)
+
+
+@router.get("/vehicle-models/{vehicle_model_id}", response_model=schemas.VehicleModelResponse)
+async def get_vehicle_model(
+    vehicle_model_id: int,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff)
+):
+    """Get a single vehicle model by ID"""
+    vm = await services.get_vehicle_model(db, vehicle_model_id)
+    if not vm:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle model not found")
+    return vm
+
+
+@router.put("/vehicle-models/{vehicle_model_id}", response_model=schemas.VehicleModelResponse)
+async def update_vehicle_model(
+    vehicle_model_id: int,
+    data: schemas.VehicleModelUpdate,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff)
+):
+    """Update a vehicle model"""
+    vm = await services.update_vehicle_model(db, vehicle_model_id, data)
+    if not vm:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle model not found")
+    return vm
 
 
 @router.delete("/vehicle-models/{vehicle_model_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -183,6 +211,19 @@ async def delete_vehicle_model(
     return None
 
 
+@router.post("/vehicle-models/{vehicle_model_id}/restore", status_code=status.HTTP_200_OK)
+async def restore_vehicle_model(
+    vehicle_model_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Restore a soft-deleted vehicle model"""
+    success = await services.restore_vehicle_model(db, vehicle_model_id, current_staff.staff_id if hasattr(current_staff, 'staff_id') else current_staff.get('staff_id'))
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle model not found or not deleted")
+    return {"detail": "Vehicle model restored"}
+
+
 # ==================== VEHICLE ENDPOINTS ====================
 
 @router.post("/vehicles", response_model=schemas.VehicleResponse, status_code=status.HTTP_201_CREATED)
@@ -194,6 +235,17 @@ async def create_vehicle(
     """Create a new vehicle"""
     v = await services.create_vehicle(db, data)
     return v
+
+
+@router.get("/vehicles", response_model=list[schemas.VehicleResponse])
+async def list_vehicles(
+    status: str = Query(None, description="Comma-separated list of statuses"),
+    vehicle_model_id: int = Query(None, description="Filter by model ID"),
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff)
+):
+    """List vehicles with optional filters"""
+    return await services.list_vehicles(db, status=status, vehicle_model_id=vehicle_model_id)
 
 
 @router.get("/vehicles/{chassis_no}", response_model=schemas.VehicleResponse)
@@ -238,11 +290,39 @@ async def create_vendor(
 
 @router.get("/vendors", response_model=list[schemas.VendorResponse])
 async def list_vendors(
+    include_deleted: bool = Query(False, description="Include soft-deleted records"),
     db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff)
 ):
     """List all vendors"""
-    return await services.list_vendors(db)
+    return await services.list_vendors(db, include_deleted=include_deleted)
+
+
+@router.get("/vendors/{vendor_id}", response_model=schemas.VendorResponse)
+async def get_vendor(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff)
+):
+    """Get a single vendor by ID"""
+    v = await services.get_vendor(db, vendor_id)
+    if not v:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vendor not found")
+    return v
+
+
+@router.put("/vendors/{vendor_id}", response_model=schemas.VendorResponse)
+async def update_vendor(
+    vendor_id: int,
+    data: schemas.VendorUpdate,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff)
+):
+    """Update a vendor"""
+    v = await services.update_vendor(db, vendor_id, data)
+    if not v:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vendor not found")
+    return v
 
 
 @router.delete("/vendors/{vendor_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -257,6 +337,19 @@ async def delete_vendor(
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vendor not found")
     return None
+
+
+@router.post("/vendors/{vendor_id}/restore", status_code=status.HTTP_200_OK)
+async def restore_vendor(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff)
+):
+    """Restore a soft-deleted vendor"""
+    success = await services.restore_vendor(db, vendor_id, current_staff.staff_id if hasattr(current_staff, 'staff_id') else current_staff.get('staff_id'))
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vendor not found or not deleted")
+    return {"detail": "Vendor restored"}
 
 
 # ==================== PRICING ENDPOINTS ====================

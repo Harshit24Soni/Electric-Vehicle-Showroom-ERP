@@ -445,3 +445,36 @@ async def restore_document_type(document_type_id: int):
             text("UPDATE master.document_type SET is_deleted = FALSE, is_active = TRUE, deleted_at = NULL, deleted_by = NULL WHERE document_type_id = :id"),
             {"id": document_type_id}
         )
+
+# Add this at the end of backend/app/domains/setup/services.py
+
+async def get_showroom_config():
+    """Fetch the single showroom configuration record."""
+    async with engine.begin() as conn:
+        result = await conn.execute(text("SELECT * FROM master.showroom_config LIMIT 1"))
+        row = result.mappings().first()
+        return dict(row) if row else None
+
+async def upsert_showroom_config(data: dict, staff_id: int):
+    """Insert or Update the single showroom config record."""
+    async with engine.begin() as conn:
+        # Check if exists
+        result = await conn.execute(text("SELECT config_id FROM master.showroom_config LIMIT 1"))
+        existing = result.scalar()
+
+        if existing:
+            # Update
+            sets = [f"{k} = :{k}" for k in data.keys()]
+            sets.append("updated_at = NOW()")
+            sets.append("updated_by = :staff_id")
+            query = f"UPDATE master.showroom_config SET {', '.join(sets)} WHERE config_id = :config_id RETURNING *"
+            params = {**data, "config_id": existing, "staff_id": staff_id}
+        else:
+            # Insert
+            cols = list(data.keys()) + ["created_by"]
+            vals = [f":{k}" for k in data.keys()] + [":staff_id"]
+            query = f"INSERT INTO master.showroom_config ({', '.join(cols)}) VALUES ({', '.join(vals)}) RETURNING *"
+            params = {**data, "staff_id": staff_id}
+
+        updated_result = await conn.execute(text(query), params)
+        return dict(updated_result.mappings().first())

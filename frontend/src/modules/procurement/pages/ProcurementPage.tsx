@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Plus, ShoppingBag, Car, PackageCheck, AlertCircle, FileText, Calendar, Trash2, Truck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, ShoppingBag, PackageCheck, AlertCircle, Trash2, Truck } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { procurementApi } from '../api/procurementApi'
+import { procurementApi, SparePurchaseResponse, VehiclePurchaseResponse } from '../api/procurementApi'
 import { useAuthStore } from '../../../store/authStore'
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 import VehicleIntakeModal from '../components/VehicleIntakeModal'
@@ -18,7 +18,8 @@ export default function ProcurementPage() {
         mutationFn: ({ type, id, hardDelete }: { type: 'spare' | 'vehicle'; id: number; hardDelete?: boolean }) =>
             type === 'spare' ? procurementApi.deleteSparePurchase(id, hardDelete) : procurementApi.deleteVehiclePurchase(id, hardDelete),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [deleteTarget?.type === 'spare' ? 'spare-purchases' : 'vehicle-purchases'] })
+            queryClient.invalidateQueries({ queryKey: ['spare-purchases'] })
+            queryClient.invalidateQueries({ queryKey: ['vehicle-purchases'] })
             setDeleteTarget(null)
         },
     })
@@ -49,7 +50,6 @@ export default function ProcurementPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Spare Purchase Card */}
-                {/* Spare Purchase Card */}
                 {hasRole(['DEALER', 'ADMIN']) && (
                     <div className="card hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/procurement/spares/new')}>
                         <div className="flex items-center gap-4 mb-4">
@@ -67,7 +67,6 @@ export default function ProcurementPage() {
                         </button>
                     </div>
                 )}
-
 
                 {/* Temporary Items Card - Admin Only */}
                 {hasRole(['ADMIN']) && (
@@ -113,9 +112,6 @@ export default function ProcurementPage() {
 function PurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void }) {
     const [activeTab, setActiveTab] = useState<'spares' | 'vehicles'>('spares')
 
-    // We can fetch both or fetch based on active tab. Fetching both for simplicity for now as list won't be huge yet.
-    // Or better, fetch based on tab.
-
     return (
         <div>
             <div className="flex border-b mb-4">
@@ -151,36 +147,49 @@ function SparePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void
             <table className="table w-full">
                 <thead>
                     <tr className="bg-gray-50">
-                        <th className="px-4 py-2 text-left">ID</th>
+                        <th className="px-4 py-2 text-left">S.No.</th>
                         <th className="px-4 py-2 text-left">Date</th>
                         <th className="px-4 py-2 text-left">Vendor</th>
                         <th className="px-4 py-2 text-left">Invoice No</th>
-                        <th className="px-4 py-2 text-right">Amount</th>
+                        <th className="px-4 py-2 text-right">Items</th>
+                        <th className="px-4 py-2 text-left">Status</th>
                         <th className="px-4 py-2 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {purchases.map((p: any) => (
-                        <tr key={p.id} className="border-b hover:bg-gray-50">
-                            <td className="px-4 py-2">#{p.id}</td>
-                            <td className="px-4 py-2">{new Date(p.purchase_date).toLocaleDateString()}</td>
-                            <td className="px-4 py-2">{p.vendor_name || '-'}</td>
-                            <td className="px-4 py-2">{p.vendor_invoice_no || '-'}</td>
-                            <td className="px-4 py-2 text-right">₹{Number(p.total_amount || 0).toFixed(2)}</td>
-                            <td className="px-4 py-2 text-right">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onSetDelete({ type: 'spare', id: p.id, name: `Spare Purchase #${p.id}` }) }}
-                                    className="p-1 text-red-500 hover:bg-red-50 rounded"
-                                    title="Delete Purchase"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
+                    {purchases.map((p: SparePurchaseResponse, index: number) => {
+                        const isVoided = p.is_deleted
+                        return (
+                            <tr key={p.spare_purchase_id} className={`border-b ${isVoided ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'}`}>
+                                <td className="px-4 py-2">{index + 1}</td>
+                                <td className="px-4 py-2">{new Date(p.purchase_date).toLocaleDateString()}</td>
+                                <td className="px-4 py-2">{p.vendor_name || '-'}</td>
+                                <td className="px-4 py-2">{p.vendor_invoice_no || '-'}</td>
+                                <td className="px-4 py-2 text-right">{p.items?.length || 0}</td>
+                                <td className="px-4 py-2">
+                                    {isVoided ? (
+                                        <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 font-medium">Voided</span>
+                                    ) : (
+                                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 font-medium">Active</span>
+                                    )}
+                                </td>
+                                <td className="px-4 py-2 text-right">
+                                    {!isVoided && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onSetDelete({ type: 'spare', id: p.spare_purchase_id, name: `Spare Purchase #${index + 1}` }) }}
+                                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                            title="Void Purchase"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>
+                        )
+                    })}
                     {purchases.length === 0 && (
                         <tr>
-                            <td colSpan={5} className="text-center py-8 text-gray-500">No spare purchases found</td>
+                            <td colSpan={7} className="text-center py-8 text-gray-500">No spare purchases found</td>
                         </tr>
                     )}
                 </tbody>
@@ -202,36 +211,51 @@ function VehiclePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => vo
             <table className="table w-full">
                 <thead>
                     <tr className="bg-gray-50">
-                        <th className="px-4 py-2 text-left">ID</th>
+                        <th className="px-4 py-2 text-left">S.No.</th>
                         <th className="px-4 py-2 text-left">Date</th>
                         <th className="px-4 py-2 text-left">Vendor</th>
                         <th className="px-4 py-2 text-left">Invoice No</th>
                         <th className="px-4 py-2 text-right">Amount</th>
+                        <th className="px-4 py-2 text-right">Vehicles</th>
+                        <th className="px-4 py-2 text-left">Status</th>
                         <th className="px-4 py-2 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {purchases.map((p: any) => (
-                        <tr key={p.purchase_id || p.id} className="border-b hover:bg-gray-50">
-                            <td className="px-4 py-2">#{p.purchase_id || p.id}</td>
-                            <td className="px-4 py-2">{new Date(p.invoice_date).toLocaleDateString()}</td>
-                            <td className="px-4 py-2">{p.vendor_name || '-'}</td>
-                            <td className="px-4 py-2">{p.invoice_number}</td>
-                            <td className="px-4 py-2 text-right">₹{Number(p.invoice_amount || p.total_amount || 0).toFixed(2)}</td>
-                            <td className="px-4 py-2 text-right">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onSetDelete({ type: 'vehicle', id: p.purchase_id || p.id, name: `Vehicle Purchase #${p.purchase_id || p.id}` }) }}
-                                    className="p-1 text-red-500 hover:bg-red-50 rounded"
-                                    title="Delete Purchase"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
+                    {purchases.map((p: VehiclePurchaseResponse, index: number) => {
+                        const isVoided = p.is_deleted
+                        return (
+                            <tr key={p.vehicle_purchase_id} className={`border-b ${isVoided ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'}`}>
+                                <td className="px-4 py-2">{index + 1}</td>
+                                <td className="px-4 py-2">{new Date(p.invoice_date).toLocaleDateString()}</td>
+                                <td className="px-4 py-2">{p.vendor_name || '-'}</td>
+                                <td className="px-4 py-2">{p.invoice_number}</td>
+                                <td className="px-4 py-2 text-right">₹{Number(p.invoice_amount || 0).toFixed(2)}</td>
+                                <td className="px-4 py-2 text-right">{p.details?.length || 0}</td>
+                                <td className="px-4 py-2">
+                                    {isVoided ? (
+                                        <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 font-medium">Voided</span>
+                                    ) : (
+                                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 font-medium">Active</span>
+                                    )}
+                                </td>
+                                <td className="px-4 py-2 text-right">
+                                    {!isVoided && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onSetDelete({ type: 'vehicle', id: p.vehicle_purchase_id, name: `Vehicle Purchase #${index + 1}` }) }}
+                                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                            title="Void Purchase"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>
+                        )
+                    })}
                     {purchases.length === 0 && (
                         <tr>
-                            <td colSpan={5} className="text-center py-8 text-gray-500">No vehicle purchases found</td>
+                            <td colSpan={8} className="text-center py-8 text-gray-500">No vehicle purchases found</td>
                         </tr>
                     )}
                 </tbody>
@@ -239,5 +263,3 @@ function VehiclePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => vo
         </div>
     )
 }
-
-

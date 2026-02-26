@@ -9,6 +9,7 @@ export interface Lead {
     vehicle_model_id: number
     lead_source: string
     lead_status_id: number
+    lead_status: string
     owner_staff_id: number
     assigned_staff_id?: number
     expected_purchase_date?: string | null
@@ -111,7 +112,7 @@ export const leadsApi = {
     },
 
     addTestRide: async (leadId: number, data: {
-        vehicle_model_id: number
+        chassis_no: string
         test_ride_date: string
         customer_feedback?: string
     }): Promise<any> => {

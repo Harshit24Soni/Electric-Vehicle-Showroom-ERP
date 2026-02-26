@@ -10,7 +10,7 @@ from app.auth.dependencies import SECRET_KEY, ALGORITHM, security, get_current_s
 from app.auth.pin_utils import hash_pin, verify_pin
 from app.auth.roles import require_roles
 from app.auth.totp_utils import generate_totp_secret, get_totp_uri, verify_totp_code
-from app.domains.staff.models import (
+from app.domains.staff.schemas import (
     AdminPinResetRequest,
     PinChangeRequest,
     PinLoginRequest,

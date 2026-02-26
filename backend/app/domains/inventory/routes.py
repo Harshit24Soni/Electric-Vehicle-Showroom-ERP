@@ -12,12 +12,23 @@ from app.domains.inventory.schemas import (
     VehicleMovementResponse,
     SpareMovementResponse,
     SpareStockResponse,
+    SpareMasterResponse,
 )
 
 router = APIRouter(
     prefix="/inventory",
     tags=["Inventory"]
 )
+
+
+@router.get("/spares", response_model=list[SpareMasterResponse])
+async def list_spares(
+    include_deleted: bool = False,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """List all spare master records."""
+    return await services.list_spares(db, include_deleted=include_deleted)
 
 
 @router.post(

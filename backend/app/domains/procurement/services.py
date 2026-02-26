@@ -122,16 +122,42 @@ async def approve_temporary_item(db: AsyncSession, spare_id: int) -> inventory_m
     return item
 
 async def list_spare_purchases(db: AsyncSession):
-    """List all spare purchases with items (excludes soft-deleted)"""
+    """List all spare purchases with items, enriched with vendor_name and spare info."""
     from sqlalchemy.orm import selectinload
     stmt = select(procurement_models.SparePurchase).options(
-        selectinload(procurement_models.SparePurchase.items)
-    ).filter(
-        procurement_models.SparePurchase.is_deleted == False
+        selectinload(procurement_models.SparePurchase.items).selectinload(procurement_models.SparePurchaseItem.spare),
+        selectinload(procurement_models.SparePurchase.vendor),
     ).order_by(procurement_models.SparePurchase.created_at.desc())
     
     result = await db.execute(stmt)
-    return result.scalars().all()
+    purchases = result.scalars().all()
+    out = []
+    for p in purchases:
+        items_list = []
+        for item in (p.items or []):
+            items_list.append({
+                "purchase_item_id": item.purchase_item_id,
+                "spare_id": item.spare_id,
+                "spare_name": item.spare.spare_name if item.spare else None,
+                "spare_code": item.spare.spare_code if item.spare else None,
+                "quantity": item.quantity,
+                "unit_cost": item.unit_cost,
+                "gst_percentage": item.gst_percentage or 0,
+                "total_cost": item.total_cost or 0,
+            })
+        out.append({
+            "spare_purchase_id": p.spare_purchase_id,
+            "vendor_id": p.vendor_id,
+            "vendor_name": p.vendor.vendor_name if p.vendor else None,
+            "vendor_invoice_no": p.vendor_invoice_no,
+            "vendor_invoice_date": p.vendor_invoice_date,
+            "purchase_date": p.purchase_date,
+            "remarks": p.remarks,
+            "is_deleted": p.is_deleted,
+            "created_at": p.created_at,
+            "items": items_list,
+        })
+    return out
 
 
 async def get_spare_purchase(db: AsyncSession, spare_purchase_id: int):
@@ -148,16 +174,38 @@ async def get_spare_purchase(db: AsyncSession, spare_purchase_id: int):
 
 
 async def list_vehicle_purchases(db: AsyncSession):
-    """List all vehicle purchases with details (excludes soft-deleted)"""
+    """List all vehicle purchases with details, enriched with vendor_name."""
     from sqlalchemy.orm import selectinload
     stmt = select(procurement_models.VehiclePurchase).options(
-        selectinload(procurement_models.VehiclePurchase.details)
-    ).filter(
-        procurement_models.VehiclePurchase.is_deleted == False
+        selectinload(procurement_models.VehiclePurchase.details).selectinload(procurement_models.VehiclePurchaseDetail.vehicle),
+        selectinload(procurement_models.VehiclePurchase.vendor),
     ).order_by(procurement_models.VehiclePurchase.created_at.desc())
     
     result = await db.execute(stmt)
-    return result.scalars().all()
+    purchases = result.scalars().all()
+    out = []
+    for p in purchases:
+        details_list = []
+        for d in (p.details or []):
+            details_list.append({
+                "vehicle_purchase_detail_id": d.vehicle_purchase_detail_id,
+                "chassis_no": d.chassis_no,
+                "cost_price": d.cost_price,
+                "motor_serial_no": d.vehicle.motor_serial_no if d.vehicle else None,
+                "battery_serial_no": d.vehicle.battery_serial_no if d.vehicle else None,
+            })
+        out.append({
+            "vehicle_purchase_id": p.vehicle_purchase_id,
+            "vendor_id": p.vendor_id,
+            "vendor_name": p.vendor.vendor_name if p.vendor else None,
+            "invoice_number": p.invoice_number,
+            "invoice_date": p.invoice_date,
+            "invoice_amount": p.invoice_amount,
+            "is_deleted": p.is_deleted,
+            "created_at": p.created_at,
+            "details": details_list,
+        })
+    return out
 
 
 async def get_vehicle_purchase(db: AsyncSession, vehicle_purchase_id: int):

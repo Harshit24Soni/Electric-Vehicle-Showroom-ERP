@@ -20,7 +20,7 @@ export default function TestRideList() {
     const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null)
     const [showForm, setShowForm] = useState(false)
     const [formData, setFormData] = useState({
-        vehicle_model_id: '',
+        chassis_no: '',
         test_ride_date: new Date().toISOString().split('T')[0],
         customer_feedback: '',
         lead_id: '',
@@ -31,9 +31,12 @@ export default function TestRideList() {
         queryFn: () => api.get<any[]>('/crm/leads'),
     })
 
-    const { data: models = [] } = useQuery<any[]>({
-        queryKey: ['vehicle-models'],
-        queryFn: () => api.get<any[]>('/master/vehicle-models'),
+    const selectedLeadObj = leads.find((l: any) => l.lead_id === parseInt(formData.lead_id))
+
+    const { data: vehicles = [] } = useQuery<any[]>({
+        queryKey: ['vehicles', selectedLeadObj?.vehicle_model_id],
+        queryFn: () => api.get<any[]>('/master/vehicles', { params: { vehicle_model_id: selectedLeadObj?.vehicle_model_id, status: 'IN_STOCK,DEMO' } }),
+        enabled: !!selectedLeadObj?.vehicle_model_id,
     })
 
     const { data: testRides = [], isLoading } = useQuery<TestRide[]>({
@@ -46,7 +49,7 @@ export default function TestRideList() {
         mutationFn: () => {
             const leadId = parseInt(formData.lead_id)
             return leadsApi.addTestRide(leadId, {
-                vehicle_model_id: parseInt(formData.vehicle_model_id),
+                chassis_no: formData.chassis_no,
                 test_ride_date: formData.test_ride_date,
                 customer_feedback: formData.customer_feedback || undefined,
             })
@@ -56,7 +59,7 @@ export default function TestRideList() {
             queryClient.invalidateQueries({ queryKey: ['test-rides'] })
             setShowForm(false)
             setFormData({
-                vehicle_model_id: '',
+                chassis_no: '',
                 test_ride_date: new Date().toISOString().split('T')[0],
                 customer_feedback: '',
                 lead_id: '',
@@ -101,7 +104,7 @@ export default function TestRideList() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Lead *</label>
                                 <select
                                     value={formData.lead_id}
-                                    onChange={(e) => setFormData({ ...formData, lead_id: e.target.value })}
+                                    onChange={(e) => setFormData({ ...formData, lead_id: e.target.value, chassis_no: '' })}
                                     className="input"
                                 >
                                     <option value="">Select lead</option>
@@ -113,16 +116,17 @@ export default function TestRideList() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Model *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Physical Vehicle *</label>
                                 <select
-                                    value={formData.vehicle_model_id}
-                                    onChange={(e) => setFormData({ ...formData, vehicle_model_id: e.target.value })}
+                                    value={formData.chassis_no}
+                                    onChange={(e) => setFormData({ ...formData, chassis_no: e.target.value })}
                                     className="input"
+                                    disabled={!formData.lead_id}
                                 >
-                                    <option value="">Select model</option>
-                                    {models.map((m: any) => (
-                                        <option key={m.model_id} value={m.model_id}>
-                                            {m.brand?.brand_name || ''} {m.model_name}
+                                    <option value="">Select vehicle</option>
+                                    {(vehicles?.data || vehicles).map((v: any) => (
+                                        <option key={v.chassis_no} value={v.chassis_no}>
+                                            {v.chassis_no} ({v.current_status})
                                         </option>
                                     ))}
                                 </select>

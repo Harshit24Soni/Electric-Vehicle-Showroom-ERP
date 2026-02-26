@@ -1,6 +1,7 @@
 import { api } from '../../../lib/api'
 
-// Types
+// ==================== Types ====================
+
 export interface SparePurchaseItem {
     spare_id: number
     quantity: number
@@ -18,26 +19,56 @@ export interface SparePurchaseCreate {
     items: SparePurchaseItem[]
 }
 
-export interface VehicleDetail {
+export interface SparePurchaseItemResponse {
+    purchase_item_id: number
+    spare_id: number
+    spare_name?: string
+    spare_code?: string
+    quantity: number
+    unit_cost: number
+    gst_percentage: number
+    total_cost: number
+}
+
+export interface SparePurchaseResponse {
+    spare_purchase_id: number
+    vendor_id: number
+    vendor_name?: string
+    vendor_invoice_no?: string
+    vendor_invoice_date?: string
+    purchase_date: string
+    remarks?: string
+    is_deleted: boolean
+    created_at: string
+    items: SparePurchaseItemResponse[]
+}
+
+export interface VehiclePurchaseDetailResponse {
+    vehicle_purchase_detail_id: number
     chassis_no: string
-    vehicle_model_id: number
+    cost_price: number
     motor_serial_no?: string
     battery_serial_no?: string
-    charger_serial_no?: string
-    controller_serial_no?: string
-    convertor_serial_no?: string
-    color?: string
-    cost_price?: number
+}
+
+export interface VehiclePurchaseResponse {
+    vehicle_purchase_id: number
+    vendor_id: number
+    vendor_name?: string
+    invoice_number: string
+    invoice_date: string
+    invoice_amount?: number
+    is_deleted: boolean
+    created_at: string
+    details: VehiclePurchaseDetailResponse[]
 }
 
 export interface TemporaryItemCreate {
-    part_code: string
-    description: string
+    spare_name: string
+    spare_code: string
     category?: string
-    dealer_landing_price?: number
-    dealer_margin_percent?: number
-    gst_percentage?: number
     remarks?: string
+    price?: number
 }
 
 export interface TemporaryItem {
@@ -47,57 +78,6 @@ export interface TemporaryItem {
     category?: string
     is_verified: boolean
     is_temporary: boolean
-}
-
-// API
-export const procurementApi = {
-    // Spares
-    createSparePurchase: async (data: SparePurchaseCreate) => {
-        const response = await api.post('/procurement/purchases/spares', data)
-        return response
-    },
-
-
-    // Temporary Items
-    createTemporaryItem: async (data: TemporaryItemCreate) => {
-        const response = await api.post('/procurement/temporary-items', data)
-        return response
-    },
-
-    getTemporaryItems: async () => {
-        const response = await api.get<TemporaryItem[]>('/procurement/temporary-items')
-        return response
-    },
-
-    approveTemporaryItem: async (id: number) => {
-        const response = await api.put(`/procurement/temporary-items/${id}/approve`)
-        return response
-    },
-
-    getSparePurchases: async () => {
-        const response = await api.get<any[]>('/procurement/purchases/spares')
-        return response
-    },
-
-    getVehiclePurchases: async () => {
-        const response = await api.get<any[]>('/procurement/purchases/vehicles')
-        return response
-    },
-
-    deleteSparePurchase: async (id: number, hardDelete?: boolean) => {
-        const response = await api.delete(`/procurement/purchases/spares/${id}`, { params: { hard_delete: hardDelete } })
-        return response
-    },
-
-    deleteVehiclePurchase: async (id: number, hardDelete?: boolean) => {
-        const response = await api.delete(`/procurement/purchases/vehicles/${id}`, { params: { hard_delete: hardDelete } })
-        return response
-    },
-
-    // Vehicle Intake (OEM)
-    intakeVehicles: async (data: VehicleIntakePayload) => {
-        return api.post('/procurement/purchases/vehicles/intake', data)
-    },
 }
 
 // ==================== Vehicle Intake Types ====================
@@ -116,4 +96,47 @@ export interface VehicleIntakePayload {
     oem_invoice_date: string
     vendor_id: number
     vehicles: VehicleIntakeItem[]
+}
+
+// ==================== API ====================
+
+export const procurementApi = {
+    // Spares
+    createSparePurchase: async (data: SparePurchaseCreate) => {
+        return api.post('/procurement/purchases/spares', data)
+    },
+
+    getSparePurchases: async () => {
+        return api.get<SparePurchaseResponse[]>('/procurement/purchases/spares')
+    },
+
+    getVehiclePurchases: async () => {
+        return api.get<VehiclePurchaseResponse[]>('/procurement/purchases/vehicles')
+    },
+
+    deleteSparePurchase: async (id: number, hardDelete?: boolean) => {
+        return api.delete(`/procurement/purchases/spares/${id}`, { params: { hard_delete: hardDelete } })
+    },
+
+    deleteVehiclePurchase: async (id: number, hardDelete?: boolean) => {
+        return api.delete(`/procurement/purchases/vehicles/${id}`, { params: { hard_delete: hardDelete } })
+    },
+
+    // Temporary Items
+    createTemporaryItem: async (data: TemporaryItemCreate) => {
+        return api.post('/procurement/temporary-items', data)
+    },
+
+    getTemporaryItems: async () => {
+        return api.get<TemporaryItem[]>('/procurement/temporary-items')
+    },
+
+    approveTemporaryItem: async (id: number) => {
+        return api.put(`/procurement/temporary-items/${id}/approve`)
+    },
+
+    // Vehicle Intake (OEM)
+    intakeVehicles: async (data: VehicleIntakePayload) => {
+        return api.post('/procurement/purchases/vehicles/intake', data)
+    },
 }

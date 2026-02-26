@@ -184,7 +184,7 @@ class LeadFollowupDashboardResponse(BaseModel):
 
 class TestRideCreate(BaseModel):
     """Create a test ride entry"""
-    vehicle_model_id: int
+    chassis_no: str
     test_ride_date: date
     customer_feedback: Optional[str] = None
 

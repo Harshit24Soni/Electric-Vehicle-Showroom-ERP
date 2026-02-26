@@ -17,9 +17,8 @@ export default function WarrantyPage() {
     queryKey: ['warranty-claims', statusFilter],
     queryFn: () => warrantyApi.getClaims(0, 100),
   })
-
   const createMutation = useMutation({
-    mutationFn: (data: ClaimCreate) => warrantyApi.createClaim(data),
+    mutationFn: (data: any) => warrantyApi.swapComponent(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warranty-claims'] })
       setShowForm(false)
@@ -118,10 +117,10 @@ export default function WarrantyPage() {
                     <td>{claim.portal_ref_no || '-'}</td>
                     <td>
                       <span className={`px-2 py-1 text-xs rounded-full ${claim.claim_status === 'APPROVED'
-                          ? 'bg-green-100 text-green-800'
-                          : claim.claim_status === 'REJECTED'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-green-100 text-green-800'
+                        : claim.claim_status === 'REJECTED'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
                         }`}>
                         {claim.claim_status}
                       </span>

@@ -5,21 +5,22 @@ export interface SpareStock {
   available_quantity: number
 }
 
-export interface SpareMaster {
+export interface SpareMasterItem {
   spare_id: number
-  part_code: string
-  description: string
-  dealer_landing_price: number
-  dealer_margin_percent: number
-  gst_percentage: number
+  spare_code: string
+  spare_name: string
+  category?: string
+  is_serialized: boolean
+  is_temporary: boolean
+  is_verified: boolean
   is_active: boolean
-  created_at: string
+  is_deleted: boolean
 }
 
 export interface SpareMovementCreate {
   spare_id: number
   quantity: number
-  movement_type: 'PURCHASE' | 'SALE' | 'SERVICE_PAID' | 'SERVICE_INSURANCE' | 'ADJUSTMENT'
+  movement_type: 'PURCHASE' | 'SALE' | 'SERVICE_CONSUMPTION' | 'WARRANTY_INWARD' | 'WARRANTY_OUTWARD' | 'ADJUSTMENT'
   serial_id?: number
   reference_type?: string
   reference_id?: number
@@ -49,6 +50,8 @@ export interface VehicleMovementCreate {
 }
 
 export const inventoryApi = {
+  getSpares: (includeDeleted = false) =>
+    api.get<SpareMasterItem[]>('/inventory/spares', { params: { include_deleted: includeDeleted } }),
   getSpareStock: (spareId: number) => api.get<SpareStock>(`/inventory/spare/${spareId}/stock`),
   createSpareMovement: (data: SpareMovementCreate) => api.post<SpareMovement>('/inventory/spare/movement', data),
   createVehicleMovement: (data: VehicleMovementCreate) => api.post('/inventory/vehicle/movement', data),

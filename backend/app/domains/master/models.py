@@ -316,3 +316,22 @@ class PinResetRequest(Base):
     processed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     processed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"))
 
+
+class ShowroomConfig(Base, AuditMixin):
+    """Single row table holding dealership details for invoice printing and UI."""
+    __tablename__ = "showroom_config"
+    __table_args__ = ({"schema": "master"},)
+
+    config_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    dealership_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    legal_entity_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    gstin: Mapped[str] = mapped_column(String(15), nullable=False)
+    registered_address: Mapped[str] = mapped_column(Text, nullable=False)
+    city: Mapped[str] = mapped_column(String(100), nullable=False)
+    state: Mapped[str] = mapped_column(String(100), nullable=False)
+    pincode: Mapped[str] = mapped_column(String(10), nullable=False)
+    contact_email: Mapped[str] = mapped_column(String(150), nullable=False)
+    contact_mobile: Mapped[str] = mapped_column(String(15), nullable=False)
+    bank_name: Mapped[str | None] = mapped_column(String(100))
+    bank_account_no: Mapped[str | None] = mapped_column(String(50))
+    bank_ifsc: Mapped[str | None] = mapped_column(String(20))

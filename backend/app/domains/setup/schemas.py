@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 
 
@@ -99,3 +99,18 @@ class BrandCreate(BaseModel):
 
 class BrandUpdate(BaseModel):
     brand_name: Optional[str] = Field(None, min_length=1, max_length=100)
+
+
+class ShowroomConfigSchema(BaseModel):
+    dealership_name: str = Field(..., min_length=2, max_length=150)
+    legal_entity_name: str = Field(..., min_length=2, max_length=150)
+    gstin: str = Field(..., pattern=r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$")
+    registered_address: str
+    city: str
+    state: str
+    pincode: str = Field(..., pattern=r"^\d{6}$")
+    contact_email: EmailStr
+    contact_mobile: str = Field(..., pattern=r"^[6-9]\d{9}$")
+    bank_name: Optional[str] = None
+    bank_account_no: Optional[str] = None
+    bank_ifsc: Optional[str] = Field(None, pattern=r"^[A-Z]{4}0[A-Z0-9]{6}$")

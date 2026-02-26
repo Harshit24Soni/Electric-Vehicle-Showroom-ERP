@@ -1,50 +1,33 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useForm, useFieldArray, Controller } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { masterApi } from '../../master/api/masterApi'
 import { procurementApi, SparePurchaseCreate } from '../api/procurementApi'
-import { useAuthStore } from '../../../store/authStore'
+import { inventoryApi } from '../../inventory/api/inventoryApi'
 import { Plus, Trash, ArrowLeft } from 'lucide-react'
-import { inventoryApi } from '../../inventory/api/inventoryApi' // Assuming exists or need to check
-import { api } from '../../../lib/api'
-
-// Temporary fix since I didn't check inventoryApi
-const getSpares = async () => {
-    const response = await api.get('/inventory/status') // or master/spares? Helper to get spares list
-    // Actually typically returns stock. 
-    // Let's assume there is an endpoint to get all spare masters.
-    // I recall creating spare master in inventory schema. 
-    // And usually there is an endpoint to list them.
-    // Let's try /master/spares if it exists? Or /inventory/stock implies stock but maybe includes details.
-    // Better: GET /inventory/stock usually lists items.
-    return response
-}
+import toast from 'react-hot-toast'
 
 export default function SparePurchasePage() {
     const navigate = useNavigate()
-    const { user } = useAuthStore() // Verify role if needed
 
     const { data: vendors = [] } = useQuery({
         queryKey: ['vendors'],
-        queryFn: masterApi.getVendors,
+        queryFn: () => masterApi.getVendors(),
     })
 
-    // We need a list of spares to select from.
-    // For now, let's assume we can fetch them.
-    // If not, we might need an autocomplete. 
-    // Simplified: Dropdown of all spares (might be heavy but ok for MVP).
+    // Active, non-deleted vendors
+    const activeVendors = vendors.filter(
+        (v: any) => !v.is_deleted && v.is_active !== false
+    )
 
-    // NOTE: I am making a raw api call here if I don't validly know the api function
+    // Fetch spare master list from the new endpoint
     const { data: spares = [] } = useQuery({
         queryKey: ['spares-list'],
-        queryFn: async () => {
-            const res = await api.get<any[]>('/inventory/status') // Using stock endpoint to get list of items
-            return res
-        }
+        queryFn: () => inventoryApi.getSpares(),
     })
 
-    const { register, control, handleSubmit, watch, formState: { errors } } = useForm<SparePurchaseCreate>({
+    const { register, control, handleSubmit, watch } = useForm<SparePurchaseCreate>({
         defaultValues: {
             purchase_date: new Date().toISOString().split('T')[0],
             include_in_accounting: true,
@@ -70,18 +53,28 @@ export default function SparePurchasePage() {
     const mutation = useMutation({
         mutationFn: procurementApi.createSparePurchase,
         onSuccess: () => {
-            alert('Purchase recorded successfully')
+            toast.success('Purchase recorded successfully')
             navigate('/procurement')
         },
-        onError: (err) => {
-            alert('Failed to record purchase')
-            console.error(err)
+        onError: () => {
+            toast.error('Failed to record purchase')
         }
     })
 
     const onSubmit = (data: SparePurchaseCreate) => {
-        // Transform data if needed, ensure types
-        mutation.mutate(data)
+        // Ensure vendor_id is a number
+        const payload = {
+            ...data,
+            vendor_id: Number(data.vendor_id),
+            items: data.items.map(item => ({
+                ...item,
+                spare_id: Number(item.spare_id),
+                quantity: Number(item.quantity),
+                unit_cost: Number(item.unit_cost),
+                gst_percentage: Number(item.gst_percentage || 0),
+            }))
+        }
+        mutation.mutate(payload)
     }
 
     return (
@@ -102,9 +95,9 @@ export default function SparePurchasePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="label">Vendor</label>
-                            <select {...register('vendor_id')} className="input" required>
+                            <select {...register('vendor_id', { valueAsNumber: true })} className="input" required>
                                 <option value="">Select Vendor</option>
-                                {vendors.map(v => (
+                                {activeVendors.map((v: any) => (
                                     <option key={v.vendor_id} value={v.vendor_id}>{v.vendor_name}</option>
                                 ))}
                             </select>
@@ -141,26 +134,25 @@ export default function SparePurchasePage() {
                         {fields.map((field, index) => (
                             <div key={field.id} className="grid grid-cols-12 gap-2 items-end border p-3 rounded-lg bg-gray-50">
                                 <div className="col-span-4">
-                                    <label className="text-xs font-medium text-gray-500">Part</label>
-                                    <select {...register(`items.${index}.spare_id`)} className="input text-sm" required>
+                                    <label className="text-xs font-medium text-gray-500">Part <span className="text-red-500">*</span></label>
+                                    <select {...register(`items.${index}.spare_id`, { valueAsNumber: true })} className="input text-sm" required>
                                         <option value="">Select Part</option>
                                         {spares.map((s: any) => (
-                                            // Assuming s has spare_id and spare_name/code
-                                            <option key={s.spare_id} value={s.spare_id}>{s.spare_name} ({s.part_code || s.spare_code})</option>
+                                            <option key={s.spare_id} value={s.spare_id}>{s.spare_name} ({s.spare_code})</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div className="col-span-2">
-                                    <label className="text-xs font-medium text-gray-500">Qty</label>
-                                    <input type="number" {...register(`items.${index}.quantity`)} className="input text-sm" min="1" required />
+                                    <label className="text-xs font-medium text-gray-500">Qty <span className="text-red-500">*</span></label>
+                                    <input type="number" {...register(`items.${index}.quantity`, { valueAsNumber: true })} className="input text-sm" min="1" required />
                                 </div>
                                 <div className="col-span-2">
-                                    <label className="text-xs font-medium text-gray-500">Rate</label>
-                                    <input type="number" step="0.01" {...register(`items.${index}.unit_cost`)} className="input text-sm" required />
+                                    <label className="text-xs font-medium text-gray-500">Rate (₹) <span className="text-red-500">*</span></label>
+                                    <input type="number" step="0.01" min="0.01" {...register(`items.${index}.unit_cost`, { valueAsNumber: true })} className="input text-sm" required />
                                 </div>
                                 <div className="col-span-2">
                                     <label className="text-xs font-medium text-gray-500">GST %</label>
-                                    <input type="number" step="0.01" {...register(`items.${index}.gst_percentage`)} className="input text-sm" />
+                                    <input type="number" step="0.01" {...register(`items.${index}.gst_percentage`, { valueAsNumber: true })} className="input text-sm" />
                                 </div>
                                 <div className="col-span-1">
                                     <label className="text-xs font-medium text-gray-500">Total</label>

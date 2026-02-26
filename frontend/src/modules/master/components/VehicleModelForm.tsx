@@ -4,53 +4,63 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { X } from 'lucide-react'
 import { VehicleModel, VehicleModelCreate } from '../api/masterApi'
+import { useQuery } from '@tanstack/react-query'
+import { setupApi } from '../../setup/api/setupApi'
 
 const vehicleModelSchema = z.object({
-  brand: z.string().min(1, 'Brand is required'),
-  model_name: z.string().min(1, 'Model name is required'),
-  material_number: z.string().min(1, 'Material number is required'),
-  colour: z.string().min(1, 'Color is required'),
-  battery_type: z.string().optional(),
-  laden_weight: z.number().optional(),
-  unladen_weight: z.number().optional(),
-  hsn_code: z.string().optional(),
+  brand_id: z.number({ required_error: 'Brand is required' }).int().positive('Brand is required'),
+  model_name: z.string().min(1, 'Model name is required').max(100),
+  material_number: z.string().min(1, 'Material number is required').max(100),
+  colour: z.string().min(1, 'Color is required').max(50),
+  battery_type: z.string().max(50).optional().or(z.literal('')),
+  laden_weight: z.number().positive().optional().or(z.nan()),
+  unladen_weight: z.number().positive().optional().or(z.nan()),
+  hsn_code: z.string().max(20).optional().or(z.literal('')),
 })
 
 type VehicleModelFormData = z.infer<typeof vehicleModelSchema>
 
 interface VehicleModelFormProps {
   model?: VehicleModel | null
+  isEditing?: boolean
   onSubmit: (data: VehicleModelCreate) => void
   onClose: () => void
   isLoading?: boolean
 }
 
-export default function VehicleModelForm({ model, onSubmit, onClose, isLoading }: VehicleModelFormProps) {
+export default function VehicleModelForm({ model, isEditing = false, onSubmit, onClose, isLoading }: VehicleModelFormProps) {
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<VehicleModelFormData>({
     resolver: zodResolver(vehicleModelSchema),
     defaultValues: model
       ? {
-          brand: model.brand,
-          model_name: model.model_name,
-          material_number: model.material_number,
-          colour: model.colour,
-          battery_type: model.battery_type || '',
-          laden_weight: model.laden_weight,
-          unladen_weight: model.unladen_weight,
-          hsn_code: model.hsn_code || '',
-        }
+        brand_id: model.brand_id,
+        model_name: model.model_name,
+        material_number: model.material_number,
+        colour: model.colour,
+        battery_type: model.battery_type || '',
+        laden_weight: model.laden_weight,
+        unladen_weight: model.unladen_weight,
+        hsn_code: model.hsn_code || '',
+      }
       : undefined,
+  })
+
+  // Fetch brands for dropdown
+  const { data: brands = [] } = useQuery({
+    queryKey: ['setup-brands'],
+    queryFn: setupApi.listBrands,
   })
 
   useEffect(() => {
     if (model) {
       reset({
-        brand: model.brand,
+        brand_id: model.brand_id,
         model_name: model.model_name,
         material_number: model.material_number,
         colour: model.colour,
@@ -64,22 +74,26 @@ export default function VehicleModelForm({ model, onSubmit, onClose, isLoading }
 
   const onFormSubmit = (data: VehicleModelFormData) => {
     onSubmit({
-      brand: data.brand,
+      brand_id: data.brand_id,
       model_name: data.model_name,
       material_number: data.material_number,
       colour: data.colour,
       battery_type: data.battery_type || undefined,
-      laden_weight: data.laden_weight,
-      unladen_weight: data.unladen_weight,
+      laden_weight: data.laden_weight && !isNaN(data.laden_weight) ? data.laden_weight : undefined,
+      unladen_weight: data.unladen_weight && !isNaN(data.unladen_weight) ? data.unladen_weight : undefined,
       hsn_code: data.hsn_code || undefined,
     })
   }
+
+  const isReadOnly = !!model && !isEditing
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">{model ? 'View Vehicle Model' : 'Add Vehicle Model'}</h2>
+          <h2 className="text-xl font-semibold">
+            {isReadOnly ? 'View Vehicle Model' : isEditing ? 'Edit Vehicle Model' : 'Add Vehicle Model'}
+          </h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded">
             <X className="w-5 h-5" />
           </button>
@@ -89,13 +103,25 @@ export default function VehicleModelForm({ model, onSubmit, onClose, isLoading }
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Brand *</label>
-              <input {...register('brand')} className="input" disabled={!!model} />
-              {errors.brand && <p className="mt-1 text-sm text-red-600">{errors.brand.message}</p>}
+              <select
+                {...register('brand_id', { valueAsNumber: true })}
+                className="input"
+                disabled={isReadOnly}
+              >
+                <option value="">— Select Brand —</option>
+                {brands
+                  .filter((b: any) => !b.is_deleted && b.is_active !== false)
+                  .map((b: any) => (
+                    <option key={b.brand_id} value={b.brand_id}>{b.brand_name}</option>
+                  ))
+                }
+              </select>
+              {errors.brand_id && <p className="mt-1 text-sm text-red-600">{errors.brand_id.message}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Model Name *</label>
-              <input {...register('model_name')} className="input" disabled={!!model} />
+              <input {...register('model_name')} className="input" disabled={isReadOnly} />
               {errors.model_name && (
                 <p className="mt-1 text-sm text-red-600">{errors.model_name.message}</p>
               )}
@@ -103,7 +129,7 @@ export default function VehicleModelForm({ model, onSubmit, onClose, isLoading }
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Material Number *</label>
-              <input {...register('material_number')} className="input" disabled={!!model} />
+              <input {...register('material_number')} className="input" disabled={isReadOnly} />
               {errors.material_number && (
                 <p className="mt-1 text-sm text-red-600">{errors.material_number.message}</p>
               )}
@@ -111,18 +137,18 @@ export default function VehicleModelForm({ model, onSubmit, onClose, isLoading }
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Color *</label>
-              <input {...register('colour')} className="input" disabled={!!model} />
+              <input {...register('colour')} className="input" disabled={isReadOnly} />
               {errors.colour && <p className="mt-1 text-sm text-red-600">{errors.colour.message}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Battery Type</label>
-              <input {...register('battery_type')} className="input" disabled={!!model} />
+              <input {...register('battery_type')} className="input" disabled={isReadOnly} />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">HSN Code</label>
-              <input {...register('hsn_code')} className="input" disabled={!!model} />
+              <input {...register('hsn_code')} className="input" disabled={isReadOnly} />
             </div>
 
             <div>
@@ -132,7 +158,7 @@ export default function VehicleModelForm({ model, onSubmit, onClose, isLoading }
                 step="0.01"
                 {...register('laden_weight', { valueAsNumber: true, setValueAs: (v) => v === '' ? undefined : Number(v) })}
                 className="input"
-                disabled={!!model}
+                disabled={isReadOnly}
               />
             </div>
 
@@ -143,18 +169,18 @@ export default function VehicleModelForm({ model, onSubmit, onClose, isLoading }
                 step="0.01"
                 {...register('unladen_weight', { valueAsNumber: true, setValueAs: (v) => v === '' ? undefined : Number(v) })}
                 className="input"
-                disabled={!!model}
+                disabled={isReadOnly}
               />
             </div>
           </div>
 
-          {!model && (
+          {!isReadOnly && (
             <div className="flex justify-end gap-3 pt-4 border-t">
               <button type="button" onClick={onClose} className="btn btn-secondary">
                 Cancel
               </button>
               <button type="submit" disabled={isLoading} className="btn btn-primary">
-                {isLoading ? 'Creating...' : 'Create Model'}
+                {isLoading ? 'Saving...' : isEditing ? 'Update Model' : 'Create Model'}
               </button>
             </div>
           )}

@@ -78,6 +78,22 @@ export interface StaffSummary {
     total_count: number
 }
 
+export interface ShowroomConfig {
+    config_id?: number
+    dealership_name: string
+    legal_entity_name: string
+    gstin: string
+    registered_address: string
+    city: string
+    state: string
+    pincode: string
+    contact_email: string
+    contact_mobile: string
+    bank_name?: string
+    bank_account_no?: string
+    bank_ifsc?: string
+}
+
 // ==================== API CALLS ====================
 
 export const setupApi = {
@@ -142,4 +158,8 @@ export const setupApi = {
 
     // Staff Summary
     getStaffSummary: () => api.get<StaffSummary>('/setup/staff-summary'),
+
+    // Showroom Configuration
+    getShowroomConfig: () => api.get<ShowroomConfig>('/setup/showroom-config'),
+    upsertShowroomConfig: (data: ShowroomConfig) => api.post<ShowroomConfig>('/setup/showroom-config', data),
 }

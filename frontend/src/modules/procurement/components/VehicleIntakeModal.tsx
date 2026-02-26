@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { X, Plus, Trash2, Truck } from 'lucide-react'
 import { procurementApi, VehicleIntakePayload, VehicleIntakeItem } from '../api/procurementApi'
@@ -38,16 +38,25 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
     const [vehicles, setVehicles] = useState<VehicleRow[]>([emptyRow()])
     const [error, setError] = useState<string | null>(null)
 
-    // Fetch vendors + vehicle models
-    const { data: vendors = [] } = useQuery({
+    // Fetch vendors (OEM only) + vehicle models
+    const { data: allVendors = [] } = useQuery({
         queryKey: ['vendors'],
-        queryFn: masterApi.getVendors,
+        queryFn: () => masterApi.getVendors(),
     })
+
+    const oemVendors = allVendors.filter(
+        (v: any) => v.vendor_type === 'OEM' && !v.is_deleted && v.is_active !== false
+    )
 
     const { data: models = [] } = useQuery({
         queryKey: ['vehicle-models'],
-        queryFn: masterApi.getVehicleModels,
+        queryFn: () => masterApi.getVehicleModels(),
     })
+
+    // Only show active, non-deleted models
+    const activeModels = models.filter(
+        (m: any) => !m.is_deleted && m.is_active !== false
+    )
 
     const addRow = () => setVehicles([...vehicles, emptyRow()])
 
@@ -59,6 +68,15 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
     const updateRow = (idx: number, field: keyof VehicleRow, value: any) => {
         const updated = [...vehicles]
         updated[idx] = { ...updated[idx], [field]: value }
+
+        // Auto-fill color from selected VehicleModel
+        if (field === 'vehicle_model_id' && value) {
+            const selectedModel = activeModels.find((m: any) => m.vehicle_model_id === Number(value))
+            if (selectedModel?.colour && !updated[idx].color) {
+                updated[idx].color = selectedModel.colour
+            }
+        }
+
         setVehicles(updated)
     }
 
@@ -80,7 +98,7 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
 
         if (!oemInvoiceNo.trim()) { setError('OEM Invoice No. is required.'); return }
         if (!oemInvoiceDate) { setError('OEM Invoice Date is required.'); return }
-        if (!vendorId) { setError('Please select a vendor.'); return }
+        if (!vendorId) { setError('Please select an OEM vendor.'); return }
 
         // Validate all rows
         for (let i = 0; i < vehicles.length; i++) {
@@ -177,13 +195,16 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
                                     onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : '')}
                                     className="input"
                                 >
-                                    <option value="">Select vendor</option>
-                                    {vendors.map((v: any) => (
+                                    <option value="">Select OEM vendor</option>
+                                    {oemVendors.map((v: any) => (
                                         <option key={v.vendor_id} value={v.vendor_id}>
                                             {v.vendor_name}
                                         </option>
                                     ))}
                                 </select>
+                                {oemVendors.length === 0 && (
+                                    <p className="text-xs text-amber-600 mt-1">No OEM vendors found. Add one in Master → Vendors first.</p>
+                                )}
                             </div>
                         </div>
                     </fieldset>
@@ -245,9 +266,9 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
                                                 className="input text-sm"
                                             >
                                                 <option value="">Select</option>
-                                                {models.map((m: any) => (
+                                                {activeModels.map((m: any) => (
                                                     <option key={m.vehicle_model_id} value={m.vehicle_model_id}>
-                                                        {m.model_name}
+                                                        {m.brand_name ? `${m.brand_name} — ${m.model_name}` : m.model_name}
                                                     </option>
                                                 ))}
                                             </select>

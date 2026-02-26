@@ -40,6 +40,16 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
     if vehicle.current_status != 'IN_STOCK':
         raise SalesError(f"Vehicle is not available (Status: {vehicle.current_status})")
         
+    # Margin Validation
+    from app.domains.procurement import models as procurement_models
+    stmt = select(procurement_models.VehiclePurchaseDetail).filter_by(chassis_no=payload.chassis_no)
+    result = await db.execute(stmt)
+    purchase_detail = result.scalars().first()
+    cost_price = float(purchase_detail.cost_price) if purchase_detail and purchase_detail.cost_price else 0
+    
+    if float(payload.total_amount) < cost_price:
+        raise HTTPException(status_code=400, detail="Cannot sell below procurement cost")
+        
     # Create Sale
     sale = models.Sale(
         lead_id=payload.lead_id if not is_direct else None,
@@ -132,6 +142,16 @@ async def create_sale_transaction(
         raise HTTPException(status_code=400, detail="Customer not found.")
 
     is_direct = getattr(payload, "is_direct_sale", True) or payload.lead_id is None
+
+    # Margin Validation
+    from app.domains.procurement import models as procurement_models
+    stmt = select(procurement_models.VehiclePurchaseDetail).filter_by(chassis_no=payload.chassis_no)
+    result = await db.execute(stmt)
+    purchase_detail = result.scalars().first()
+    cost_price = float(purchase_detail.cost_price) if purchase_detail and purchase_detail.cost_price else 0
+    
+    if float(payload.total_amount) < cost_price:
+        raise HTTPException(status_code=400, detail="Cannot sell below procurement cost")
 
     # (b) Create Sale
     sale = models.Sale(

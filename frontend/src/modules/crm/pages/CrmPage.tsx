@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils'
 import LeadForm from '../components/LeadForm'
 import LeadConversionModal from '../components/LeadConversionModal'
 import LeadFollowupModal from '../components/LeadFollowupModal'
+import LeadDetailsModal from '../components/LeadDetailsModal'
 import TestRideList from '../components/TestRideList'
 import { useCrmStore } from '@/store/crmStore'
 import { useMasterStore } from '@/store/masterStore'
@@ -275,6 +276,17 @@ export default function CrmPage() {
               leadId={followupLead.lead_id}
               leadName={followupLead.name}
               onClose={() => setFollowupLead(null)}
+            />
+          )}
+
+          {/* New Lead Details Dashboard Modal */}
+          {selectedLead && (
+            <LeadDetailsModal
+              leadId={selectedLead.lead_id}
+              onClose={() => {
+                setSelectedLead(null)
+                fetchLeads()
+              }}
             />
           )}
 

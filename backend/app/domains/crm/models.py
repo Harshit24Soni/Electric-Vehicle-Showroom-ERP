@@ -197,6 +197,7 @@ class TestRide(Base, AuditMixin, SoftDeleteMixin):
     test_ride_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     lead_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("crm.lead.lead_id", ondelete="CASCADE"), nullable=False)
     vehicle_model_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.vehicle_model.vehicle_model_id"), nullable=False)
+    chassis_no: Mapped[str] = mapped_column(String(50), ForeignKey("master.vehicle.chassis_no"), nullable=False)
     test_ride_date: Mapped[Date] = mapped_column(Date, nullable=False)
     staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
     customer_feedback: Mapped[str | None] = mapped_column(Text)
@@ -205,6 +206,7 @@ class TestRide(Base, AuditMixin, SoftDeleteMixin):
     # Relationships
     lead = relationship("Lead", back_populates="test_rides")
     vehicle_model = relationship("app.domains.master.models.VehicleModel", lazy="selectin")
+    vehicle = relationship("app.domains.master.models.Vehicle", lazy="selectin")
 
 
 class LeadFollowup(Base, AuditMixin, SoftDeleteMixin):

@@ -37,7 +37,8 @@ export interface CustomerCreate {
 
 export interface VehicleModel {
   vehicle_model_id: number
-  brand: string
+  brand_id: number
+  brand_name: string
   model_name: string
   material_number: string
   colour: string
@@ -46,14 +47,25 @@ export interface VehicleModel {
   unladen_weight?: number
   hsn_code?: string
   is_active: boolean
+  is_deleted: boolean
   created_at: string
 }
 
 export interface VehicleModelCreate {
-  brand: string
+  brand_id: number
   model_name: string
   material_number: string
   colour: string
+  battery_type?: string
+  laden_weight?: number
+  unladen_weight?: number
+  hsn_code?: string
+}
+
+export interface VehicleModelUpdate {
+  model_name?: string
+  material_number?: string
+  colour?: string
   battery_type?: string
   laden_weight?: number
   unladen_weight?: number
@@ -84,10 +96,12 @@ export interface VehicleCreate {
   date_of_manufacture?: string
 }
 
+export type VendorType = 'OEM' | 'SPARE_PART' | 'FINANCIER' | 'OTHER'
+
 export interface Vendor {
   vendor_id: number
   vendor_name: string
-  vendor_type: 'OEM' | 'DEALER' | 'LOCAL'
+  vendor_type: VendorType
   gstin?: string
   pan_no?: string
   address_line1?: string
@@ -96,12 +110,25 @@ export interface Vendor {
   state?: string
   pincode?: string
   is_active: boolean
+  is_deleted: boolean
   created_at: string
 }
 
 export interface VendorCreate {
   vendor_name: string
-  vendor_type: 'OEM' | 'DEALER' | 'LOCAL'
+  vendor_type: VendorType
+  gstin?: string
+  pan_no?: string
+  address_line1?: string
+  address_line2?: string
+  city?: string
+  state?: string
+  pincode?: string
+}
+
+export interface VendorUpdate {
+  vendor_name?: string
+  vendor_type?: VendorType
   gstin?: string
   pan_no?: string
   address_line1?: string
@@ -151,8 +178,14 @@ export const masterApi = {
     api.delete(`/master/customers/${customerId}/nominees/${nomineeId}`, { params: { hard_delete: hardDelete } }),
 
   // Vehicle Models
-  getVehicleModels: () => api.get<VehicleModel[]>('/master/vehicle-models'),
+  getVehicleModels: (includeDeleted = false) =>
+    api.get<VehicleModel[]>('/master/vehicle-models', { params: { include_deleted: includeDeleted } }),
+  getVehicleModel: (id: number) => api.get<VehicleModel>(`/master/vehicle-models/${id}`),
   createVehicleModel: (data: VehicleModelCreate) => api.post<VehicleModel>('/master/vehicle-models', data),
+  updateVehicleModel: (id: number, data: VehicleModelUpdate) => api.put<VehicleModel>(`/master/vehicle-models/${id}`, data),
+  deleteVehicleModel: (id: number, hardDelete?: boolean) =>
+    api.delete(`/master/vehicle-models/${id}`, { params: { hard_delete: hardDelete } }),
+  restoreVehicleModel: (id: number) => api.post(`/master/vehicle-models/${id}/restore`),
 
   // Vehicles
   getVehicles: (status?: string) => api.get<Vehicle[]>(`/master/vehicles${status ? `?status=${status}` : ''}`),
@@ -160,6 +193,12 @@ export const masterApi = {
   createVehicle: (data: VehicleCreate) => api.post<Vehicle>('/master/vehicles', data),
 
   // Vendors
-  getVendors: () => api.get<Vendor[]>('/master/vendors'),
+  getVendors: (includeDeleted = false) =>
+    api.get<Vendor[]>('/master/vendors', { params: { include_deleted: includeDeleted } }),
+  getVendor: (id: number) => api.get<Vendor>(`/master/vendors/${id}`),
   createVendor: (data: VendorCreate) => api.post<Vendor>('/master/vendors', data),
+  updateVendor: (id: number, data: VendorUpdate) => api.put<Vendor>(`/master/vendors/${id}`, data),
+  deleteVendor: (id: number, hardDelete?: boolean) =>
+    api.delete(`/master/vendors/${id}`, { params: { hard_delete: hardDelete } }),
+  restoreVendor: (id: number) => api.post(`/master/vendors/${id}/restore`),
 }

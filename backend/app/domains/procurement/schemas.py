@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 class SparePurchaseItemCreate(BaseModel):
     spare_id: int
     quantity: int = Field(..., gt=0)
-    unit_cost: Decimal
+    unit_cost: Decimal = Field(..., gt=0, description="Purchase price per unit (mandatory for margin protection)")
     gst_percentage: Optional[Decimal] = Decimal("0.0")
 
 
@@ -31,7 +31,7 @@ class VehiclePurchaseDetailCreate(BaseModel):
     controller_serial_no: Optional[str] = None
     battery_serial_no: Optional[str] = None
     date_of_manufacture: Optional[date] = None
-    cost_price: Decimal
+    cost_price: Decimal = Field(..., gt=0, description="Procurement cost (mandatory for margin protection)")
 
 
 class VehiclePurchaseCreate(BaseModel):
@@ -78,6 +78,8 @@ class TemporaryItemResponse(BaseModel):
 class SparePurchaseItemResponse(BaseModel):
     purchase_item_id: int
     spare_id: int
+    spare_name: Optional[str] = None
+    spare_code: Optional[str] = None
     quantity: int
     unit_cost: Decimal
     gst_percentage: Decimal
@@ -90,10 +92,12 @@ class SparePurchaseItemResponse(BaseModel):
 class SparePurchaseResponse(BaseModel):
     spare_purchase_id: int
     vendor_id: int
+    vendor_name: Optional[str] = None
     vendor_invoice_no: Optional[str]
     vendor_invoice_date: Optional[date]
     purchase_date: date
     remarks: Optional[str]
+    is_deleted: bool = False
     created_at: datetime
     items: List[SparePurchaseItemResponse] = []
 
@@ -105,6 +109,8 @@ class VehiclePurchaseDetailResponse(BaseModel):
     vehicle_purchase_detail_id: int
     chassis_no: str
     cost_price: Decimal
+    motor_serial_no: Optional[str] = None
+    battery_serial_no: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -113,9 +119,11 @@ class VehiclePurchaseDetailResponse(BaseModel):
 class VehiclePurchaseResponse(BaseModel):
     vehicle_purchase_id: int
     vendor_id: int
+    vendor_name: Optional[str] = None
     invoice_number: str
     invoice_date: date
     invoice_amount: Optional[Decimal]
+    is_deleted: bool = False
     created_at: datetime
     details: List[VehiclePurchaseDetailResponse] = []
 
@@ -132,7 +140,7 @@ class VehicleIntakeItem(BaseModel):
     vehicle_model_id: int
     color: str = Field(..., min_length=1, max_length=50)
     battery_serial_no: Optional[str] = Field(None, max_length=100)
-    purchase_price: Decimal = Field(..., gt=0)
+    purchase_price: Decimal = Field(..., gt=0, description="Procurement cost per vehicle (mandatory)")
 
 
 class VehicleIntakePayload(BaseModel):
@@ -151,4 +159,3 @@ class VehicleIntakeResponse(BaseModel):
 
     class Config:
         from_attributes = True
-

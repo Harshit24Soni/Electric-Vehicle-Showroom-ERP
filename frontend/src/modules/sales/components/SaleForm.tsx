@@ -43,6 +43,13 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
     queryFn: () => api.get<any[]>('/master/customers'),
   })
 
+  const { data: vehiclesData } = useQuery<any>({
+    queryKey: ['vehicles'],
+    queryFn: () => api.get<any>('/master/vehicles'),
+  })
+
+  const vehicles = Array.isArray(vehiclesData) ? vehiclesData : (vehiclesData?.data || [])
+
   const {
     register,
     handleSubmit,
@@ -149,8 +156,15 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Chassis Number *</label>
-            <input {...register('chassis_no')} className="input" placeholder="Enter chassis number" />
+            <label className="block text-sm font-medium text-gray-700 mb-2">Available Vehicle (Chassis) *</label>
+            <select {...register('chassis_no')} className="input">
+              <option value="">Select a vehicle</option>
+              {vehicles.filter((v: any) => v.current_status === 'IN_STOCK' || v.current_status === 'AVAILABLE').map((v: any) => (
+                <option key={v.chassis_no} value={v.chassis_no}>
+                  {v.chassis_no} ({v.model?.model_name || 'Vehicle'})
+                </option>
+              ))}
+            </select>
             {errors.chassis_no && <p className="mt-1 text-sm text-red-600">{errors.chassis_no.message}</p>}
           </div>
 

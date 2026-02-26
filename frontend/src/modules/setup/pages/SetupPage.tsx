@@ -3,17 +3,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { setupApi } from '../api/setupApi'
 import type {
     PaymentMode, ExpenseCategory, JobCardCategory,
-    InsuranceCompany, Bank, DocumentType, Brand
+    InsuranceCompany, Bank, DocumentType, Brand,
+    ShowroomConfig
 } from '../api/setupApi'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
     Plus, Pencil, Trash2, X,
-    CreditCard, FolderOpen, Wrench, Shield, Building2, FileText, Users, Tag
+    CreditCard, FolderOpen, Wrench, Shield, Building2, FileText, Users, Tag, Store
 } from 'lucide-react'
 import StaffManager from '../components/StaffManager'
 import { SkeletonTable } from '@/components/ui/SkeletonTable'
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
+
 
 
 // ==================== GENERIC CRUD TABLE COMPONENT ====================
@@ -361,16 +363,131 @@ const TABS = [
     { id: 'banks', label: 'Banks', icon: Building2 },
     { id: 'document-types', label: 'Document Types', icon: FileText },
     { id: 'staff', label: 'Staff', icon: Users },
+    { id: 'showroom', label: 'Showroom Details', icon: Store },
 ]
 
+// ==================== SHOWROOM CONFIG COMPONENT ====================
 
+function ShowroomConfigForm() {
+    const queryClient = useQueryClient()
+    const { data: config, isLoading } = useQuery({
+        queryKey: ['setup-showroom-config'],
+        queryFn: setupApi.getShowroomConfig,
+    })
+
+    const mut = useMutation({
+        mutationFn: setupApi.upsertShowroomConfig,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['setup-showroom-config'] })
+            toast.success('Showroom details saved successfully')
+        },
+        onError: () => toast.error('Failed to save showroom details')
+    })
+
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        const formData = new FormData(e.currentTarget)
+        const data = Object.fromEntries(formData.entries()) as unknown as ShowroomConfig
+        mut.mutate(data)
+    }
+
+    if (isLoading) {
+        return <div className="bg-white p-6 rounded-xl border"><SkeletonTable rows={3} /></div>
+    }
+
+    return (
+        <div className="bg-white p-6 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3 mb-6">
+                <Store className="w-6 h-6 text-primary-600" />
+                <h2 className="text-xl font-semibold text-gray-800">Showroom Configuration</h2>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
+                {/* General Details */}
+                <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Business Identity</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Dealership Display Name *</label>
+                            <input type="text" name="dealership_name" defaultValue={config?.dealership_name || ''} required className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" placeholder="e.g. EV Motors" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Legal Entity Name *</label>
+                            <input type="text" name="legal_entity_name" defaultValue={config?.legal_entity_name || ''} required className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" placeholder="e.g. EV Motors Pvt Ltd" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN *</label>
+                            <input type="text" name="gstin" defaultValue={config?.gstin || ''} required pattern="^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" placeholder="22AAAAA0000A1Z5" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Contact & Address */}
+                <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Contact & Location</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Registered Address *</label>
+                            <input type="text" name="registered_address" defaultValue={config?.registered_address || ''} required className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                            <input type="text" name="city" defaultValue={config?.city || ''} required className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                            <input type="text" name="state" defaultValue={config?.state || ''} required className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Pincode *</label>
+                            <input type="text" name="pincode" defaultValue={config?.pincode || ''} required pattern="^\d{6}$" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email *</label>
+                            <input type="email" name="contact_email" defaultValue={config?.contact_email || ''} required className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Contact Mobile *</label>
+                            <input type="text" name="contact_mobile" defaultValue={config?.contact_mobile || ''} required pattern="^[6-9]\d{9}$" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bank Details */}
+                <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Default Bank Details (For Invoices)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                            <input type="text" name="bank_name" defaultValue={config?.bank_name || ''} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
+                            <input type="text" name="bank_account_no" defaultValue={config?.bank_account_no || ''} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code</label>
+                            <input type="text" name="bank_ifsc" defaultValue={config?.bank_ifsc || ''} pattern="^[A-Z]{4}0[A-Z0-9]{6}$" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="pt-4 border-t flex justify-end">
+                    <button type="submit" disabled={mut.isPending} className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium disabled:opacity-50">
+                        {mut.isPending ? 'Saving...' : 'Save Configuration'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    )
+}
 
 
 
 // ==================== MAIN SETUP PAGE ====================
 
 export default function SetupPage() {
-    const [activeTab, setActiveTab] = useState('brands')
+    const [activeTab, setActiveTab] = useState('showroom')
 
     return (
         <div className="p-6">
@@ -403,6 +520,7 @@ export default function SetupPage() {
 
             {/* Tab Content */}
             <div className="min-h-[400px]">
+                {activeTab === 'showroom' && <ShowroomConfigForm />}
                 {activeTab === 'brands' && (
                     <CrudTable<Brand>
                         title="Brand"

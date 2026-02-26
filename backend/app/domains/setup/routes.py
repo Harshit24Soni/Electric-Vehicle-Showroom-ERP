@@ -14,7 +14,7 @@ from app.domains.setup.schemas import (
     JobCardCategoryCreate, JobCardCategoryUpdate,
     InsuranceCompanyCreate, InsuranceCompanyUpdate,
     BankCreate, BankUpdate,
-    DocumentTypeCreate, DocumentTypeUpdate,
+    DocumentTypeCreate, DocumentTypeUpdate, ShowroomConfigSchema
 )
 
 
@@ -240,3 +240,19 @@ async def get_staff_summary():
         )
         row = result.mappings().first()
         return dict(row)
+
+
+# ==================== SHOWROOM CONFIG ====================
+
+@router.get("/showroom-config")
+async def get_showroom_config():
+    config = await services.get_showroom_config()
+    if not config:
+        # Return empty 200 rather than 404 to allow frontend to easily show a creation form
+        return {}
+    return config
+
+@router.post("/showroom-config")
+async def upsert_showroom_config(payload: ShowroomConfigSchema, current_staff=Depends(get_current_staff)):
+    """Creates or updates the global dealership configuration"""
+    return await services.upsert_showroom_config(payload.model_dump(), current_staff["staff_id"])
