@@ -13,7 +13,6 @@ from app.db.mixins import AuditMixin, SoftDeleteMixin
 
 class VehicleFinance(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "vehicle_finance"
-    __table_args__ = {"schema": "finance"}
 
     finance_id: Mapped[int] = mapped_column(
         BigInteger, primary_key=True
@@ -21,10 +20,10 @@ class VehicleFinance(Base, AuditMixin, SoftDeleteMixin):
 
     sale_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("sales.sale.sale_id", ondelete="RESTRICT"),
         nullable=False,
         unique=True,
-    )
+        index=True
+    ) # Soft link to sales module
 
     financer_name: Mapped[str] = mapped_column(
         String(100), nullable=False

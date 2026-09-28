@@ -3,7 +3,7 @@ from sqlalchemy import select, desc
 from fastapi import HTTPException
 from app.domains.service.models import ServiceJobCard
 from datetime import datetime
-from app.domains.inventory.services import add_spare_movement
+from app.core.event_bus import event_bus, SpareConsumedEvent
 
 
 class ServiceError(Exception):
@@ -92,15 +92,13 @@ async def consume_spare(
             "Cannot consume spares on a closed job card"
         )
 
-    await add_spare_movement(
-        db=db,
-        spare_id=spare_id,
-        quantity=-quantity,
-        serial_id=serial_id,
-        movement_type="SERVICE_CONSUMPTION",
-        reference_type="SERVICE",
-        reference_id=job_card_id,
-        remarks="Consumed during service",
+    await event_bus.publish(
+        SpareConsumedEvent(
+            spare_id=spare_id,
+            quantity=quantity,
+            reference_type="SERVICE",
+            reference_id=job_card_id
+        )
     )
 
 

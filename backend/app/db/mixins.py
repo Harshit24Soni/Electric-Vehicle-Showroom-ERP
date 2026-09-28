@@ -10,11 +10,11 @@ class AuditMixin:
     
     @declared_attr
     def created_by(cls) -> Mapped[int | None]:
-        return mapped_column(BigInteger, ForeignKey("master.staff.staff_id", ondelete="SET NULL"), nullable=True)
+        return mapped_column(BigInteger, ForeignKey("staff.staff_id", ondelete="SET NULL"), nullable=True)
 
     @declared_attr
     def updated_by(cls) -> Mapped[int | None]:
-        return mapped_column(BigInteger, ForeignKey("master.staff.staff_id", ondelete="SET NULL"), nullable=True)
+        return mapped_column(BigInteger, ForeignKey("staff.staff_id", ondelete="SET NULL"), nullable=True)
 
 
 @declarative_mixin
@@ -25,14 +25,14 @@ class SoftDeleteMixin:
     
     @declared_attr
     def deleted_by(cls) -> Mapped[int | None]:
-        return mapped_column(BigInteger, ForeignKey("master.staff.staff_id", ondelete="SET NULL"), nullable=True)
+        return mapped_column(BigInteger, ForeignKey("staff.staff_id", ondelete="SET NULL"), nullable=True)
 
     # Restoration tracking
     restored_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     
     @declared_attr
     def restored_by(cls) -> Mapped[int | None]:
-        return mapped_column(BigInteger, ForeignKey("master.staff.staff_id", ondelete="SET NULL"), nullable=True)
+        return mapped_column(BigInteger, ForeignKey("staff.staff_id", ondelete="SET NULL"), nullable=True)
 
     @classmethod
     def active(cls, session):

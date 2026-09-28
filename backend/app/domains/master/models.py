@@ -22,7 +22,6 @@ class Customer(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "customer"
 	__table_args__ = (
 		Index("idx_customer_created", "created_at"),
-		{"schema": "master"}
 	)
 
 	customer_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -49,11 +48,10 @@ class Nominee(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "nominee"
 	__table_args__ = (
 		Index("idx_nominee_customer", "customer_id"),
-		{"schema": "master"}
 	)
 
 	nominee_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-	customer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.customer.customer_id", ondelete="CASCADE"), nullable=False)
+	customer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("customer.customer_id", ondelete="CASCADE"), nullable=False)
 	nominee_name: Mapped[str] = mapped_column(String(150), nullable=False)
 	nominee_dob: Mapped[Date] = mapped_column(Date, nullable=False)
 	relation: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -66,7 +64,6 @@ class Staff(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "staff"
 	__table_args__ = (
 		Index("idx_staff_active_lock", "staff_id", "is_active", "locked_until"),
-		{"schema": "master"},
 	)
 
 	staff_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -89,7 +86,7 @@ class Staff(Base, SoftDeleteMixin, AuditMixin):
 
 	# Soft delete
 	is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-	deleted_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=True)
+	deleted_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("staff.staff_id"), nullable=True)
 
 	# Personal details
 	joined_date: Mapped[date | None] = mapped_column(Date)
@@ -120,7 +117,6 @@ class Staff(Base, SoftDeleteMixin, AuditMixin):
 
 class Brand(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "brand"
-	__table_args__ = ({"schema": "master"},)
 
 	brand_id: Mapped[int] = mapped_column(Integer, primary_key=True)
 	brand_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
@@ -130,10 +126,10 @@ class Brand(Base, SoftDeleteMixin, AuditMixin):
 
 class VehicleModel(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "vehicle_model"
-	__table_args__ = (Index("idx_vehicle_model_material", "created_at"), {"schema": "master"})
+	__table_args__ = (Index("idx_vehicle_model_material", "created_at"),)
 
 	vehicle_model_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-	brand_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.brand.brand_id"), nullable=False)
+	brand_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("brand.brand_id"), nullable=False)
 	model_name: Mapped[str] = mapped_column(String(100), nullable=False)
 	material_number: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
 	colour: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -147,10 +143,9 @@ class VehicleModel(Base, SoftDeleteMixin, AuditMixin):
 
 class Vehicle(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "vehicle"
-	__table_args__ = ({"schema": "master"},)
 
 	chassis_no: Mapped[str] = mapped_column(String(50), primary_key=True)
-	vehicle_model_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.vehicle_model.vehicle_model_id"), nullable=False)
+	vehicle_model_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("vehicle_model.vehicle_model_id"), nullable=False)
 	motor_serial_no: Mapped[str | None] = mapped_column(String(100))
 	convertor_serial_no: Mapped[str | None] = mapped_column(String(100))
 	charger_serial_no: Mapped[str | None] = mapped_column(String(100))
@@ -163,7 +158,6 @@ class Vehicle(Base, SoftDeleteMixin, AuditMixin):
 
 class Vendor(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "vendor"
-	__table_args__ = ({"schema": "master"},)
 
 	vendor_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 	vendor_name: Mapped[str] = mapped_column(String(150), nullable=False)
@@ -186,7 +180,6 @@ class PaymentMode(Base, AuditMixin):
 	__tablename__ = "payment_mode"
 	__table_args__ = (
 		Index("idx_payment_mode_active", "is_active"),
-		{"schema": "master"},
 	)
 
 	payment_mode_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -200,7 +193,6 @@ class ExpenseCategory(Base, AuditMixin):
 	__tablename__ = "expense_category"
 	__table_args__ = (
 		Index("idx_expense_category_active", "is_active"),
-		{"schema": "master"},
 	)
 
 	expense_category_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -214,7 +206,6 @@ class JobCardCategory(Base, AuditMixin):
 	__tablename__ = "job_card_category"
 	__table_args__ = (
 		Index("idx_job_card_category_active", "is_active"),
-		{"schema": "master"},
 	)
 
 	job_card_category_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -228,7 +219,6 @@ class InsuranceCompany(Base, AuditMixin):
 	__tablename__ = "insurance_company"
 	__table_args__ = (
 		Index("idx_insurance_company_active", "is_active"),
-		{"schema": "master"},
 	)
 
 	insurance_company_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -246,7 +236,6 @@ class Bank(Base, AuditMixin):
 	__tablename__ = "bank"
 	__table_args__ = (
 		Index("idx_bank_active", "is_active"),
-		{"schema": "master"},
 	)
 
 	bank_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -263,7 +252,6 @@ class DocumentType(Base, AuditMixin):
 	__tablename__ = "document_type"
 	__table_args__ = (
 		Index("idx_document_type_active", "is_active"),
-		{"schema": "master"},
 	)
 
 	document_type_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -277,50 +265,46 @@ class DocumentType(Base, AuditMixin):
 
 class SparePriceHistory(Base):
     __tablename__ = "spare_price_history"
-    __table_args__ = ({"schema": "master"},)
 
     history_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    spare_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("inventory.spare_master.spare_id", ondelete="CASCADE"), nullable=False)
+    spare_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to inventory.spare_master
     price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     margin: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
     effective_from: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
     effective_to: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"))
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("staff.staff_id"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
 
 class VehiclePriceHistory(Base):
     __tablename__ = "vehicle_price_history"
-    __table_args__ = ({"schema": "master"},)
 
     history_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    vehicle_model_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.vehicle_model.vehicle_model_id", ondelete="CASCADE"), nullable=False)
+    vehicle_model_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("vehicle_model.vehicle_model_id", ondelete="CASCADE"), nullable=False)
     price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     effective_from: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
     effective_to: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"))
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("staff.staff_id"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
 
 class PinResetRequest(Base):
     __tablename__ = "pin_reset_request"
-    __table_args__ = ({"schema": "master"},)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id", ondelete="CASCADE"), nullable=False)
+    staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("staff.staff_id", ondelete="CASCADE"), nullable=False)
     request_type: Mapped[str] = mapped_column(String(50), nullable=False) # STAFF_FORGOT_PIN
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING") # PENDING, APPROVED, DENIED
     requested_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
     processed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
-    processed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"))
+    processed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("staff.staff_id"))
 
 
 class ShowroomConfig(Base, AuditMixin):
     """Single row table holding dealership details for invoice printing and UI."""
     __tablename__ = "showroom_config"
-    __table_args__ = ({"schema": "master"},)
 
     config_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     dealership_name: Mapped[str] = mapped_column(String(150), nullable=False)

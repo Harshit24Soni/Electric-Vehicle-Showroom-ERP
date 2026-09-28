@@ -4,7 +4,8 @@ import random
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
-from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, or_, update, insert
 
 from app.auth.dependencies import SECRET_KEY, ALGORITHM, security, get_current_staff
 from app.auth.pin_utils import hash_pin, verify_pin
@@ -22,8 +23,9 @@ from app.domains.staff.schemas import (
     SelfPinResetRequest
 )
 from app.auth.token_utils import create_access_token
-from app.db.session import engine
+from app.db.session import get_db
 from app.middleware.rate_limit import rate_limit
+from app.domains.master.models import Staff, PinResetRequest
 
 
 router = APIRouter(
@@ -37,6 +39,7 @@ async def login_with_pin(
     payload: PinLoginRequest,
     request: Request,
     _rate_limit=Depends(rate_limit(max_requests=25, window=300)),
+    db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
     Login with PIN using mobile number or email.
@@ -45,118 +48,83 @@ async def login_with_pin(
     identifier = payload.identifier.strip()
     pin = payload.pin
 
-    async with engine.begin() as conn:
-        result = await conn.execute(
-            text("""
-                SELECT
-                    staff_id,
-                    designation,
-                    pin_hash,
-                    is_active,
-                    failed_attempts,
-                    locked_until,
-                    is_pin_reset_required
-                FROM master.staff
-                WHERE mobile_no = :identifier
-                   OR email = :identifier
-            """),
-            {"identifier": identifier}
+    stmt = select(Staff).where(
+        or_(
+            Staff.mobile_no == identifier,
+            Staff.email == identifier
         )
-        staff = result.mappings().first()
+    )
+    result = await db.execute(stmt)
+    staff = result.scalars().first()
 
-        if not staff:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials"
-            )
-
-        if not staff["is_active"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account inactive"
-            )
-
-        if staff["locked_until"] and staff["locked_until"] <= datetime.utcnow():
-            await conn.execute(
-                text("""
-                    UPDATE master.staff
-                    SET failed_attempts = 0,
-                        locked_until = NULL,
-                        last_failed_at = NULL
-                    WHERE staff_id = :staff_id
-                """),
-                {"staff_id": staff["staff_id"]}
-            )
-            # Fetch fresh data or manually update local dict
-            staff = dict(staff)
-            staff["failed_attempts"] = 0
-            staff["locked_until"] = None
-
-        if staff["locked_until"] and staff["locked_until"] > datetime.utcnow():
-            remaining_seconds = int((staff["locked_until"] - datetime.utcnow()).total_seconds())
-            raise HTTPException(
-                status_code=status.HTTP_423_LOCKED,
-                detail={
-                    "message": "Account temporarily locked.",
-                    "retry_after": remaining_seconds
-                }
-            )
-
-        if not staff["pin_hash"] or not verify_pin(pin, staff["pin_hash"]):
-            failed_attempts = staff["failed_attempts"] + 1
-            locked_until = None
-
-            if failed_attempts >= 5:
-                locked_until = datetime.utcnow() + timedelta(minutes=30)
-
-            await conn.execute(
-                text("""
-                    UPDATE master.staff
-                    SET failed_attempts = :failed_attempts,
-                        last_failed_at = NOW(),
-                        locked_until = :locked_until
-                    WHERE staff_id = :staff_id
-                """),
-                {
-                    "failed_attempts": failed_attempts,
-                    "locked_until": locked_until,
-                    "staff_id": staff["staff_id"]
-                }
-            )
-
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials"
-            )
-
-        await conn.execute(
-            text("""
-                UPDATE master.staff
-                SET failed_attempts = 0,
-                    last_failed_at = NULL,
-                    locked_until = NULL
-                WHERE staff_id = :staff_id
-            """),
-            {"staff_id": staff["staff_id"]}
+    if not staff:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
         )
+
+    if not staff.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account inactive"
+        )
+
+    if staff.locked_until and staff.locked_until <= datetime.utcnow():
+        staff.failed_attempts = 0
+        staff.locked_until = None
+        staff.last_failed_at = None
+        await db.commit()
+        await db.refresh(staff)
+
+    if staff.locked_until and staff.locked_until > datetime.utcnow():
+        remaining_seconds = int((staff.locked_until - datetime.utcnow()).total_seconds())
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail={
+                "message": "Account temporarily locked.",
+                "retry_after": remaining_seconds
+            }
+        )
+
+    if not staff.pin_hash or not verify_pin(pin, staff.pin_hash):
+        failed_attempts = staff.failed_attempts + 1
+        locked_until = None
+
+        if failed_attempts >= 5:
+            locked_until = datetime.utcnow() + timedelta(minutes=30)
+
+        staff.failed_attempts = failed_attempts
+        staff.last_failed_at = datetime.utcnow()
+        staff.locked_until = locked_until
+        await db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
+
+    staff.failed_attempts = 0
+    staff.last_failed_at = None
+    staff.locked_until = None
+    await db.commit()
 
     access_token = create_access_token(
         data={
-            "staff_id": staff["staff_id"],
-            "designation": staff["designation"],
-            "force_pin_change": staff["is_pin_reset_required"]
+            "staff_id": staff.staff_id,
+            "designation": staff.designation,
+            "force_pin_change": staff.is_pin_reset_required
         }
     )
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "force_pin_change": staff["is_pin_reset_required"]
+        "force_pin_change": staff.is_pin_reset_required
     }
 
 
 @router.post("/forgot-pin")
-async def forgot_pin(payload: ForgotPinRequest):
+async def forgot_pin(payload: ForgotPinRequest, db: AsyncSession = Depends(get_db)):
     """
     Request PIN reset.
     - STAFF: Returns instruction to contact Dealer.
@@ -164,78 +132,66 @@ async def forgot_pin(payload: ForgotPinRequest):
     """
     identifier = payload.identifier.strip()
 
-    async with engine.begin() as conn:
-        result = await conn.execute(
-            text("""
-                SELECT staff_id, designation, totp_secret
-                FROM master.staff
-                WHERE (mobile_no = :identifier OR email = :identifier)
-                  AND is_active = true
-            """),
-            {"identifier": identifier}
-        )
-        staff = result.mappings().first()
+    stmt = select(Staff).where(
+        or_(
+            Staff.mobile_no == identifier,
+            Staff.email == identifier
+        ),
+        Staff.is_active == True
+    )
+    result = await db.execute(stmt)
+    staff = result.scalars().first()
 
-        if not staff:
-            # blind return
-            return {"action": "NONE", "message": "If account exists, instructions have been sent."}
+    if not staff:
+        # blind return
+        return {"action": "NONE", "message": "If account exists, instructions have been sent."}
 
-        if staff.designation in ["DEALER", "ADMIN"]:
-            if staff.totp_secret:
-                return {
-                    "action": "TOTP_REQUIRED", 
-                    "message": "Please enter the code from your Authenticator App."
-                }
-            else:
-                return {
-                    "action": "CONTACT_ADMIN", 
-                    "message": "2FA not set up. Please contact System Admin."
-                }
-        else:
-            # STAFF
-            # Generate temporary PIN
-            temp_pin = str(random.randint(100000, 999999))
-            
-            # Update staff record
-            await conn.execute(
-                text("""
-                    UPDATE master.staff
-                    SET pin_hash = :pin_hash,
-                        is_pin_reset_required = true,
-                        failed_attempts = 0,
-                        locked_until = NULL,
-                        last_pin_changed_at = NOW()
-                    WHERE staff_id = :staff_id
-                """),
-                {
-                    "pin_hash": hash_pin(temp_pin),
-                    "staff_id": staff.staff_id
-                }
-            )
-            
-            # Log the request (existing logic, optional or keep)
-            await conn.execute(
-                text("""
-                    INSERT INTO master.pin_reset_request 
-                    (staff_id, request_type, requested_at, status)
-                    VALUES (:staff_id, 'STAFF_FORGOT_PIN', NOW(), 'PENDING')
-                """),
-                {"staff_id": staff.staff_id}
-            )
-            
-            # Simulate Notification to Dealer
-            print(f"!!! NOTIFICATION TO DEALER !!! Staff {staff.staff_id} requested PIN reset. Temporary PIN: {temp_pin}")
-            
+    if staff.designation in ["DEALER", "ADMIN"]:
+        if staff.totp_secret:
             return {
-                "action": "NOTIFY_DEALER", 
-                "message": "Your request has been sent to the Dealer. They will provide you with a temporary PIN."
+                "action": "TOTP_REQUIRED", 
+                "message": "Please enter the code from your Authenticator App."
             }
+        else:
+            return {
+                "action": "CONTACT_ADMIN", 
+                "message": "2FA not set up. Please contact System Admin."
+            }
+    else:
+        # STAFF
+        # Generate temporary PIN
+        temp_pin = str(random.randint(100000, 999999))
+        
+        # Update staff record
+        staff.pin_hash = hash_pin(temp_pin)
+        staff.is_pin_reset_required = True
+        staff.failed_attempts = 0
+        staff.locked_until = None
+        staff.last_pin_changed_at = datetime.utcnow()
+
+        # Log the request
+        req = PinResetRequest(
+            staff_id=staff.staff_id,
+            request_type='STAFF_FORGOT_PIN',
+            status='PENDING'
+        )
+        db.add(req)
+        await db.commit()
+        
+        # Simulate Notification to Dealer
+        print(f"!!! NOTIFICATION TO DEALER !!! Staff {staff.staff_id} requested PIN reset. Temporary PIN: {temp_pin}")
+        
+        return {
+            "action": "NOTIFY_DEALER", 
+            "message": "Your request has been sent to the Dealer. They will provide you with a temporary PIN."
+        }
 
 
 @router.post("/change-pin")
 async def change_pin(
     payload: PinChangeRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db)
 ):
     """Change PIN for authenticated user"""
     token = credentials.credentials
@@ -265,44 +221,26 @@ async def change_pin(
             detail="New PIN must be different from old PIN"
         )
 
-    async with engine.begin() as conn:
-        result = await conn.execute(
-            text("""
-                SELECT staff_id, pin_hash
-                FROM master.staff
-                WHERE staff_id = :staff_id
-            """),
-            {"staff_id": staff_id}
+    staff = await db.get(Staff, staff_id)
+
+    if not staff or not staff.pin_hash:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid staff"
         )
-        staff = result.mappings().first()
 
-        if not staff or not staff["pin_hash"]:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid staff"
-            )
-
-        if not verify_pin(old_pin, staff["pin_hash"]):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Old PIN is incorrect"
-            )
-
-        await conn.execute(
-            text("""
-                UPDATE master.staff
-                SET pin_hash = :pin_hash,
-                    is_pin_reset_required = false,
-                    failed_attempts = 0,
-                    locked_until = NULL,
-                    last_pin_changed_at = NOW()
-                WHERE staff_id = :staff_id
-            """),
-            {
-                "pin_hash": hash_pin(new_pin),
-                "staff_id": staff_id
-            }
+    if not verify_pin(old_pin, staff.pin_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Old PIN is incorrect"
         )
+
+    staff.pin_hash = hash_pin(new_pin)
+    staff.is_pin_reset_required = False
+    staff.failed_attempts = 0
+    staff.locked_until = None
+    staff.last_pin_changed_at = datetime.utcnow()
+    await db.commit()
 
     return {
         "message": "PIN changed successfully. Please login again."
@@ -315,51 +253,34 @@ async def change_pin(
 )
 async def reset_staff_pin(
     payload: AdminPinResetRequest,
-    current_staff=Depends(get_current_staff)
+    current_staff=Depends(get_current_staff),
+    db: AsyncSession = Depends(get_db)
 ):
     """Admin/Dealer can reset a staff member's PIN"""
     staff_id = payload.staff_id
 
     temp_pin = str(random.randint(100000, 999999))
 
-    async with engine.begin() as conn:
-        result = await conn.execute(
-            text("""
-                SELECT staff_id, designation, dealer_id
-                FROM master.staff
-                WHERE staff_id = :staff_id
-            """),
-            {"staff_id": staff_id}
+    staff = await db.get(Staff, staff_id)
+
+    if not staff:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Staff not found"
         )
-        staff = result.mappings().first()
 
-        if not staff:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Staff not found"
-            )
+    if current_staff["designation"] == "DEALER":
+        if staff.designation in ["ADMIN", "DEALER"]:
+                raise HTTPException(status_code=403, detail="Dealers cannot reset PIN for Admin/Dealer accounts")
+        if staff.dealer_id != current_staff["staff_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
 
-        if current_staff["designation"] == "DEALER":
-            if staff.designation in ["ADMIN", "DEALER"]:
-                 raise HTTPException(status_code=403, detail="Dealers cannot reset PIN for Admin/Dealer accounts")
-            if staff.dealer_id != current_staff["staff_id"]:
-                 raise HTTPException(status_code=403, detail="Access denied")
-
-        await conn.execute(
-            text("""
-                UPDATE master.staff
-                SET pin_hash = :pin_hash,
-                    is_pin_reset_required = true,
-                    failed_attempts = 0,
-                    locked_until = NULL,
-                    last_pin_changed_at = NOW()
-                WHERE staff_id = :staff_id
-            """),
-            {
-                "pin_hash": hash_pin(temp_pin),
-                "staff_id": staff_id
-            }
-        )
+    staff.pin_hash = hash_pin(temp_pin)
+    staff.is_pin_reset_required = True
+    staff.failed_attempts = 0
+    staff.locked_until = None
+    staff.last_pin_changed_at = datetime.utcnow()
+    await db.commit()
 
     return {
         "message": "PIN reset successfully",
@@ -369,7 +290,8 @@ async def reset_staff_pin(
 
 @router.post("/totp/setup", response_model=TOTPSetupResponse)
 async def setup_totp(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Generate a new TOTP secret for the authenticated user (Dealer).
@@ -388,12 +310,7 @@ async def setup_totp(
 
     secret = generate_totp_secret()
     
-    async with engine.begin() as conn:
-        result = await conn.execute(
-            text("SELECT full_name, email FROM master.staff WHERE staff_id = :staff_id"),
-            {"staff_id": staff_id}
-        )
-        staff = result.mappings().first()
+    staff = await db.get(Staff, staff_id)
         
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
@@ -410,7 +327,8 @@ async def setup_totp(
 @router.post("/totp/verify")
 async def verify_totp(
     payload: TOTPVerifyRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Verify the TOTP code and enable 2FA by saving the secret.
@@ -425,11 +343,12 @@ async def verify_totp(
     if not verify_totp_code(payload.secret, payload.code):
         raise HTTPException(status_code=400, detail="Invalid TOTP code")
 
-    async with engine.begin() as conn:
-        await conn.execute(
-            text("UPDATE master.staff SET totp_secret = :secret WHERE staff_id = :staff_id"),
-            {"secret": payload.secret, "staff_id": staff_id}
-        )
+    staff = await db.get(Staff, staff_id)
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+        
+    staff.totp_secret = payload.secret
+    await db.commit()
         
     return {"message": "2FA enabled successfully"}
 
@@ -437,38 +356,37 @@ async def verify_totp(
 # ==================== OTP ENDPOINTS ====================
 
 @router.post("/send-otp")
-def send_otp(payload: ForgotPinRequest):
+async def send_otp(payload: ForgotPinRequest, db: AsyncSession = Depends(get_db)):
     """
     Send OTP for Dealer PIN reset.
     For development, OTP is always '123456'.
     """
     identifier = payload.identifier.strip()
 
-    with engine.begin() as conn:
-        staff = conn.execute(
-            text("""
-                SELECT staff_id, designation
-                FROM master.staff
-                WHERE (mobile_no = :identifier OR email = :identifier)
-                  AND designation = 'DEALER'
-                  AND is_active = true
-            """),
-            {"identifier": identifier}
-        ).mappings().first()
+    stmt = select(Staff).where(
+        or_(
+            Staff.mobile_no == identifier,
+            Staff.email == identifier
+        ),
+        Staff.designation == 'DEALER',
+        Staff.is_active == True
+    )
+    result = await db.execute(stmt)
+    staff = result.scalars().first()
 
-        if not staff:
-             # Return success to avoid user enumeration, but log internally
-             return {"message": "If account exists, OTP has been sent."}
+    if not staff:
+            # Return success to avoid user enumeration, but log internally
+            return {"message": "If account exists, OTP has been sent."}
 
-        # In a real app, generate and save OTP to DB/Redis here
-        # For now, we assume a static OTP or log it
-        print(f"DEBUG: OTP for {identifier} is 123456")
+    # In a real app, generate and save OTP to DB/Redis here
+    # For now, we assume a static OTP or log it
+    print(f"DEBUG: OTP for {identifier} is 123456")
 
     return {"message": "OTP sent successfully"}
 
 
 @router.post("/reset-pin/dealer")
-async def reset_dealer_pin(payload: DealerPinResetRequest):
+async def reset_dealer_pin(payload: DealerPinResetRequest, db: AsyncSession = Depends(get_db)):
     """
     Reset Dealer PIN using TOTP code.
     """
@@ -476,43 +394,32 @@ async def reset_dealer_pin(payload: DealerPinResetRequest):
     totp_code = payload.totp_code
     new_pin = payload.new_pin
 
-    async with engine.begin() as conn:
-        result = await conn.execute(
-            text("""
-                SELECT staff_id, totp_secret
-                FROM master.staff
-                WHERE (mobile_no = :identifier OR email = :identifier)
-                  AND designation = 'DEALER'
-                  AND is_active = true
-            """),
-            {"identifier": identifier}
-        )
-        staff = result.mappings().first()
+    stmt = select(Staff).where(
+        or_(
+            Staff.mobile_no == identifier,
+            Staff.email == identifier
+        ),
+        Staff.designation == 'DEALER',
+        Staff.is_active == True
+    )
+    result = await db.execute(stmt)
+    staff = result.scalars().first()
 
-        if not staff:
-             raise HTTPException(status_code=404, detail="Dealer not found")
-             
-        if not staff.totp_secret:
-             raise HTTPException(status_code=400, detail="2FA not set up. Cannot reset PIN via Authenticator.")
+    if not staff:
+            raise HTTPException(status_code=404, detail="Dealer not found")
+            
+    if not staff.totp_secret:
+            raise HTTPException(status_code=400, detail="2FA not set up. Cannot reset PIN via Authenticator.")
 
-        if not verify_totp_code(staff.totp_secret, totp_code):
-             raise HTTPException(status_code=400, detail="Invalid Authenticator Code")
+    if not verify_totp_code(staff.totp_secret, totp_code):
+            raise HTTPException(status_code=400, detail="Invalid Authenticator Code")
 
-        await conn.execute(
-            text("""
-                UPDATE master.staff
-                SET pin_hash = :pin_hash,
-                is_pin_reset_required = false,
-                failed_attempts = 0,
-                locked_until = NULL,
-                last_pin_changed_at = NOW()
-                WHERE staff_id = :staff_id
-            """),
-            {
-                "pin_hash": hash_pin(new_pin),
-                "staff_id": staff.staff_id
-            }
-        )
+    staff.pin_hash = hash_pin(new_pin)
+    staff.is_pin_reset_required = False
+    staff.failed_attempts = 0
+    staff.locked_until = None
+    staff.last_pin_changed_at = datetime.utcnow()
+    await db.commit()
 
     return {"message": "PIN reset successfully. Please login with new PIN."}
 
@@ -521,60 +428,54 @@ async def reset_dealer_pin(payload: DealerPinResetRequest):
 
 
 @router.post("/pin/request-reset")
-async def request_pin_reset(payload: PinResetRequestCreate):
+async def request_pin_reset(payload: PinResetRequestCreate, db: AsyncSession = Depends(get_db)):
     """
     Staff member requests PIN reset from admin/dealer.
     Creates a pending request in the database.
     """
     mobile = payload.mobile.strip()
 
-    async with engine.begin() as conn:
-        # Find staff by mobile
-        result = await conn.execute(
-            text("""
-                SELECT staff_id, designation
-                FROM master.staff
-                WHERE mobile_no = :mobile
-                  AND is_active = true
-            """),
-            {"mobile": mobile}
+    # Find staff by mobile
+    stmt = select(Staff).where(
+        Staff.mobile_no == mobile,
+        Staff.is_active == True
+    )
+    result = await db.execute(stmt)
+    staff = result.scalars().first()
+
+    if not staff:
+        # Don't reveal if user exists (security)
+        return {"message": "If this mobile number exists, a reset request has been sent."}
+
+    # Admin/Dealer should use TOTP self-reset, not this flow
+    if staff.designation in ("ADMIN", "DEALER"):
+        raise HTTPException(
+            status_code=400,
+            detail="Admins and Dealers should use TOTP reset or contact another admin."
         )
-        staff = result.mappings().first()
 
-        if not staff:
-            # Don't reveal if user exists (security)
-            return {"message": "If this mobile number exists, a reset request has been sent."}
+    # Check for existing pending request
+    stmt_existing = select(PinResetRequest).where(
+        PinResetRequest.staff_id == staff.staff_id,
+        PinResetRequest.status == 'PENDING'
+    )
+    result_existing = await db.execute(stmt_existing)
+    existing = result_existing.scalars().first()
 
-        # Admin/Dealer should use TOTP self-reset, not this flow
-        if staff.designation in ("ADMIN", "DEALER"):
-            raise HTTPException(
-                status_code=400,
-                detail="Admins and Dealers should use TOTP reset or contact another admin."
-            )
-
-        # Check for existing pending request
-        existing = await conn.execute(
-            text("""
-                SELECT id FROM master.pin_reset_request
-                WHERE staff_id = :staff_id AND status = 'PENDING'
-            """),
-            {"staff_id": staff.staff_id}
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail="You already have a pending reset request."
         )
-        if existing.mappings().first():
-            raise HTTPException(
-                status_code=400,
-                detail="You already have a pending reset request."
-            )
 
-        # Create reset request
-        await conn.execute(
-            text("""
-                INSERT INTO master.pin_reset_request
-                (staff_id, request_type, requested_at, status)
-                VALUES (:staff_id, 'STAFF_FORGOT_PIN', NOW(), 'PENDING')
-            """),
-            {"staff_id": staff.staff_id}
-        )
+    # Create reset request
+    req = PinResetRequest(
+        staff_id=staff.staff_id,
+        request_type='STAFF_FORGOT_PIN',
+        status='PENDING'
+    )
+    db.add(req)
+    await db.commit()
 
     return {
         "message": "PIN reset request submitted. An admin will process it shortly."
@@ -585,7 +486,7 @@ async def request_pin_reset(payload: PinResetRequestCreate):
     "/pin/reset-requests",
     dependencies=[Depends(require_roles("ADMIN", "DEALER"))]
 )
-async def get_reset_requests(current_staff=Depends(get_current_staff)):
+async def get_reset_requests(current_staff=Depends(get_current_staff), db: AsyncSession = Depends(get_db)):
     """
     Get all pending PIN reset requests.
     Only admin and dealer can access.
@@ -594,42 +495,36 @@ async def get_reset_requests(current_staff=Depends(get_current_staff)):
     if current_staff["designation"] == "DEALER":
         dealer_id = current_staff["staff_id"]
 
-    query_str = """
-        SELECT
-            prr.id,
-            prr.staff_id,
-            s.full_name AS staff_name,
-            s.mobile_no AS staff_mobile,
-            prr.requested_at,
-            EXTRACT(EPOCH FROM (NOW() - prr.requested_at)) / 3600 AS hours_ago
-        FROM master.pin_reset_request prr
-        JOIN master.staff s ON s.staff_id = prr.staff_id
-        WHERE prr.status = 'PENDING'
-    """
+    stmt = select(PinResetRequest, Staff).join(Staff, PinResetRequest.staff_id == Staff.staff_id).where(
+        PinResetRequest.status == 'PENDING'
+    )
     
-    params = {}
     if dealer_id:
-        query_str += " AND s.dealer_id = :dealer_id"
-        params["dealer_id"] = dealer_id
+        stmt = stmt.where(Staff.dealer_id == dealer_id)
         
-    query_str += " ORDER BY prr.requested_at DESC"
+    stmt = stmt.order_by(PinResetRequest.requested_at.desc())
 
-    async with engine.begin() as conn:
-        result = await conn.execute(text(query_str), params)
-        requests = result.mappings().all()
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    requests_out = []
+    for req, staff in rows:
+        hours_ago = 0
+        if req.requested_at:
+            delta = datetime.utcnow() - req.requested_at
+            hours_ago = int(delta.total_seconds() / 3600)
+            
+        requests_out.append({
+            "id": req.id,
+            "staff_id": req.staff_id,
+            "staff_name": staff.full_name,
+            "staff_mobile": staff.mobile_no,
+            "requested_at": req.requested_at.isoformat() if req.requested_at else None,
+            "hours_ago": hours_ago
+        })
 
     return {
-        "requests": [
-            {
-                "id": req["id"],
-                "staff_id": req["staff_id"],
-                "staff_name": req["staff_name"],
-                "staff_mobile": req["staff_mobile"],
-                "requested_at": req["requested_at"].isoformat() if req["requested_at"] else None,
-                "hours_ago": int(req["hours_ago"]) if req["hours_ago"] else 0
-            }
-            for req in requests
-        ]
+        "requests": requests_out
     }
 
 
@@ -639,65 +534,49 @@ async def get_reset_requests(current_staff=Depends(get_current_staff)):
 )
 async def approve_pin_reset(
     request_id: int,
-    current_staff=Depends(get_current_staff)
+    current_staff=Depends(get_current_staff),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Admin/Dealer approves PIN reset request.
     Generates temp PIN and marks staff for forced change.
     """
-    async with engine.begin() as conn:
-        # Get the pending request
-        result = await conn.execute(
-            text("""
-                SELECT prr.id, prr.staff_id, s.full_name, s.dealer_id, s.designation
-                FROM master.pin_reset_request prr
-                JOIN master.staff s ON s.staff_id = prr.staff_id
-                WHERE prr.id = :request_id AND prr.status = 'PENDING'
-            """),
-            {"request_id": request_id}
-        )
-        req = result.mappings().first()
+    stmt = select(PinResetRequest, Staff).join(Staff, PinResetRequest.staff_id == Staff.staff_id).where(
+        PinResetRequest.id == request_id,
+        PinResetRequest.status == 'PENDING'
+    )
+    result = await db.execute(stmt)
+    row = result.first()
 
-        if not req:
-            raise HTTPException(status_code=404, detail="Request not found or already processed")
+    if not row:
+        raise HTTPException(status_code=404, detail="Request not found or already processed")
 
-        if current_staff["designation"] == "DEALER":
-            if req.designation in ["ADMIN", "DEALER"]:
-                 raise HTTPException(status_code=403, detail="Dealers cannot approve resets for Admin/Dealer accounts")
-            if req.dealer_id != current_staff["staff_id"]:
-                 raise HTTPException(status_code=403, detail="Access denied")
+    req, staff = row
 
-        # Generate temp PIN
-        temp_pin = str(random.randint(100000, 999999))
-        pin_hash_val = hash_pin(temp_pin)
+    if current_staff["designation"] == "DEALER":
+        if staff.designation in ["ADMIN", "DEALER"]:
+                raise HTTPException(status_code=403, detail="Dealers cannot approve resets for Admin/Dealer accounts")
+        if staff.dealer_id != current_staff["staff_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
 
-        # Update staff PIN
-        await conn.execute(
-            text("""
-                UPDATE master.staff
-                SET pin_hash = :pin_hash,
-                    is_pin_reset_required = true,
-                    failed_attempts = 0,
-                    locked_until = NULL,
-                    last_pin_changed_at = NOW()
-                WHERE staff_id = :staff_id
-            """),
-            {"pin_hash": pin_hash_val, "staff_id": req["staff_id"]}
-        )
+    # Generate temp PIN
+    temp_pin = str(random.randint(100000, 999999))
+    pin_hash_val = hash_pin(temp_pin)
 
-        # Update request status
-        await conn.execute(
-            text("""
-                UPDATE master.pin_reset_request
-                SET status = 'APPROVED'
-                WHERE id = :request_id
-            """),
-            {"request_id": request_id}
-        )
+    # Update staff PIN
+    staff.pin_hash = pin_hash_val
+    staff.is_pin_reset_required = True
+    staff.failed_attempts = 0
+    staff.locked_until = None
+    staff.last_pin_changed_at = datetime.utcnow()
+
+    # Update request status
+    req.status = 'APPROVED'
+    await db.commit()
 
     return {
         "message": "PIN reset approved",
-        "staff_name": req["full_name"],
+        "staff_name": staff.full_name,
         "temp_pin": temp_pin
     }
 
@@ -708,44 +587,36 @@ async def approve_pin_reset(
 )
 async def deny_pin_reset(
     request_id: int,
-    current_staff=Depends(get_current_staff)
+    current_staff=Depends(get_current_staff),
+    db: AsyncSession = Depends(get_db)
 ):
     """Admin/Dealer denies PIN reset request."""
-    async with engine.begin() as conn:
-        result = await conn.execute(
-            text("""
-                SELECT prr.id, s.dealer_id, s.designation
-                FROM master.pin_reset_request prr
-                JOIN master.staff s ON s.staff_id = prr.staff_id
-                WHERE prr.id = :request_id AND prr.status = 'PENDING'
-            """),
-            {"request_id": request_id}
-        )
-        req = result.mappings().first()
+    stmt = select(PinResetRequest, Staff).join(Staff, PinResetRequest.staff_id == Staff.staff_id).where(
+        PinResetRequest.id == request_id,
+        PinResetRequest.status == 'PENDING'
+    )
+    result = await db.execute(stmt)
+    row = result.first()
 
-        if not req:
-            raise HTTPException(status_code=404, detail="Request not found or already processed")
+    if not row:
+        raise HTTPException(status_code=404, detail="Request not found or already processed")
+        
+    req, staff = row
 
-        if current_staff["designation"] == "DEALER":
-            if req.designation in ["ADMIN", "DEALER"]:
-                 raise HTTPException(status_code=403, detail="Dealers cannot deny resets for Admin/Dealer accounts")
-            if req.dealer_id != current_staff["staff_id"]:
-                 raise HTTPException(status_code=403, detail="Access denied")
+    if current_staff["designation"] == "DEALER":
+        if staff.designation in ["ADMIN", "DEALER"]:
+                raise HTTPException(status_code=403, detail="Dealers cannot deny resets for Admin/Dealer accounts")
+        if staff.dealer_id != current_staff["staff_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
 
-        await conn.execute(
-            text("""
-                UPDATE master.pin_reset_request
-                SET status = 'DENIED'
-                WHERE id = :request_id
-            """),
-            {"request_id": request_id}
-        )
+    req.status = 'DENIED'
+    await db.commit()
 
     return {"message": "Request denied"}
 
 
 @router.post("/pin/reset-self")
-async def reset_pin_self(payload: SelfPinResetRequest):
+async def reset_pin_self(payload: SelfPinResetRequest, db: AsyncSession = Depends(get_db)):
     """
     Admin/Dealer resets own PIN using TOTP.
     Requires valid TOTP code.
@@ -755,51 +626,37 @@ async def reset_pin_self(payload: SelfPinResetRequest):
     if payload.new_pin != payload.confirm_pin:
         raise HTTPException(status_code=400, detail="PINs do not match")
 
-    async with engine.begin() as conn:
-        result = await conn.execute(
-            text("""
-                SELECT staff_id, designation, totp_secret
-                FROM master.staff
-                WHERE mobile_no = :mobile
-                  AND is_active = true
-            """),
-            {"mobile": mobile}
+    stmt = select(Staff).where(
+        Staff.mobile_no == mobile,
+        Staff.is_active == True
+    )
+    result = await db.execute(stmt)
+    staff = result.scalars().first()
+
+    if not staff:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if staff.designation not in ("ADMIN", "DEALER"):
+        raise HTTPException(
+            status_code=400,
+            detail="Staff members must request reset from admin"
         )
-        staff = result.mappings().first()
 
-        if not staff:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        if staff.designation not in ("ADMIN", "DEALER"):
-            raise HTTPException(
-                status_code=400,
-                detail="Staff members must request reset from admin"
-            )
-
-        if not staff.totp_secret:
-            raise HTTPException(
-                status_code=400,
-                detail="TOTP not configured. Please contact another admin."
-            )
-
-        if not verify_totp_code(staff.totp_secret, payload.totp_code):
-            raise HTTPException(status_code=400, detail="Invalid TOTP code")
-
-        # Update PIN
-        await conn.execute(
-            text("""
-                UPDATE master.staff
-                SET pin_hash = :pin_hash,
-                    is_pin_reset_required = false,
-                    failed_attempts = 0,
-                    locked_until = NULL,
-                    last_pin_changed_at = NOW()
-                WHERE staff_id = :staff_id
-            """),
-            {
-                "pin_hash": hash_pin(payload.new_pin),
-                "staff_id": staff.staff_id
-            }
+    if not staff.totp_secret:
+        raise HTTPException(
+            status_code=400,
+            detail="TOTP not configured. Please contact another admin."
         )
+
+    if not verify_totp_code(staff.totp_secret, payload.totp_code):
+        raise HTTPException(status_code=400, detail="Invalid TOTP code")
+
+    # Update PIN
+    staff.pin_hash = hash_pin(payload.new_pin)
+    staff.is_pin_reset_required = False
+    staff.failed_attempts = 0
+    staff.locked_until = None
+    staff.last_pin_changed_at = datetime.utcnow()
+    await db.commit()
 
     return {"message": "PIN reset successful. Please login with your new PIN."}

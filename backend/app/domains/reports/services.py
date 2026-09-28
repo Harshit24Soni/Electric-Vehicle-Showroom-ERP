@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, extract, and_, or_
 from datetime import date, datetime, timedelta
 
-from app.domains.billing.models import SalesInvoice
-from app.domains.sales.models import Sale, ServiceSchedule
+from app.modules.billing.models import SalesInvoice
+from app.modules.sales.models import Sale, ServiceSchedule
 from app.domains.crm.models import Lead
 from app.domains.master.models import Vehicle, VehicleModel
 from app.domains.insurance.models import Policy
@@ -40,7 +40,7 @@ def sales_register(
         .all()
     )
 
-from app.domains.finance.models import VehicleFinance
+from app.modules.finance.models import VehicleFinance
 
 def finance_register(db: Session):
     return (

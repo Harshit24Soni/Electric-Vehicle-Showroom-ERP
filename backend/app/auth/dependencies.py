@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
-from sqlalchemy import text
 
 from app.db.session import get_db
 
@@ -12,10 +11,8 @@ load_dotenv()
 
 security = HTTPBearer()
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-key")
-ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-
-# In development, allow defaults so the app can run without explicit env vars.
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+ALGORITHM = os.getenv("JWT_ALGORITHM")
 
 
 async def get_current_staff(
@@ -50,19 +47,16 @@ async def get_current_staff(
             detail="Invalid or expired token"
         )
 
+    from app.domains.master.models import Staff
+    from sqlalchemy import select
+    
     # 🔒 ERP-grade check: ensure staff still exists & is active
     # Using Async Session
-    result = await db.execute(
-        text("""
-            SELECT staff_id, designation, is_active, dealer_id
-            FROM master.staff
-            WHERE staff_id = :staff_id
-        """),
-        {"staff_id": staff_id}
-    )
-    staff = result.mappings().first()
+    stmt = select(Staff).where(Staff.staff_id == staff_id)
+    result = await db.execute(stmt)
+    staff = result.scalars().first()
 
-    if not staff or not staff["is_active"]:
+    if not staff or not staff.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Inactive or invalid staff"
@@ -76,8 +70,8 @@ async def get_current_staff(
         )
 
     return {
-        "staff_id": staff["staff_id"],
-        "designation": staff["designation"],
-        "dealer_id": staff["dealer_id"]
+        "staff_id": staff.staff_id,
+        "designation": staff.designation,
+        "dealer_id": staff.dealer_id
     }
 

@@ -4,8 +4,8 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from fastapi import HTTPException
 
-from app.domains.finance.models import VehicleFinance
-from app.domains.sales.models import Sale
+from app.modules.finance.models import VehicleFinance
+from app.modules.sales.models import Sale
 
 
 class FinanceError(Exception):

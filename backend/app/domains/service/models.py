@@ -13,7 +13,6 @@ from app.db.mixins import AuditMixin, SoftDeleteMixin
 
 class ServiceJobCard(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "job_card"
-    __table_args__ = {"schema": "service"}
 
     job_card_id: Mapped[int] = mapped_column(
         BigInteger, primary_key=True
@@ -21,7 +20,7 @@ class ServiceJobCard(Base, AuditMixin, SoftDeleteMixin):
 
     chassis_no: Mapped[str] = mapped_column(
         String(50),
-        ForeignKey("master.vehicle.chassis_no", ondelete="RESTRICT"),
+        ForeignKey("vehicle.chassis_no", ondelete="RESTRICT"),
         nullable=False,
     )
 
@@ -41,7 +40,6 @@ class ServiceJobCard(Base, AuditMixin, SoftDeleteMixin):
 
 class ServiceSpareConsumption(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_consumption"
-    __table_args__ = {"schema": "service"}
 
     consumption_id: Mapped[int] = mapped_column(
         BigInteger, primary_key=True
@@ -49,19 +47,19 @@ class ServiceSpareConsumption(Base, AuditMixin, SoftDeleteMixin):
 
     job_card_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("service.job_card.job_card_id", ondelete="CASCADE"),
+        ForeignKey("job_card.job_card_id", ondelete="CASCADE"),
         nullable=False,
     )
 
     spare_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("inventory.spare_master.spare_id", ondelete="RESTRICT"),
         nullable=False,
-    )
+        index=True
+    ) # Soft link to inventory module
 
     quantity: Mapped[int] = mapped_column(nullable=False)
 
     serial_id: Mapped[int | None] = mapped_column(
         BigInteger,
-        ForeignKey("inventory.spare_serial.serial_id", ondelete="RESTRICT"),
-    )
+        index=True
+    ) # Soft link to inventory module

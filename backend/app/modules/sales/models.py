@@ -38,14 +38,13 @@ class Sale(Base, AuditMixin, SoftDeleteMixin):
     __table_args__ = (
         Index("idx_sale_customer", "customer_id"),
         Index("idx_sale_lead", "lead_id"),
-        {"schema": "sales"},
     )
 
     sale_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    lead_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("crm.lead.lead_id"), nullable=True, unique=True)
-    customer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.customer.customer_id"), nullable=False)
+    lead_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, unique=True) # Soft link to crm.lead
+    customer_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to master.customer
     # Linking to specific vehicle (inventory item)
-    chassis_no: Mapped[str] = mapped_column(String(50), ForeignKey("master.vehicle.chassis_no"), nullable=False, unique=True)
+    chassis_no: Mapped[str] = mapped_column(String(50), nullable=False, unique=True) # Soft link to master.vehicle
     
     sale_date: Mapped[datetime] = mapped_column(Date, nullable=False, default=datetime.utcnow)
     total_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
@@ -63,7 +62,7 @@ class Sale(Base, AuditMixin, SoftDeleteMixin):
     is_service_schedule_generated: Mapped[bool] = mapped_column(Boolean, default=False)
     
     remarks: Mapped[str | None] = mapped_column(Text)
-    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
+    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to master.staff
 
     # --- NEW workflow columns ---
     sale_stage: Mapped[str | None] = mapped_column(String(50), nullable=True, default=SaleStage.ENQUIRY)
@@ -71,9 +70,6 @@ class Sale(Base, AuditMixin, SoftDeleteMixin):
     is_direct_sale: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)
 
     # Relationships
-    lead = relationship("app.domains.crm.models.Lead")
-    customer = relationship("app.domains.master.models.Customer")
-    vehicle = relationship("app.domains.master.models.Vehicle")
     receipts = relationship("PaymentReceipt", back_populates="sale")
     delivery_checklist = relationship("DeliveryChecklist", uselist=False, back_populates="sale")
     service_schedules = relationship("ServiceSchedule", back_populates="sale", cascade="all, delete-orphan")
@@ -113,26 +109,24 @@ class Sale(Base, AuditMixin, SoftDeleteMixin):
 
 class PaymentReceipt(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "payment_receipt"
-    __table_args__ = ({"schema": "sales"},)
 
     receipt_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sales.sale.sale_id"), nullable=False)
+    sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sale.sale_id"), nullable=False)
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     payment_mode: Mapped[str] = mapped_column(String(20), nullable=False) # CASH, UPI, CARD, CHEQUE, FINANCE
     transaction_ref: Mapped[str | None] = mapped_column(String(100))
     receipt_date: Mapped[datetime] = mapped_column(Date, default=datetime.utcnow)
     
-    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("master.staff.staff_id"), nullable=False)
+    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to master.staff
 
     sale = relationship("Sale", back_populates="receipts")
 
 
 class DeliveryChecklist(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "delivery_checklist"
-    __table_args__ = ({"schema": "sales"},)
 
     checklist_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sales.sale.sale_id"), nullable=False, unique=True)
+    sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sale.sale_id"), nullable=False, unique=True)
     
     insurance_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     insurance_details: Mapped[str | None] = mapped_column(Text)
@@ -154,10 +148,9 @@ class DeliveryChecklist(Base, AuditMixin, SoftDeleteMixin):
 
 class ServiceSchedule(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "service_schedule"
-    __table_args__ = ({"schema": "sales"},)
 
     schedule_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sales.sale.sale_id"), nullable=False)
+    sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sale.sale_id"), nullable=False)
     
     service_number: Mapped[int] = mapped_column(nullable=False) # 1, 2, 3...
     service_type: Mapped[str] = mapped_column(String(20), nullable=False) # FREE, PAID
@@ -172,21 +165,19 @@ class ServiceSchedule(Base, AuditMixin, SoftDeleteMixin):
 class SaleStageHistory(Base, AuditMixin, SoftDeleteMixin):
     """Audit trail for sale stage transitions"""
     __tablename__ = "sale_stage_history"
-    __table_args__ = ({"schema": "sales"},)
 
     stage_history_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     sale_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("sales.sale.sale_id", ondelete="CASCADE"),
+        ForeignKey("sale.sale_id", ondelete="CASCADE"),
         nullable=False,
     )
     from_stage: Mapped[str | None] = mapped_column(String(50), nullable=True)
     to_stage: Mapped[str] = mapped_column(String(50), nullable=False)
     changed_by_staff_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("master.staff.staff_id"),
         nullable=False,
-    )
+    ) # Soft link to master.staff
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
@@ -196,12 +187,11 @@ class SaleStageHistory(Base, AuditMixin, SoftDeleteMixin):
 class SalePayment(Base, AuditMixin, SoftDeleteMixin):
     """Payment tracking for sales with type and mode"""
     __tablename__ = "sale_payment"
-    __table_args__ = ({"schema": "sales"},)
 
     sale_payment_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     sale_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("sales.sale.sale_id", ondelete="CASCADE"),
+        ForeignKey("sale.sale_id", ondelete="CASCADE"),
         nullable=False,
     )
     payment_type: Mapped[str] = mapped_column(String(20), nullable=False)  # BOOKING, PARTIAL, FINAL
@@ -213,9 +203,8 @@ class SalePayment(Base, AuditMixin, SoftDeleteMixin):
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_staff_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("master.staff.staff_id"),
         nullable=False,
-    )
+    ) # Soft link to master.staff
 
 
     sale = relationship("Sale", back_populates="sale_payments")
@@ -224,12 +213,11 @@ class SalePayment(Base, AuditMixin, SoftDeleteMixin):
 class SaleDocument(Base, AuditMixin, SoftDeleteMixin):
     """Generated documents for a sale (invoice, challan, receipt, etc.)"""
     __tablename__ = "sale_document"
-    __table_args__ = ({"schema": "sales"},)
 
     sale_document_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     sale_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("sales.sale.sale_id", ondelete="CASCADE"),
+        ForeignKey("sale.sale_id", ondelete="CASCADE"),
         nullable=False,
     )
     document_type: Mapped[str] = mapped_column(String(50), nullable=False)  # INVOICE, RECEIPT, CHALLAN, INSURANCE, SERVICE_SCHEDULE
@@ -237,9 +225,8 @@ class SaleDocument(Base, AuditMixin, SoftDeleteMixin):
     generated_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False, default=datetime.utcnow)
     generated_by_staff_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("master.staff.staff_id"),
         nullable=False,
-    )
+    ) # Soft link to master.staff
     is_printed: Mapped[bool] = mapped_column(Boolean, default=False)
     print_count: Mapped[int] = mapped_column(Integer, default=0)
     last_printed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True)
@@ -250,12 +237,11 @@ class SaleDocument(Base, AuditMixin, SoftDeleteMixin):
 class SalePortalTracking(Base, AuditMixin, SoftDeleteMixin):
     """Portal work tracking: insurance, subsidy, RTO, CELEX, num-plate"""
     __tablename__ = "sale_portal_tracking"
-    __table_args__ = ({"schema": "sales"},)
 
     portal_tracking_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     sale_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("sales.sale.sale_id", ondelete="CASCADE"),
+        ForeignKey("sale.sale_id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
     )

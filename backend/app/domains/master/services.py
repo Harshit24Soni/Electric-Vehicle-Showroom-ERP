@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from typing import Optional
 
 from app.domains.master import models
+from app.core.event_bus import event_bus, SparePriceUpdatedEvent
 
 
 class MasterError(Exception):
@@ -554,20 +555,14 @@ async def update_spare_price(db: AsyncSession, spare_id: int, payload, user_id: 
     )
     db.add(new_price)
     
-    # 3. Update Master Table
-    from app.domains.inventory import models as inv_models
-    spare = await db.get(inv_models.SpareMaster, spare_id)
-    if spare:
-        # Assuming we eventually add price columns to SpareMaster or ignore this step if columns missing.
-        # Check if SpareMaster has dealer_landing_price. 
-        # Since I didn't verify if I added them to inventory/models.py (I didn't), I will comment this out for now 
-        # OR better: I should add them to inventory/models.py to be consistent with plan.
-        # But for now, let's rely on history as primary source if we want.
-        # However, to be safe, I'll pass on updating master if attributes don't exist.
-        if hasattr(spare, 'dealer_landing_price'):
-             spare.dealer_landing_price = payload.price
-        if hasattr(spare, 'dealer_margin_percent'):
-             spare.dealer_margin_percent = payload.margin
+    # 3. Publish Event for Inventory/other domains to react
+    await event_bus.publish(
+        SparePriceUpdatedEvent(
+            spare_id=spare_id,
+            price=payload.price,
+            margin=payload.margin
+        )
+    )
 
     await db.flush()
     return new_price

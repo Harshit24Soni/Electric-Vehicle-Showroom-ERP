@@ -5,8 +5,9 @@ from fastapi import HTTPException
 
 from app.domains.procurement import models as procurement_models
 from app.domains.procurement import schemas as procurement_schemas
-from app.domains.inventory import models as inventory_models
 from app.domains.master import models as master_models
+from app.core.event_bus import event_bus, SparePurchasedEvent, VehicleIntakeEvent
+from app.modules.inventory import services as inventory_services
 
 async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.SparePurchaseCreate):
     # 1. Create Purchase Record
@@ -38,18 +39,13 @@ async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.Spar
         )
         db.add(purchase_item)
 
-        # 3. Inventory Update (Automatic)
-        # Add to Stock Movement
-        movement = inventory_models.SpareStockMovement(
-            spare_id=item.spare_id,
-            movement_type="PURCHASE",
-            quantity=item.quantity,
-            movement_datetime=datetime.utcnow(),
-            reference_type="PROCUREMENT",
-            reference_id=purchase.spare_purchase_id,
-            remarks=f"Purchase from Vendor {data.vendor_id}"
+        # 3. Inventory Update (Asynchronous via Event Bus)
+        await event_bus.publish(
+            SparePurchasedEvent(
+                spare_id=item.spare_id,
+                quantity=item.quantity
+            )
         )
-        db.add(movement)
         
         # Note: We do NOT update master price here. 
         # Price snapshot is stored in purchase_item.unit_cost.
@@ -59,32 +55,24 @@ async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.Spar
     return purchase
 
 
-async def create_temporary_item(db: AsyncSession, data: procurement_schemas.TemporaryItemCreate, user_id: int) -> inventory_models.SpareMaster:
-    """Create a temporary spare item"""
-    # Check if code exists
-    existing = await db.execute(select(inventory_models.SpareMaster).filter_by(spare_code=data.spare_code))
-    if existing.scalars().first():
-        raise HTTPException(status_code=400, detail="Spare code already exists")
-    
-    # Create Master
-    item = inventory_models.SpareMaster(
-        spare_code=data.spare_code,
-        spare_name=data.spare_name,
-        category=data.category,
-        is_serialized=False, # Default
-        is_temporary=True,
-        is_verified=False,
-        remarks=data.remarks,
-        # dealer_landing_price = data.price # If we added column to model
-    )
-    db.add(item)
-    await db.flush() # get ID
+async def create_temporary_item(db: AsyncSession, data: procurement_schemas.TemporaryItemCreate, user_id: int):
+    """Create a temporary spare item via Inventory domain contract"""
+    # Create Master via Contract (Inventory domain handles uniqueness & defaults)
+    try:
+        spare_id = await inventory_services.create_temporary_spare(
+            db,
+            spare_code=data.spare_code,
+            spare_name=data.spare_name,
+            category=data.category,
+            remarks=data.remarks
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Spare code already exists or invalid data")
     
     # If price provided, set history
     if data.price is not None:
-        from app.domains.master import models as master_models
         price_hist = master_models.SparePriceHistory(
-            spare_id=item.spare_id,
+            spare_id=spare_id,
             price=data.price,
             margin=0, # Default margin
             effective_from=datetime.utcnow(),
@@ -92,33 +80,19 @@ async def create_temporary_item(db: AsyncSession, data: procurement_schemas.Temp
             created_by=user_id
         )
         db.add(price_hist)
+        await db.commit()
 
-    await db.commit()
-    await db.refresh(item)
-    return item
+    return {"spare_id": spare_id, "spare_code": data.spare_code}
 
-async def list_temporary_items(db: AsyncSession) -> list[inventory_models.SpareMaster]:
+async def list_temporary_items(db: AsyncSession):
     """List unverified temporary items (excludes soft-deleted)"""
-    stmt = select(inventory_models.SpareMaster).filter(
-        inventory_models.SpareMaster.is_temporary == True,
-        inventory_models.SpareMaster.is_verified == False,
-        inventory_models.SpareMaster.is_deleted == False
-    )
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    return await inventory_services.list_temporary_spares(db)
 
-async def approve_temporary_item(db: AsyncSession, spare_id: int) -> inventory_models.SpareMaster:
+async def approve_temporary_item(db: AsyncSession, spare_id: int):
     """Approve a temporary item (Admin only)"""
-    item = await db.get(inventory_models.SpareMaster, spare_id)
+    item = await inventory_services.approve_temporary_spare(db, spare_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    
-    item.is_verified = True
-    # We might keep is_temporary=True to mark origin, or set to False. 
-    # "Convert to master entries" implies is_temporary -> False.
-    item.is_temporary = False
-    await db.commit()
-    await db.refresh(item)
     return item
 
 async def list_spare_purchases(db: AsyncSession):
@@ -331,16 +305,14 @@ async def process_vehicle_intake(
         )
         db.add(detail)
 
-        # Inventory movement
-        movement = inventory_models.VehicleStockMovement(
-            chassis_no=v_item.chassis_no,
-            movement_type="INWARD",
-            movement_datetime=datetime.utcnow(),
-            reference_type="PROCUREMENT",
-            reference_id=purchase.vehicle_purchase_id,
-            remarks=f"OEM Intake — Invoice {payload.oem_invoice_no}",
+        # Inventory movement (Asynchronous via Event Bus)
+        await event_bus.publish(
+            VehicleIntakeEvent(
+                chassis_no=v_item.chassis_no,
+                reference_id=purchase.vehicle_purchase_id,
+                invoice_no=payload.oem_invoice_no
+            )
         )
-        db.add(movement)
 
     # (c) Commit atomically
     await db.commit()

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.domains.inventory.models import (
+from app.modules.inventory.models import (
     VehicleStockMovement,
     SpareStockMovement,
     SpareMaster,

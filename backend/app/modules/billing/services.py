@@ -4,8 +4,8 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from fastapi import HTTPException
 
-from app.domains.billing.models import SalesInvoice
-from app.domains.sales.models import Sale
+from app.modules.billing.models import SalesInvoice
+from app.modules.sales.models import Sale
 
 
 class BillingError(Exception):

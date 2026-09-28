@@ -5,11 +5,11 @@ from datetime import datetime
 from typing import Optional
 from fastapi import HTTPException
 
-from app.domains.sales import models
-from app.domains.sales import schemas as sales_schemas
+from app.modules.sales import models
+from app.modules.sales import schemas as sales_schemas
 from app.domains.master import models as master_models
 from app.domains.crm import models as crm_models
-from app.domains.inventory import models as inventory_models
+from app.core.event_bus import event_bus, VehicleDeliveredEvent
 
 class SalesError(Exception):
     pass
@@ -21,31 +21,27 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
 
     # Verify Lead (if not direct sale)
     if not is_direct:
-        lead = await db.get(crm_models.Lead, payload.lead_id)
-        if not lead:
+        from app.domains.crm.contracts import verify_lead_exists
+        lead_exists = await verify_lead_exists(db, payload.lead_id)
+        if not lead_exists:
             raise SalesError("Lead not found")
-    else:
-        lead = None
         
     # Verify Customer
-    customer = await db.get(master_models.Customer, payload.customer_id)
-    if not customer:
+    from app.domains.master.contracts import verify_customer_exists, verify_vehicle_available
+    customer_exists = await verify_customer_exists(db, payload.customer_id)
+    if not customer_exists:
         raise SalesError("Customer not found")
         
     # Verify Vehicle
-    vehicle = await db.get(master_models.Vehicle, payload.chassis_no)
-    if not vehicle:
+    vehicle_available, current_status = await verify_vehicle_available(db, payload.chassis_no)
+    if not vehicle_available:
+        if current_status:
+            raise SalesError(f"Vehicle is not available (Status: {current_status})")
         raise SalesError("Vehicle not found")
         
-    if vehicle.current_status != 'IN_STOCK':
-        raise SalesError(f"Vehicle is not available (Status: {vehicle.current_status})")
-        
     # Margin Validation
-    from app.domains.procurement import models as procurement_models
-    stmt = select(procurement_models.VehiclePurchaseDetail).filter_by(chassis_no=payload.chassis_no)
-    result = await db.execute(stmt)
-    purchase_detail = result.scalars().first()
-    cost_price = float(purchase_detail.cost_price) if purchase_detail and purchase_detail.cost_price else 0
+    from app.domains.procurement.contracts import get_vehicle_cost_price
+    cost_price = await get_vehicle_cost_price(db, payload.chassis_no)
     
     if float(payload.total_amount) < cost_price:
         raise HTTPException(status_code=400, detail="Cannot sell below procurement cost")
@@ -72,20 +68,20 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
     checklist = models.DeliveryChecklist(sale=sale)
     db.add(checklist)
     
-    # Update Vehicle Status
-    vehicle.current_status = 'BOOKED'
-    
-    # Update Lead Status to CONVERTED/WON (if not direct sale)
-    if lead:
-        stmt = select(crm_models.LeadStatusMaster).filter(crm_models.LeadStatusMaster.status_name.in_(['WON', 'CONVERTED']))
-        result = await db.execute(stmt)
-        status_obj = result.scalars().first()
-        if status_obj:
-            lead.lead_status_id = status_obj.status_id
-        lead.is_converted = True
-        lead.lead_status = "SOLD"
-        
+    # Update Vehicle Status (Now handled by event listener)
+    pass
     await db.flush()
+
+    from app.core.event_bus import event_bus, SaleCreatedEvent
+    await event_bus.publish(
+        SaleCreatedEvent(
+            sale_id=sale.sale_id,
+            lead_id=payload.lead_id if not is_direct else None,
+            customer_id=payload.customer_id,
+            chassis_no=payload.chassis_no,
+            status='BOOKED'
+        )
+    )
 
     # Create initial portal tracking
     portal = models.SalePortalTracking(
@@ -127,28 +123,26 @@ async def create_sale_transaction(
     staff_id = current_user["staff_id"]
 
     # (a) Verify vehicle
-    vehicle = await db.get(master_models.Vehicle, payload.chassis_no)
-    if not vehicle:
+    from app.domains.master.contracts import verify_customer_exists, verify_vehicle_available
+    vehicle_available, current_status = await verify_vehicle_available(db, payload.chassis_no)
+    if not vehicle_available:
+        if current_status:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Vehicle not available for sale (current status: {current_status}).",
+            )
         raise HTTPException(status_code=400, detail="Vehicle not found.")
-    if vehicle.current_status not in ("IN_STOCK", "AVAILABLE"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Vehicle not available for sale (current status: {vehicle.current_status}).",
-        )
 
     # Verify customer exists
-    customer = await db.get(master_models.Customer, payload.customer_id)
-    if not customer:
+    customer_exists = await verify_customer_exists(db, payload.customer_id)
+    if not customer_exists:
         raise HTTPException(status_code=400, detail="Customer not found.")
 
     is_direct = getattr(payload, "is_direct_sale", True) or payload.lead_id is None
 
     # Margin Validation
-    from app.domains.procurement import models as procurement_models
-    stmt = select(procurement_models.VehiclePurchaseDetail).filter_by(chassis_no=payload.chassis_no)
-    result = await db.execute(stmt)
-    purchase_detail = result.scalars().first()
-    cost_price = float(purchase_detail.cost_price) if purchase_detail and purchase_detail.cost_price else 0
+    from app.domains.procurement.contracts import get_vehicle_cost_price
+    cost_price = await get_vehicle_cost_price(db, payload.chassis_no)
     
     if float(payload.total_amount) < cost_price:
         raise HTTPException(status_code=400, detail="Cannot sell below procurement cost")
@@ -173,9 +167,17 @@ async def create_sale_transaction(
     db.add(sale)
     await db.flush()  # get sale_id
 
-    # (c) Mark vehicle SOLD + link customer
-    vehicle.current_status = "SOLD"
-    vehicle.customer_id = payload.customer_id
+    # (c) Mark vehicle SOLD + link customer (via Event Bus)
+    from app.core.event_bus import event_bus, SaleCreatedEvent
+    await event_bus.publish(
+        SaleCreatedEvent(
+            sale_id=sale.sale_id,
+            lead_id=payload.lead_id if not is_direct else None,
+            customer_id=payload.customer_id,
+            chassis_no=payload.chassis_no,
+            status='SOLD'
+        )
+    )
 
     # (d) Generate invoice document
     year = datetime.now().year
@@ -204,18 +206,14 @@ async def create_sale_transaction(
         )
         db.add(payment)
 
-    # (f) Outward stock movement
-    movement = inventory_models.VehicleStockMovement(
-        chassis_no=payload.chassis_no,
-        movement_type="DELIVERED",
-        from_location="SHOWROOM",
-        to_location="CUSTOMER",
-        reference_type="SALE",
-        reference_id=sale.sale_id,
-        movement_datetime=datetime.utcnow(),
-        remarks=f"Sale #{sale.sale_id} — {inv_number}",
+    # (f) Outward stock movement (Asynchronous via Event Bus)
+    await event_bus.publish(
+        VehicleDeliveredEvent(
+            chassis_no=payload.chassis_no,
+            sale_id=sale.sale_id,
+            invoice_no=inv_number
+        )
     )
-    db.add(movement)
 
     # (g) Initialize portal tracking + delivery checklist
     portal = models.SalePortalTracking(sale_id=sale.sale_id)
@@ -233,6 +231,21 @@ async def create_sale_transaction(
         remarks="Sale created with billing",
     )
     db.add(history)
+
+    from app.core.event_bus import SaleTransactionCompletedEvent
+    await event_bus.publish(
+        SaleTransactionCompletedEvent(
+            sale_id=sale.sale_id,
+            staff_id=staff_id,
+            customer_id=payload.customer_id,
+            chassis_no=payload.chassis_no,
+            total_amount=float(payload.total_amount),
+            down_payment_amount=float(payload.down_payment_amount) if payload.down_payment_amount else None,
+            payment_mode=getattr(payload, 'payment_mode', None),
+            financier_name=getattr(payload, 'financier_name', None),
+            remarks=payload.remarks
+        )
+    )
 
     # (h) Commit atomically
     await db.commit()

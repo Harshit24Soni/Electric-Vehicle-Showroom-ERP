@@ -17,8 +17,7 @@ from app.db.mixins import AuditMixin, SoftDeleteMixin
 
 
 class InsuranceCompany(Base, AuditMixin, SoftDeleteMixin):
-    __tablename__ = "insurance_company"
-    __table_args__ = ({"schema": "insurance"},)
+    __tablename__ = "domain_insurance_company"
 
     insurance_company_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     company_name: Mapped[str] = mapped_column(String(150), nullable=False, unique=True)
@@ -32,13 +31,12 @@ class Policy(Base, AuditMixin, SoftDeleteMixin):
     __table_args__ = (
         CheckConstraint("policy_end_date > policy_start_date", name="chk_policy_date_valid"),
         Index("idx_insurance_policy_expiry", "policy_end_date"),
-        {"schema": "insurance"},
     )
 
     policy_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     vehicle_sale_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    chassis_no: Mapped[str] = mapped_column(String(50), ForeignKey("master.vehicle.chassis_no", ondelete="RESTRICT"), nullable=False)
-    insurance_company_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("insurance.insurance_company.insurance_company_id", ondelete="RESTRICT"), nullable=False)
+    chassis_no: Mapped[str] = mapped_column(String(50), ForeignKey("vehicle.chassis_no", ondelete="RESTRICT"), nullable=False)
+    insurance_company_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("domain_insurance_company.insurance_company_id", ondelete="RESTRICT"), nullable=False)
     policy_number: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     policy_start_date: Mapped[datetime] = mapped_column(Date, nullable=False)
     policy_end_date: Mapped[datetime] = mapped_column(Date, nullable=False)

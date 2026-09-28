@@ -15,16 +15,15 @@ from app.db.mixins import AuditMixin, SoftDeleteMixin
 
 class SalesInvoice(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "sales_invoice"
-    __table_args__ = {"schema": "billing"}
 
     invoice_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
     sale_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("sales.sale.sale_id", ondelete="RESTRICT"),
         nullable=False,
         unique=True,
-    )
+        index=True
+    ) # Soft link to sales module
 
     invoice_number: Mapped[str] = mapped_column(
         String(50), nullable=False, unique=True
@@ -62,7 +61,6 @@ class SalesInvoice(Base, AuditMixin, SoftDeleteMixin):
 
 class VehicleSubsidy(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "vehicle_subsidy"
-    __table_args__ = {"schema": "billing"}
 
     subsidy_id: Mapped[int] = mapped_column(
         BigInteger, primary_key=True
@@ -70,7 +68,7 @@ class VehicleSubsidy(Base, AuditMixin, SoftDeleteMixin):
 
     invoice_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("billing.sales_invoice.invoice_id", ondelete="CASCADE"),
+        ForeignKey("sales_invoice.invoice_id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
     )

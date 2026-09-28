@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app.db.session import get_db
-from app.domains.sales import services, schemas, models
+from app.modules.sales import services, schemas, models
 from app.auth.dependencies import get_current_staff
 
 router = APIRouter(prefix="/sales", tags=["sales"])

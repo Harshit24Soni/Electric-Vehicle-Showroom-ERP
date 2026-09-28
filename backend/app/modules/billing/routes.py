@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
 from app.auth.roles import require_roles
-from app.domains.billing.schemas import InvoiceCreate, InvoiceUpdate, InvoiceResponse
-from app.domains.billing import services
+from app.modules.billing.schemas import InvoiceCreate, InvoiceUpdate, InvoiceResponse
+from app.modules.billing import services
 
 router = APIRouter(
     prefix="/billing",
