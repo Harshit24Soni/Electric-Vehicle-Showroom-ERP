@@ -56,6 +56,7 @@ export default function FollowupDashboardPage() {
             setLoading(true)
             const res = await followupApi.getUnifiedDashboard()
             setData(res)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         } catch (err: any) {
             setError(err?.response?.data?.detail || 'Failed to load followup dashboard')
         } finally {

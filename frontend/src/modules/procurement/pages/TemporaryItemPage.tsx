@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { procurementApi, TemporaryItemCreate } from '../api/procurementApi'
 import { useAuthStore } from '../../../store/authStore'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { Plus, Check, Loader } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 
@@ -26,6 +27,7 @@ export default function TemporaryItemPage() {
             queryClient.invalidateQueries({ queryKey: ["temporary-items"] })
             alert('Temporary item requested.')
         },
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (err) => alert('Failed to create item')
     })
 
@@ -61,27 +63,19 @@ export default function TemporaryItemPage() {
                     <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="label">Part Code</label>
-                            <input {...register('part_code')} className="input" required />
+                            <input {...register('initial_code')} className="input" required />
                         </div>
                         <div>
-                            <label className="label">Description</label>
-                            <input {...register('description')} className="input" required />
+                            <label className="label">Description / Name</label>
+                            <input {...register('spare_name')} className="input" required />
                         </div>
                         <div>
                             <label className="label">Category</label>
                             <input {...register('category')} className="input" />
                         </div>
                         <div>
-                            <label className="label">Landing Price</label>
-                            <input type="number" step="0.01" {...register('dealer_landing_price')} className="input" />
-                        </div>
-                        <div>
-                            <label className="label">Margin %</label>
-                            <input type="number" step="0.01" {...register('dealer_margin_percent')} className="input" />
-                        </div>
-                        <div>
-                            <label className="label">GST %</label>
-                            <input type="number" step="0.01" {...register('gst_percentage')} className="input" />
+                            <label className="label">Estimated Price</label>
+                            <input type="number" step="0.01" {...register('price', { valueAsNumber: true })} className="input" />
                         </div>
                         <div className="md:col-span-2">
                             <label className="label">Remarks</label>
@@ -116,6 +110,7 @@ export default function TemporaryItemPage() {
                                 </tr>
                             </thead>
                             <tbody>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                 {items.map((item: any) => (
                                     <tr key={item.spare_id}>
                                         <td>{item.spare_code}</td>

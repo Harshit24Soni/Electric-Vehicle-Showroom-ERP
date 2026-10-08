@@ -55,6 +55,7 @@ export default function TempPinModal({ pin, staffName, onClose }: TempPinModalPr
                         toast.success('PIN copied to clipboard automatically')
                         setTimeout(() => setCopied(false), 2000)
                     }
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
                 } catch (err) {
                     // Silently fail auto-copy on non-secure contexts to avoid annoying errors
                     console.warn('Auto-copy not available in this context')

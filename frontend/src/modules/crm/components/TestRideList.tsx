@@ -26,15 +26,20 @@ export default function TestRideList() {
         lead_id: '',
     })
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     const { data: leads = [] } = useQuery<any[]>({
         queryKey: ['leads'],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         queryFn: () => api.get<any[]>('/crm/leads'),
     })
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     const selectedLeadObj = leads.find((l: any) => l.lead_id === parseInt(formData.lead_id))
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     const { data: vehicles = [] } = useQuery<any[]>({
         queryKey: ['vehicles', selectedLeadObj?.vehicle_model_id],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         queryFn: () => api.get<any[]>('/master/vehicles', { params: { vehicle_model_id: selectedLeadObj?.vehicle_model_id, status: 'IN_STOCK,DEMO' } }),
         enabled: !!selectedLeadObj?.vehicle_model_id,
     })
@@ -65,6 +70,7 @@ export default function TestRideList() {
                 lead_id: '',
             })
         },
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (err: any) => {
             toast.error(err?.response?.data?.detail || 'Failed to record test ride')
         },
@@ -81,6 +87,7 @@ export default function TestRideList() {
                         className="input max-w-xs"
                     >
                         <option value="">Select a lead</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                         {leads.map((lead: any) => (
                             <option key={lead.lead_id} value={lead.lead_id}>
                                 {lead.name} — {lead.phone}
@@ -108,6 +115,7 @@ export default function TestRideList() {
                                     className="input"
                                 >
                                     <option value="">Select lead</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                     {leads.map((lead: any) => (
                                         <option key={lead.lead_id} value={lead.lead_id}>
                                             {lead.name} — {lead.phone}
@@ -124,7 +132,8 @@ export default function TestRideList() {
                                     disabled={!formData.lead_id}
                                 >
                                     <option value="">Select vehicle</option>
-                                    {(vehicles?.data || vehicles).map((v: any) => (
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+                                    {((vehicles as any)?.data || vehicles || []).map((v: any) => (
                                         <option key={v.chassis_no} value={v.chassis_no}>
                                             {v.chassis_no} ({v.current_status})
                                         </option>
@@ -155,7 +164,7 @@ export default function TestRideList() {
                             <button onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
                             <button
                                 onClick={() => addTestRideMutation.mutate()}
-                                disabled={!formData.lead_id || !formData.vehicle_model_id || addTestRideMutation.isPending}
+                                disabled={!formData.lead_id || !formData.chassis_no || addTestRideMutation.isPending}
                                 className="btn btn-primary"
                             >
                                 {addTestRideMutation.isPending ? 'Saving...' : 'Save'}

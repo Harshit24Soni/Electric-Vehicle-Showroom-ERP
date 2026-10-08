@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { warrantyApi, ClaimCreate } from '../api/warrantyApi'
 import { Plus, Search, Trash2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
@@ -10,6 +11,7 @@ export default function WarrantyPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const queryClient = useQueryClient()
 
@@ -18,6 +20,7 @@ export default function WarrantyPage() {
     queryFn: () => warrantyApi.getClaims(0, 100),
   })
   const createMutation = useMutation({
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     mutationFn: (data: any) => warrantyApi.swapComponent(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warranty-claims'] })

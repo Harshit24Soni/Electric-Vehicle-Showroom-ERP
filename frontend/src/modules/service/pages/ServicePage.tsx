@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { serviceApi, JobCardCreate } from '../api/serviceApi'
-import { Plus, Search, CheckCircle, Wrench, Trash2 } from 'lucide-react'
+import { Plus, Search, CheckCircle, Wrench, Trash2, ArrowRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import JobCardForm from '../components/JobCardForm'
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
@@ -12,6 +13,7 @@ export default function ServicePage() {
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   const { data: jobCards = [], isLoading } = useQuery({
     queryKey: ['job-cards'],
@@ -49,18 +51,19 @@ export default function ServicePage() {
   }
 
   // Status counts
-  const openCount = jobCards.filter((j: any) => !j.out_datetime).length
-  const closedCount = jobCards.filter((j: any) => j.out_datetime).length
+  const openCount = jobCards.filter((j: any) => !(j.closed_at || j.out_datetime)).length
+  const closedCount = jobCards.filter((j: any) => (j.closed_at || j.out_datetime)).length
 
   const filteredJobCards = jobCards.filter((job: any) => {
+    const jobNo = job.job_card_no || `JC-${String(job.job_card_id).padStart(4, '0')}`;
     const matchesSearch =
-      job.job_card_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      jobNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.chassis_no?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus =
       statusFilter === 'all' ||
-      (statusFilter === 'open' && !job.out_datetime) ||
-      (statusFilter === 'closed' && job.out_datetime)
+      (statusFilter === 'open' && !(job.closed_at || job.out_datetime)) ||
+      (statusFilter === 'closed' && (job.closed_at || job.out_datetime))
 
     return matchesSearch && matchesStatus
   })
@@ -153,22 +156,29 @@ export default function ServicePage() {
               <tbody>
                 {filteredJobCards.map((job: any) => (
                   <tr key={job.job_card_id}>
-                    <td className="font-medium">{job.job_card_no}</td>
+                    <td className="font-medium">{job.job_card_no || `JC-${String(job.job_card_id).padStart(4, '0')}`}</td>
                     <td className="font-mono text-sm">{job.chassis_no}</td>
-                    <td>{formatDateTime(job.in_datetime)}</td>
-                    <td>{job.out_datetime ? formatDateTime(job.out_datetime) : '-'}</td>
-                    <td>{job.opening_km}</td>
+                    <td>{(job.opened_at || job.in_datetime) ? formatDateTime(job.opened_at || job.in_datetime) : '-'}</td>
+                    <td>{job.closed_at || job.out_datetime ? formatDateTime(job.closed_at || job.out_datetime) : '-'}</td>
+                    <td>{job.opening_km || '-'}</td>
                     <td>
-                      <span className={`px-2 py-1 text-xs rounded-full ${job.out_datetime
+                      <span className={`px-2 py-1 text-xs rounded-full ${job.closed_at || job.out_datetime
                         ? 'bg-green-100 text-green-800'
                         : 'bg-yellow-100 text-yellow-800'
                         }`}>
-                        {job.out_datetime ? 'Closed' : 'Open'}
+                        {job.closed_at || job.out_datetime ? 'Closed' : 'Open'}
                       </span>
                     </td>
                     <td>
                       <div className="flex items-center gap-1">
-                        {!job.out_datetime && (
+                        <button
+                          onClick={() => navigate(`/service/${job.job_card_id}`)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                          title="View Details"
+                        >
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                        {!(job.closed_at || job.out_datetime) && (
                           <button
                             onClick={() => handleClose(job.job_card_id)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded"

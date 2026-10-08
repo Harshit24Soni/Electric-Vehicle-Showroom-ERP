@@ -21,13 +21,20 @@ export interface SparePurchaseCreate {
 
 export interface SparePurchaseItemResponse {
     purchase_item_id: number
-    spare_id: number
+    spare_id?: number
     spare_name?: string
     spare_code?: string
+    part_code?: string
+    part_description?: string
     quantity: number
     unit_cost: number
-    gst_percentage: number
-    total_cost: number
+    discount?: number
+    tax_amount?: number
+    gst_percentage?: number
+    total_cost?: number
+    verification_status?: string
+    confidence_score?: string
+    variance_amount?: number
 }
 
 export interface SparePurchaseResponse {
@@ -38,6 +45,14 @@ export interface SparePurchaseResponse {
     vendor_invoice_date?: string
     purchase_date: string
     remarks?: string
+    status?: string
+    docket_reference?: string
+    subtotal?: number
+    tax_total?: number
+    additional_charges?: number
+    landed_cost_total?: number
+    invoice_document_id?: string
+    verification_status?: string
     is_deleted: boolean
     created_at: string
     items: SparePurchaseItemResponse[]
@@ -65,7 +80,7 @@ export interface VehiclePurchaseResponse {
 
 export interface TemporaryItemCreate {
     spare_name: string
-    spare_code: string
+    initial_code: string
     category?: string
     remarks?: string
     price?: number
@@ -108,6 +123,28 @@ export const procurementApi = {
 
     getSparePurchases: async () => {
         return api.get<SparePurchaseResponse[]>('/procurement/purchases/spares')
+    },
+
+    getSparePurchase: async (id: number) => {
+        return api.get<SparePurchaseResponse>(`/procurement/purchases/spares/${id}`)
+    },
+
+    uploadOcrInvoice: async (formData: FormData) => {
+        return api.post<SparePurchaseResponse>('/procurement/purchases/spares/ocr', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+    },
+
+    verifySparePurchase: async (id: number, data: any) => {
+        return api.put<SparePurchaseResponse>(`/procurement/purchases/spares/${id}/verify`, data)
+    },
+
+    approveSparePurchase: async (id: number) => {
+        return api.post<SparePurchaseResponse>(`/procurement/purchases/spares/${id}/approve`)
+    },
+
+    postSparePurchaseToInventory: async (id: number, data: any) => {
+        return api.post<SparePurchaseResponse>(`/procurement/purchases/spares/${id}/post`, data)
     },
 
     getVehiclePurchases: async () => {

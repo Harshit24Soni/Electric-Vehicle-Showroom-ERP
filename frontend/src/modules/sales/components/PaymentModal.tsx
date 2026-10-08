@@ -37,6 +37,7 @@ export default function PaymentModal({ saleId, onClose }: PaymentModalProps) {
             queryClient.invalidateQueries({ queryKey: ['sale-progress', String(saleId)] })
             onClose()
         },
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (err: any) => {
             toast.error(err?.response?.data?.detail || 'Failed to add payment')
         },

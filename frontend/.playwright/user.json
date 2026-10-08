@@ -1,0 +1,14 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://127.0.0.1:3000",
+      "localStorage": [
+        {
+          "name": "auth-storage",
+          "value": "{\"state\":{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdGFmZl9pZCI6MSwiZGVzaWduYXRpb24iOiJBRE1JTiIsImZvcmNlX3Bpbl9jaGFuZ2UiOmZhbHNlLCJleHAiOjE3OTE0NjUwMjN9.AM4lLrOeYjFMxqmdWN1HkKgWWc7QA0RnfbzUKWNq64E\",\"user\":{\"staff_id\":1,\"name\":\"ADMIN\",\"designation\":\"ADMIN\",\"role\":\"ADMIN\",\"force_pin_change\":false},\"isAuthenticated\":true},\"version\":0}"
+        }
+      ]
+    }
+  ]
+}

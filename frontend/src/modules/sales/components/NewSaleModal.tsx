@@ -37,6 +37,7 @@ export default function NewSaleModal({ onClose }: NewSaleModalProps) {
 
     // Filter vehicles to only AVAILABLE / IN_STOCK
     const availableVehicles = useMemo(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         () => allVehicles.filter((v: any) => v.current_status === 'IN_STOCK' || v.current_status === 'AVAILABLE'),
         [allVehicles]
     )
@@ -66,6 +67,7 @@ export default function NewSaleModal({ onClose }: NewSaleModalProps) {
             queryClient.invalidateQueries({ queryKey: ['customers'] })
             onClose()
         },
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (err: any) => {
             setError(err?.response?.data?.detail || 'Failed to create sale.')
         },
@@ -132,6 +134,7 @@ export default function NewSaleModal({ onClose }: NewSaleModalProps) {
                                     className="input"
                                 >
                                     <option value="">Select customer</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                     {customers.map((c: any) => (
                                         <option key={c.customer_id} value={c.customer_id}>
                                             {c.name} — {c.primary_phone}
@@ -150,6 +153,7 @@ export default function NewSaleModal({ onClose }: NewSaleModalProps) {
                                     className="input"
                                 >
                                     <option value="">Select vehicle</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                     {availableVehicles.map((v: any) => (
                                         <option key={v.chassis_no} value={v.chassis_no}>
                                             {v.model?.model_name || 'Vehicle'} — {v.chassis_no} ({v.color || 'N/A'})

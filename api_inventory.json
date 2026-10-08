@@ -1,0 +1,1364 @@
+[
+  {
+    "path": "/openapi.json",
+    "method": "GET",
+    "name": "openapi",
+    "module": "fastapi.applications"
+  },
+  {
+    "path": "/docs",
+    "method": "GET",
+    "name": "swagger_ui_html",
+    "module": "fastapi.applications"
+  },
+  {
+    "path": "/docs/oauth2-redirect",
+    "method": "GET",
+    "name": "swagger_ui_redirect",
+    "module": "fastapi.applications"
+  },
+  {
+    "path": "/redoc",
+    "method": "GET",
+    "name": "redoc_html",
+    "module": "fastapi.applications"
+  },
+  {
+    "path": "/health",
+    "method": "GET",
+    "name": "health_check",
+    "module": "app.main"
+  },
+  {
+    "path": "/auth/login-pin",
+    "method": "POST",
+    "name": "login_with_pin",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/forgot-pin",
+    "method": "POST",
+    "name": "forgot_pin",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/change-pin",
+    "method": "POST",
+    "name": "change_pin",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/reset-pin",
+    "method": "POST",
+    "name": "reset_staff_pin",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/totp/setup",
+    "method": "POST",
+    "name": "setup_totp",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/totp/verify",
+    "method": "POST",
+    "name": "verify_totp",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/send-otp",
+    "method": "POST",
+    "name": "send_otp",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/reset-pin/dealer",
+    "method": "POST",
+    "name": "reset_dealer_pin",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/pin/request-reset",
+    "method": "POST",
+    "name": "request_pin_reset",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/pin/reset-requests",
+    "method": "GET",
+    "name": "get_reset_requests",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/pin/approve-reset/{request_id}",
+    "method": "POST",
+    "name": "approve_pin_reset",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/pin/deny-reset/{request_id}",
+    "method": "POST",
+    "name": "deny_pin_reset",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/auth/pin/reset-self",
+    "method": "POST",
+    "name": "reset_pin_self",
+    "module": "app.auth.routes"
+  },
+  {
+    "path": "/admin/staff",
+    "method": "POST",
+    "name": "create_staff",
+    "module": "app.domains.admin.routes"
+  },
+  {
+    "path": "/admin/staff",
+    "method": "GET",
+    "name": "list_staff",
+    "module": "app.domains.admin.routes"
+  },
+  {
+    "path": "/admin/staff/{staff_id}",
+    "method": "GET",
+    "name": "get_staff",
+    "module": "app.domains.admin.routes"
+  },
+  {
+    "path": "/admin/staff/{staff_id}",
+    "method": "PUT",
+    "name": "update_staff",
+    "module": "app.domains.admin.routes"
+  },
+  {
+    "path": "/admin/staff/{staff_id}",
+    "method": "DELETE",
+    "name": "delete_staff",
+    "module": "app.domains.admin.routes"
+  },
+  {
+    "path": "/admin/staff/{staff_id}/restore",
+    "method": "POST",
+    "name": "restore_staff",
+    "module": "app.domains.admin.routes"
+  },
+  {
+    "path": "/staff/me",
+    "method": "GET",
+    "name": "get_my_profile",
+    "module": "app.domains.staff.routes"
+  },
+  {
+    "path": "/staff/me",
+    "method": "PUT",
+    "name": "update_my_profile",
+    "module": "app.domains.staff.routes"
+  },
+  {
+    "path": "/inventory/spares",
+    "method": "GET",
+    "name": "list_spares",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares",
+    "method": "POST",
+    "name": "create_spare",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}",
+    "method": "GET",
+    "name": "get_spare",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}",
+    "method": "PATCH",
+    "name": "update_spare",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}",
+    "method": "DELETE",
+    "name": "deactivate_spare",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}/codes",
+    "method": "POST",
+    "name": "add_part_code",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}/codes/{code_id}",
+    "method": "DELETE",
+    "name": "retire_part_code",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}/compatibilities",
+    "method": "POST",
+    "name": "add_compatibility",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}/compatibilities/{compatibility_id}",
+    "method": "DELETE",
+    "name": "remove_compatibility",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/vehicle/movement",
+    "method": "POST",
+    "name": "create_vehicle_movement",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/vehicle/{chassis_no}/availability",
+    "method": "GET",
+    "name": "check_vehicle_availability",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spare/movement",
+    "method": "POST",
+    "name": "create_spare_movement",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spare/{spare_id}/stock",
+    "method": "GET",
+    "name": "get_spare_stock",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/dashboard/stats",
+    "method": "GET",
+    "name": "get_inventory_dashboard",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/stock/locations",
+    "method": "GET",
+    "name": "get_stock_by_location",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/stock",
+    "method": "GET",
+    "name": "list_stock",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/batches",
+    "method": "GET",
+    "name": "list_batches",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/serials",
+    "method": "GET",
+    "name": "list_serials",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/movements",
+    "method": "GET",
+    "name": "list_movements",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/pricing/price-lists",
+    "method": "POST",
+    "name": "create_price_list_api",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/pricing/price-lists",
+    "method": "GET",
+    "name": "list_price_lists_api",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/pricing/price-lists/{price_list_id}/versions",
+    "method": "POST",
+    "name": "add_price_list_version_api",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}/selling-price",
+    "method": "POST",
+    "name": "add_spare_selling_price_api",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}/pricing",
+    "method": "GET",
+    "name": "get_spare_pricing_summary",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}/price-history",
+    "method": "GET",
+    "name": "get_spare_price_history_api",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}/cost-history",
+    "method": "GET",
+    "name": "get_spare_cost_history_api",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/spares/{spare_id}/selling-price-history",
+    "method": "GET",
+    "name": "get_spare_selling_price_history_api",
+    "module": "app.domains.inventory.routes"
+  },
+  {
+    "path": "/inventory/tags/bulk",
+    "method": "POST",
+    "name": "create_tags",
+    "module": "app.domains.inventory.routes_tags"
+  },
+  {
+    "path": "/inventory/tags",
+    "method": "GET",
+    "name": "list_tags",
+    "module": "app.domains.inventory.routes_tags"
+  },
+  {
+    "path": "/inventory/tags/scan/{identifier}",
+    "method": "GET",
+    "name": "scan_tag",
+    "module": "app.domains.inventory.routes_tags"
+  },
+  {
+    "path": "/inventory/tags/{tag_id}/reprint",
+    "method": "POST",
+    "name": "reprint_tag",
+    "module": "app.domains.inventory.routes_tags"
+  },
+  {
+    "path": "/inventory/tags/{tag_id}/revoke",
+    "method": "PUT",
+    "name": "revoke_tag",
+    "module": "app.domains.inventory.routes_tags"
+  },
+  {
+    "path": "/inventory/tags/{tag_id}/qr",
+    "method": "GET",
+    "name": "get_tag_qr",
+    "module": "app.domains.inventory.routes_tags"
+  },
+  {
+    "path": "/billing/invoice",
+    "method": "POST",
+    "name": "create_invoice",
+    "module": "app.modules.billing.routes"
+  },
+  {
+    "path": "/billing/invoices",
+    "method": "GET",
+    "name": "list_invoices",
+    "module": "app.modules.billing.routes"
+  },
+  {
+    "path": "/billing/invoice/{invoice_id}",
+    "method": "PUT",
+    "name": "update_invoice",
+    "module": "app.modules.billing.routes"
+  },
+  {
+    "path": "/billing/invoice/{invoice_id}/finalize",
+    "method": "POST",
+    "name": "finalize_invoice_api",
+    "module": "app.modules.billing.routes"
+  },
+  {
+    "path": "/billing/invoice/{invoice_id}",
+    "method": "DELETE",
+    "name": "delete_invoice",
+    "module": "app.modules.billing.routes"
+  },
+  {
+    "path": "/finance/",
+    "method": "POST",
+    "name": "create_finance_api",
+    "module": "app.modules.finance.routes"
+  },
+  {
+    "path": "/finance/",
+    "method": "GET",
+    "name": "list_finances",
+    "module": "app.modules.finance.routes"
+  },
+  {
+    "path": "/finance/{finance_id}/status",
+    "method": "PUT",
+    "name": "update_finance_status_api",
+    "module": "app.modules.finance.routes"
+  },
+  {
+    "path": "/finance/{finance_id}",
+    "method": "DELETE",
+    "name": "delete_finance",
+    "module": "app.modules.finance.routes"
+  },
+  {
+    "path": "/master/customers",
+    "method": "POST",
+    "name": "create_customer",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/customers",
+    "method": "GET",
+    "name": "list_customers",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/customers/{customer_id}",
+    "method": "GET",
+    "name": "get_customer_detailed",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/customers/{customer_id}",
+    "method": "PUT",
+    "name": "update_customer",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/customers/{customer_id}",
+    "method": "DELETE",
+    "name": "delete_customer",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/customers/{customer_id}/nominees",
+    "method": "POST",
+    "name": "create_nominee",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/customers/{customer_id}/nominees",
+    "method": "GET",
+    "name": "list_nominees",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/customers/{customer_id}/nominees/{nominee_id}",
+    "method": "GET",
+    "name": "get_nominee",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/customers/{customer_id}/nominees/{nominee_id}",
+    "method": "PUT",
+    "name": "update_nominee",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/customers/{customer_id}/nominees/{nominee_id}",
+    "method": "DELETE",
+    "name": "delete_nominee",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vehicle-models",
+    "method": "POST",
+    "name": "create_vehicle_model",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vehicle-models",
+    "method": "GET",
+    "name": "list_vehicle_models",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vehicle-models/{vehicle_model_id}",
+    "method": "GET",
+    "name": "get_vehicle_model",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vehicle-models/{vehicle_model_id}",
+    "method": "PUT",
+    "name": "update_vehicle_model",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vehicle-models/{vehicle_model_id}",
+    "method": "DELETE",
+    "name": "delete_vehicle_model",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vehicle-models/{vehicle_model_id}/restore",
+    "method": "POST",
+    "name": "restore_vehicle_model",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vehicles",
+    "method": "POST",
+    "name": "create_vehicle",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vehicles",
+    "method": "GET",
+    "name": "list_vehicles",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vehicles/{chassis_no}",
+    "method": "GET",
+    "name": "get_vehicle",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vehicles/{chassis_no}",
+    "method": "DELETE",
+    "name": "delete_vehicle",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vendors",
+    "method": "POST",
+    "name": "create_vendor",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vendors",
+    "method": "GET",
+    "name": "list_vendors",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vendors/{vendor_id}",
+    "method": "GET",
+    "name": "get_vendor",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vendors/{vendor_id}",
+    "method": "PUT",
+    "name": "update_vendor",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vendors/{vendor_id}",
+    "method": "DELETE",
+    "name": "delete_vendor",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/vendors/{vendor_id}/restore",
+    "method": "POST",
+    "name": "restore_vendor",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/pricing/spares/{spare_id}",
+    "method": "POST",
+    "name": "update_spare_price",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/pricing/spares/{spare_id}/history",
+    "method": "GET",
+    "name": "get_spare_price_history",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/pricing/vehicles/{vehicle_model_id}",
+    "method": "POST",
+    "name": "update_vehicle_price",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/master/pricing/vehicles/{vehicle_model_id}/history",
+    "method": "GET",
+    "name": "get_vehicle_price_history",
+    "module": "app.domains.master.routes"
+  },
+  {
+    "path": "/reports/sales-register",
+    "method": "GET",
+    "name": "export_sales_register",
+    "module": "app.domains.reports.routes"
+  },
+  {
+    "path": "/reports/sales-summary",
+    "method": "GET",
+    "name": "get_sales_summary",
+    "module": "app.domains.reports.routes"
+  },
+  {
+    "path": "/reports/finance-register",
+    "method": "GET",
+    "name": "export_finance_register",
+    "module": "app.domains.reports.routes"
+  },
+  {
+    "path": "/reports/dashboard-stats",
+    "method": "GET",
+    "name": "get_dashboard_stats",
+    "module": "app.domains.reports.routes"
+  },
+  {
+    "path": "/reports/alerts",
+    "method": "GET",
+    "name": "get_dashboard_alerts",
+    "module": "app.domains.reports.routes"
+  },
+  {
+    "path": "/sales/",
+    "method": "POST",
+    "name": "create_sale",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/billing",
+    "method": "POST",
+    "name": "create_sale_billing",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/",
+    "method": "GET",
+    "name": "list_sales",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}",
+    "method": "GET",
+    "name": "get_sale",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}",
+    "method": "DELETE",
+    "name": "delete_sale",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/receipts",
+    "method": "POST",
+    "name": "add_receipt",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/invoice",
+    "method": "POST",
+    "name": "generate_invoice",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/challan",
+    "method": "POST",
+    "name": "generate_challan",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/service-schedule",
+    "method": "POST",
+    "name": "generate_service_schedule",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/delivery-status",
+    "method": "GET",
+    "name": "get_delivery_status",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/deliver",
+    "method": "POST",
+    "name": "deliver_vehicle",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/checklist",
+    "method": "PATCH",
+    "name": "update_checklist",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/stage",
+    "method": "POST",
+    "name": "advance_sale_stage",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/payments",
+    "method": "POST",
+    "name": "add_sale_payment",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/documents",
+    "method": "POST",
+    "name": "generate_sale_document",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/portal",
+    "method": "GET",
+    "name": "get_portal_tracking",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/portal",
+    "method": "PATCH",
+    "name": "update_portal_tracking",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/{sale_id}/progress",
+    "method": "GET",
+    "name": "get_sale_progress",
+    "module": "app.modules.sales.routes"
+  },
+  {
+    "path": "/sales/spares/",
+    "method": "GET",
+    "name": "list_spare_sales",
+    "module": "app.modules.sales.routes_spare"
+  },
+  {
+    "path": "/sales/spares/",
+    "method": "POST",
+    "name": "create_spare_sale",
+    "module": "app.modules.sales.routes_spare"
+  },
+  {
+    "path": "/sales/spares/{sale_id}",
+    "method": "GET",
+    "name": "get_spare_sale",
+    "module": "app.modules.sales.routes_spare"
+  },
+  {
+    "path": "/sales/spares/{sale_id}/confirm",
+    "method": "POST",
+    "name": "confirm_spare_sale",
+    "module": "app.modules.sales.routes_spare"
+  },
+  {
+    "path": "/sales/spares/{sale_id}/cancel",
+    "method": "POST",
+    "name": "cancel_spare_sale",
+    "module": "app.modules.sales.routes_spare"
+  },
+  {
+    "path": "/service/job-card",
+    "method": "POST",
+    "name": "open_job",
+    "module": "app.domains.service.routes"
+  },
+  {
+    "path": "/service/job-cards/{job_card_id}",
+    "method": "GET",
+    "name": "get_job_card_api",
+    "module": "app.domains.service.routes"
+  },
+  {
+    "path": "/service/job-cards/{job_card_id}/spares",
+    "method": "GET",
+    "name": "list_job_card_spares",
+    "module": "app.domains.service.routes"
+  },
+  {
+    "path": "/service/job-cards/{job_card_id}/spares",
+    "method": "POST",
+    "name": "draft_spare_consumption",
+    "module": "app.domains.service.routes"
+  },
+  {
+    "path": "/service/job-cards/{job_card_id}/spares/{consumption_id}/consume",
+    "method": "POST",
+    "name": "confirm_spare_consumption",
+    "module": "app.domains.service.routes"
+  },
+  {
+    "path": "/service/job-cards/{job_card_id}/spares/{consumption_id}/reverse",
+    "method": "POST",
+    "name": "reverse_spare_consumption",
+    "module": "app.domains.service.routes"
+  },
+  {
+    "path": "/service/job-cards/{job_card_id}/spares/{consumption_id}",
+    "method": "DELETE",
+    "name": "remove_draft_spare",
+    "module": "app.domains.service.routes"
+  },
+  {
+    "path": "/service/job-card/{job_card_id}/close",
+    "method": "POST",
+    "name": "close_job_card_api",
+    "module": "app.domains.service.routes"
+  },
+  {
+    "path": "/service/job-cards",
+    "method": "GET",
+    "name": "list_job_cards",
+    "module": "app.domains.service.routes"
+  },
+  {
+    "path": "/service/job-card/{job_card_id}",
+    "method": "DELETE",
+    "name": "delete_job_card",
+    "module": "app.domains.service.routes"
+  },
+  {
+    "path": "/crm/master/lead-statuses",
+    "method": "GET",
+    "name": "get_lead_statuses",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/master/enquiry-statuses",
+    "method": "GET",
+    "name": "get_enquiry_statuses",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads",
+    "method": "POST",
+    "name": "create_lead",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads",
+    "method": "GET",
+    "name": "list_leads",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads/{lead_id}",
+    "method": "GET",
+    "name": "get_lead",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads/{lead_id}",
+    "method": "PUT",
+    "name": "update_lead",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads/{lead_id}",
+    "method": "DELETE",
+    "name": "delete_lead",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads/{lead_id}/convert",
+    "method": "POST",
+    "name": "convert_lead_to_customer",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads/{lead_id}/activities",
+    "method": "GET",
+    "name": "get_lead_activities",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads/{lead_id}/assign",
+    "method": "POST",
+    "name": "assign_lead",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/enquiries",
+    "method": "POST",
+    "name": "create_enquiry",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/enquiries",
+    "method": "GET",
+    "name": "list_enquiries",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/enquiries/{enquiry_id}",
+    "method": "GET",
+    "name": "get_enquiry",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/enquiries/{enquiry_id}",
+    "method": "PUT",
+    "name": "update_enquiry",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/enquiries/{enquiry_id}",
+    "method": "DELETE",
+    "name": "delete_enquiry",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/enquiries/stats/summary",
+    "method": "GET",
+    "name": "get_enquiry_stats",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/followups",
+    "method": "POST",
+    "name": "create_followup",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/followups/{followup_id}",
+    "method": "PUT",
+    "name": "update_followup",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/followups/pending",
+    "method": "GET",
+    "name": "pending_followups",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/followups/{followup_id}",
+    "method": "DELETE",
+    "name": "delete_followup",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/followups/dashboard",
+    "method": "GET",
+    "name": "get_followup_dashboard",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/activities",
+    "method": "POST",
+    "name": "add_activity",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads/{lead_id}/followups",
+    "method": "POST",
+    "name": "add_lead_followup",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads/{lead_id}/followups",
+    "method": "GET",
+    "name": "get_lead_followups",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads/dashboard/followups",
+    "method": "GET",
+    "name": "get_lead_followup_dashboard",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/crm/leads/{lead_id}/test-rides",
+    "method": "POST",
+    "name": "add_test_ride",
+    "module": "app.domains.crm.routes"
+  },
+  {
+    "path": "/insurance/companies",
+    "method": "POST",
+    "name": "create_company",
+    "module": "app.domains.insurance.routes"
+  },
+  {
+    "path": "/insurance/companies",
+    "method": "GET",
+    "name": "list_companies",
+    "module": "app.domains.insurance.routes"
+  },
+  {
+    "path": "/insurance/companies/{company_id}",
+    "method": "DELETE",
+    "name": "delete_company",
+    "module": "app.domains.insurance.routes"
+  },
+  {
+    "path": "/insurance/policies",
+    "method": "POST",
+    "name": "create_policy",
+    "module": "app.domains.insurance.routes"
+  },
+  {
+    "path": "/insurance/policies",
+    "method": "GET",
+    "name": "list_policies",
+    "module": "app.domains.insurance.routes"
+  },
+  {
+    "path": "/insurance/policies/{policy_id}",
+    "method": "DELETE",
+    "name": "delete_policy",
+    "module": "app.domains.insurance.routes"
+  },
+  {
+    "path": "/warranty/claims",
+    "method": "POST",
+    "name": "raise_claim",
+    "module": "app.domains.warranty.routes"
+  },
+  {
+    "path": "/warranty/swap-component",
+    "method": "POST",
+    "name": "swap_vehicle_component_api",
+    "module": "app.domains.warranty.routes"
+  },
+  {
+    "path": "/warranty/claims",
+    "method": "GET",
+    "name": "list_claims",
+    "module": "app.domains.warranty.routes"
+  },
+  {
+    "path": "/warranty/claims/{claim_id}",
+    "method": "DELETE",
+    "name": "delete_claim",
+    "module": "app.domains.warranty.routes"
+  },
+  {
+    "path": "/warranty/inwards",
+    "method": "POST",
+    "name": "create_inward",
+    "module": "app.domains.warranty.routes"
+  },
+  {
+    "path": "/warranty/shipments",
+    "method": "POST",
+    "name": "create_shipment",
+    "module": "app.domains.warranty.routes"
+  },
+  {
+    "path": "/procurement/purchases/spares",
+    "method": "POST",
+    "name": "create_spare_purchase",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/purchases/spares/ocr",
+    "method": "POST",
+    "name": "ocr_upload_invoice",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/purchases/spares/{spare_purchase_id}/verify",
+    "method": "PUT",
+    "name": "verify_spare_purchase",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/purchases/spares/{spare_purchase_id}/approve",
+    "method": "POST",
+    "name": "approve_spare_purchase",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/purchases/spares/{spare_purchase_id}/post",
+    "method": "POST",
+    "name": "post_spare_purchase",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/purchases/vehicles/intake",
+    "method": "POST",
+    "name": "intake_vehicles",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/purchases/spares",
+    "method": "GET",
+    "name": "list_spare_purchases",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/purchases/spares/{spare_purchase_id}",
+    "method": "GET",
+    "name": "get_spare_purchase",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/purchases/vehicles",
+    "method": "GET",
+    "name": "list_vehicle_purchases",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/purchases/spares/{spare_purchase_id}",
+    "method": "DELETE",
+    "name": "delete_spare_purchase",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/purchases/vehicles/{vehicle_purchase_id}",
+    "method": "DELETE",
+    "name": "delete_vehicle_purchase",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/temporary-items",
+    "method": "POST",
+    "name": "create_temporary_item",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/temporary-items",
+    "method": "GET",
+    "name": "list_temporary_items",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/procurement/temporary-items/{spare_id}/approve",
+    "method": "PUT",
+    "name": "approve_temporary_item",
+    "module": "app.domains.procurement.routes"
+  },
+  {
+    "path": "/followups/dashboard",
+    "method": "GET",
+    "name": "get_unified_followup_dashboard",
+    "module": "app.domains.followup.routes"
+  },
+  {
+    "path": "/setup/brands",
+    "method": "GET",
+    "name": "list_brands",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/brands",
+    "method": "POST",
+    "name": "create_brand",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/brands/{brand_id}",
+    "method": "PUT",
+    "name": "update_brand",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/brands/{brand_id}",
+    "method": "DELETE",
+    "name": "delete_brand",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/brands/{brand_id}/restore",
+    "method": "POST",
+    "name": "restore_brand",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/payment-modes",
+    "method": "GET",
+    "name": "list_payment_modes",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/payment-modes",
+    "method": "POST",
+    "name": "create_payment_mode",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/payment-modes/{payment_mode_id}",
+    "method": "PUT",
+    "name": "update_payment_mode",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/payment-modes/{payment_mode_id}",
+    "method": "DELETE",
+    "name": "delete_payment_mode",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/payment-modes/{payment_mode_id}/restore",
+    "method": "POST",
+    "name": "restore_payment_mode",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/expense-categories",
+    "method": "GET",
+    "name": "list_expense_categories",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/expense-categories",
+    "method": "POST",
+    "name": "create_expense_category",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/expense-categories/{expense_category_id}",
+    "method": "PUT",
+    "name": "update_expense_category",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/expense-categories/{expense_category_id}",
+    "method": "DELETE",
+    "name": "delete_expense_category",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/expense-categories/{expense_category_id}/restore",
+    "method": "POST",
+    "name": "restore_expense_category",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/job-card-categories",
+    "method": "GET",
+    "name": "list_job_card_categories",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/job-card-categories",
+    "method": "POST",
+    "name": "create_job_card_category",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/job-card-categories/{job_card_category_id}",
+    "method": "PUT",
+    "name": "update_job_card_category",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/job-card-categories/{job_card_category_id}",
+    "method": "DELETE",
+    "name": "delete_job_card_category",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/job-card-categories/{job_card_category_id}/restore",
+    "method": "POST",
+    "name": "restore_job_card_category",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/insurance-companies",
+    "method": "GET",
+    "name": "list_insurance_companies",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/insurance-companies",
+    "method": "POST",
+    "name": "create_insurance_company",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/insurance-companies/{insurance_company_id}",
+    "method": "PUT",
+    "name": "update_insurance_company",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/insurance-companies/{insurance_company_id}",
+    "method": "DELETE",
+    "name": "delete_insurance_company",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/insurance-companies/{insurance_company_id}/restore",
+    "method": "POST",
+    "name": "restore_insurance_company",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/banks",
+    "method": "GET",
+    "name": "list_banks",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/banks",
+    "method": "POST",
+    "name": "create_bank",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/banks/{bank_id}",
+    "method": "PUT",
+    "name": "update_bank",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/banks/{bank_id}",
+    "method": "DELETE",
+    "name": "delete_bank",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/banks/{bank_id}/restore",
+    "method": "POST",
+    "name": "restore_bank",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/document-types",
+    "method": "GET",
+    "name": "list_document_types",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/document-types",
+    "method": "POST",
+    "name": "create_document_type",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/document-types/{document_type_id}",
+    "method": "PUT",
+    "name": "update_document_type",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/document-types/{document_type_id}",
+    "method": "DELETE",
+    "name": "delete_document_type",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/document-types/{document_type_id}/restore",
+    "method": "POST",
+    "name": "restore_document_type",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/staff-summary",
+    "method": "GET",
+    "name": "get_staff_summary",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/showroom-config",
+    "method": "GET",
+    "name": "get_showroom_config",
+    "module": "app.domains.setup.routes"
+  },
+  {
+    "path": "/setup/showroom-config",
+    "method": "POST",
+    "name": "upsert_showroom_config",
+    "module": "app.domains.setup.routes"
+  }
+]

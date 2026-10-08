@@ -16,6 +16,16 @@ class SparePurchase(Base, AuditMixin, SoftDeleteMixin):
     purchase_date: Mapped[date] = mapped_column(Date)
     remarks: Mapped[Optional[str]] = mapped_column(Text)
     include_in_accounting: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    # Phase 3 Fields
+    status: Mapped[str] = mapped_column(String(50), default="DRAFT", nullable=False)
+    docket_reference: Mapped[Optional[str]] = mapped_column(String(100))
+    subtotal: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    tax_total: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    additional_charges: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    landed_cost_total: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    invoice_document_id: Mapped[Optional[str]] = mapped_column(String(100))
+    verification_status: Mapped[Optional[str]] = mapped_column(String(50))
 
     # Relationships
     vendor = relationship("Vendor")
@@ -27,11 +37,20 @@ class SparePurchaseItem(Base, AuditMixin, SoftDeleteMixin):
 
     purchase_item_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     spare_purchase_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("spare_purchase.spare_purchase_id"))
-    spare_id: Mapped[int] = mapped_column(BigInteger) # Soft link to inventory.spare_master
+    spare_id: Mapped[Optional[int]] = mapped_column(BigInteger) # Soft link to inventory.spare_master, Optional for OCR drafts
     quantity: Mapped[int] = mapped_column(Integer)
     unit_cost: Mapped[float] = mapped_column(Numeric(12, 2))
     gst_percentage: Mapped[Optional[float]] = mapped_column(Numeric(5, 2))
     total_cost: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    
+    # Phase 3 OCR/Verification Fields
+    part_code: Mapped[Optional[str]] = mapped_column(String(100))
+    part_description: Mapped[Optional[str]] = mapped_column(String(255))
+    discount: Mapped[Optional[float]] = mapped_column(Numeric(12, 2))
+    tax_amount: Mapped[Optional[float]] = mapped_column(Numeric(12, 2))
+    verification_status: Mapped[str] = mapped_column(String(50), default="EXTRACTED", nullable=False)
+    confidence_score: Mapped[Optional[float]] = mapped_column(Numeric(5, 4))
+    variance_amount: Mapped[Optional[float]] = mapped_column(Numeric(12, 2))
 
     # Relationships
     purchase: Mapped["SparePurchase"] = relationship("SparePurchase", back_populates="items")

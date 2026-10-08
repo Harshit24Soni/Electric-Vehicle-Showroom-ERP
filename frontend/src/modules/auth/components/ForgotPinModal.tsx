@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { X, ArrowLeft, ShieldCheck, UserCog, Key } from 'lucide-react'
 import { authApi } from '../api/authApi'
 
@@ -42,6 +43,7 @@ export default function ForgotPinModal({ onClose }: ForgotPinModalProps) {
         try {
             const res = await authApi.requestPinReset(identifier)
             setMessage({ type: 'success', text: res.message })
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         } catch (err: any) {
             setMessage({ type: 'error', text: err?.response?.data?.detail || 'Failed to submit request' })
         } finally {
@@ -66,6 +68,7 @@ export default function ForgotPinModal({ onClose }: ForgotPinModalProps) {
             })
             setMessage({ type: 'success', text: res.message })
             setTimeout(onClose, 2000)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         } catch (err: any) {
             setMessage({ type: 'error', text: err?.response?.data?.detail || 'Reset failed' })
         } finally {

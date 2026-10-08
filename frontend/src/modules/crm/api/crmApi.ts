@@ -58,6 +58,7 @@ export const crmApi = {
   createFollowup: (data: FollowupCreate) => api.post<Followup>('/crm/followups', data),
   getPendingFollowups: () => api.get<Followup[]>('/crm/followups/pending'),
   updateFollowup: (id: number, data: Partial<Followup>) => api.put<Followup>(`/crm/followups/${id}`, data),
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   getFollowupDashboard: (type: string = 'ALL') => api.get<{ sales_followups: any[] }>(`/crm/followups/dashboard?followup_type=${type}`),
   addActivity: (data: ActivityCreate) => api.post('/crm/activities', data),
   deleteLead: (leadId: number, hardDelete?: boolean) =>

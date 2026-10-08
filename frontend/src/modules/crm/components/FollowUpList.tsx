@@ -1,3 +1,4 @@
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { leadsApi } from '../api/leads'
@@ -21,6 +22,7 @@ export default function FollowUpList() {
 
     const { summary, upcoming, overdue } = dashboard || { summary: {}, upcoming: [], overdue: [] }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     const renderFollowupCard = (item: any) => (
         <div key={item.followup_id || item.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 flex flex-col gap-2">
             <div className="flex justify-between items-start">

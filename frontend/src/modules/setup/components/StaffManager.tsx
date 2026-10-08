@@ -108,6 +108,7 @@ export default function StaffManager() {
     })
 
     const createMutation = useMutation({
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         mutationFn: (data: CreateStaffForm) => api.post<any>('/admin/staff', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['staff'] })
@@ -115,6 +116,7 @@ export default function StaffManager() {
     })
 
     const resetPinMutation = useMutation({
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         mutationFn: (staffId: number) => api.post<any>('/auth/reset-pin', { staff_id: staffId }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['staff'] })
@@ -147,6 +149,7 @@ export default function StaffManager() {
             setTempPin(result.temporary_pin)
             setTempPinStaffName(staffName)
             setShowPinModal(true)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         } catch (err: any) {
             alert(err?.response?.data?.detail || 'Failed to reset PIN')
         }
@@ -170,6 +173,7 @@ export default function StaffManager() {
                 setTempPinStaffName(result.full_name || form.full_name)
                 setShowPinModal(true)
             }
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         } catch (err: any) {
             setCreateError(err?.response?.data?.detail || err?.message || 'Failed to create staff')
         }
@@ -206,6 +210,7 @@ export default function StaffManager() {
                 <div className="mb-4 flex gap-3">
                     <select
                         value={roleFilter}
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                         onChange={(e) => setRoleFilter(e.target.value as any)}
                         className="input w-auto"
                     >

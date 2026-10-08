@@ -13,6 +13,7 @@ export default function PostDeliveryChecklist({ sale }: Props) {
 
     useEffect(() => {
         if (sale.delivery_checklist) {
+	// eslint-disable-next-line react-hooks/set-state-in-effect -- TODO(Phase1.1 Baseline): Legacy warning
             setChecklist(sale.delivery_checklist)
         }
     }, [sale.delivery_checklist])
@@ -24,11 +25,13 @@ export default function PostDeliveryChecklist({ sale }: Props) {
             queryClient.invalidateQueries({ queryKey: ['sale', String(sale.sale_id)] })
             alert("Checklist updated successfully")
         },
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (error: any) => {
             alert("Failed to update checklist: " + (error?.response?.data?.detail || error.message))
         }
     })
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     const handleChange = (field: keyof DeliveryChecklist, value: any) => {
         setChecklist(prev => ({ ...prev, [field]: value }))
     }

@@ -109,6 +109,7 @@ export default function ProcurementPage() {
     )
 }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
 function PurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void }) {
     const [activeTab, setActiveTab] = useState<'spares' | 'vehicles'>('spares')
 
@@ -134,7 +135,9 @@ function PurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void }) {
     )
 }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
 function SparePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void }) {
+    const navigate = useNavigate()
     const { data: purchases = [], isLoading } = useQuery({
         queryKey: ['spare-purchases'],
         queryFn: procurementApi.getSparePurchases
@@ -151,7 +154,7 @@ function SparePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void
                         <th className="px-4 py-2 text-left">Date</th>
                         <th className="px-4 py-2 text-left">Vendor</th>
                         <th className="px-4 py-2 text-left">Invoice No</th>
-                        <th className="px-4 py-2 text-right">Items</th>
+                        <th className="px-4 py-2 text-right">Total</th>
                         <th className="px-4 py-2 text-left">Status</th>
                         <th className="px-4 py-2 text-right">Actions</th>
                     </tr>
@@ -160,20 +163,44 @@ function SparePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void
                     {purchases.map((p: SparePurchaseResponse, index: number) => {
                         const isVoided = p.is_deleted
                         return (
-                            <tr key={p.spare_purchase_id} className={`border-b ${isVoided ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'}`}>
+                            <tr 
+                                key={p.spare_purchase_id} 
+                                className={`border-b ${isVoided ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50 cursor-pointer'}`}
+                                onClick={() => {
+                                    if (!isVoided) {
+                                        navigate(`/procurement/spares/${p.spare_purchase_id}`)
+                                    }
+                                }}
+                            >
                                 <td className="px-4 py-2">{index + 1}</td>
                                 <td className="px-4 py-2">{new Date(p.purchase_date).toLocaleDateString()}</td>
                                 <td className="px-4 py-2">{p.vendor_name || '-'}</td>
                                 <td className="px-4 py-2">{p.vendor_invoice_no || '-'}</td>
-                                <td className="px-4 py-2 text-right">{p.items?.length || 0}</td>
+                                <td className="px-4 py-2 text-right">
+                                    {p.landed_cost_total ? `₹${Number(p.landed_cost_total).toFixed(2)}` : (p.items?.length || 0) + ' items'}
+                                </td>
                                 <td className="px-4 py-2">
                                     {isVoided ? (
                                         <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 font-medium">Voided</span>
                                     ) : (
-                                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 font-medium">Active</span>
+                                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                            p.status === 'APPROVED' || p.status === 'POSTED' ? 'bg-green-100 text-green-700' :
+                                            p.status === 'VERIFIED' ? 'bg-blue-100 text-blue-700' :
+                                            p.status === 'PENDING_VERIFICATION' ? 'bg-amber-100 text-amber-700' :
+                                            p.status === 'OCR_PROCESSED' ? 'bg-purple-100 text-purple-700' :
+                                            'bg-gray-100 text-gray-700'
+                                        }`}>
+                                            {p.status ? p.status.replace('_', ' ') : 'ACTIVE'}
+                                        </span>
                                     )}
                                 </td>
                                 <td className="px-4 py-2 text-right">
+                                    <button 
+                                        className="btn btn-sm btn-outline mr-2"
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/procurement/spares/${p.spare_purchase_id}`) }}
+                                    >
+                                        View
+                                    </button>
                                     {!isVoided && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); onSetDelete({ type: 'spare', id: p.spare_purchase_id, name: `Spare Purchase #${index + 1}` }) }}
@@ -198,6 +225,7 @@ function SparePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void
     )
 }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
 function VehiclePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void }) {
     const { data: purchases = [], isLoading } = useQuery({
         queryKey: ['vehicle-purchases'],

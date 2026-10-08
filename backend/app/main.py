@@ -12,6 +12,7 @@ from app.modules.finance.routes import router as finance_router
 from app.domains.master.routes import router as master_router
 from app.domains.reports.routes import router as reports_router
 from app.modules.sales.routes import router as sales_router
+from app.modules.sales.routes_spare import router as spare_sales_router
 from app.domains.service.routes import router as service_router
 from app.domains.crm.routes import router as crm_router
 from app.domains.insurance.routes import router as insurance_router
@@ -67,6 +68,7 @@ app.include_router(finance_router)
 app.include_router(master_router)
 app.include_router(reports_router)
 app.include_router(sales_router)
+app.include_router(spare_sales_router)
 app.include_router(service_router)
 app.include_router(crm_router)
 app.include_router(insurance_router)

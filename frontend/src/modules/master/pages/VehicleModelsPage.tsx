@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { masterApi, VehicleModel, VehicleModelCreate, VehicleModelUpdate } from '../api/masterApi'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { Plus, Search, Pencil, Trash2, RotateCcw } from 'lucide-react'
 import { formatDate } from '../../../lib/utils'
 import VehicleModelForm from '../components/VehicleModelForm'

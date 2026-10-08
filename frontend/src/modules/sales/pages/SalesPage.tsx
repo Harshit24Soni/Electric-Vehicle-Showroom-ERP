@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { salesApi, VehicleSaleCreate } from '../api/salesApi'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { Plus, Search, Eye, Truck, FileText, Trash2, DollarSign } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import SaleForm from '../components/SaleForm'
@@ -13,6 +14,7 @@ export default function SalesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
   const [showBillingModal, setShowBillingModal] = useState(false)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const queryClient = useQueryClient()
   const navigate = useNavigate()

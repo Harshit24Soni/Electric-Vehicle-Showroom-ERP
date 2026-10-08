@@ -11,6 +11,7 @@ import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function FinancePage() {
   const [showForm, setShowForm] = useState(false)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const queryClient = useQueryClient()
@@ -49,6 +50,7 @@ export default function FinancePage() {
     }
   }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const filteredRecords = financeRecords.filter((r: any) =>
     r.bank_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.sale_id.toString().includes(searchTerm)
@@ -110,6 +112,7 @@ export default function FinancePage() {
                 </tr>
               </thead>
               <tbody>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                 {filteredRecords.map((r: any) => (
                   <tr key={r.finance_id}>
                     <td>#{r.finance_id}</td>
@@ -156,6 +159,7 @@ export default function FinancePage() {
 }
 
 interface FinanceFormProps {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   sales: any[]
   onSubmit: (data: FinanceCreate) => void
   onClose: () => void

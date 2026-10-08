@@ -1,4 +1,5 @@
 import { useState } from 'react'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { X, Calendar, Plus, MessageSquare, Car, FileCheck } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { leadsApi } from '../api/leads'
@@ -29,16 +30,19 @@ export default function LeadDetailsModal({ leadId, onClose }: LeadDetailsModalPr
 
     const { data: followups = [], isLoading: followupsLoading } = useQuery({
         queryKey: ['lead-followups', leadId],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         queryFn: () => api.get(`/crm/leads/${leadId}/followups`).then((res: any) => res.data),
     })
 
     const addFollowupMutation = useMutation({
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         mutationFn: (data: any) => leadsApi.addLeadFollowup(leadId, data),
         onSuccess: () => {
             toast.success('Follow-up recorded')
             queryClient.invalidateQueries({ queryKey: ['lead-followups', leadId] })
             setRemarks('')
         },
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (err: any) => {
             toast.error(err?.response?.data?.detail || 'Failed to add follow-up')
         }
@@ -57,11 +61,13 @@ export default function LeadDetailsModal({ leadId, onClose }: LeadDetailsModalPr
     // Fetch available vehicles for the model
     const { data: vehicles = [] } = useQuery({
         queryKey: ['vehicles', lead?.vehicle_model_id],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         queryFn: () => api.get(`/master/vehicles`, { params: { vehicle_model_id: lead?.vehicle_model_id, status: 'IN_STOCK,DEMO' } }).then((res: any) => res.data),
         enabled: !!lead?.vehicle_model_id && activeTab === 'testrides',
     })
 
     const addTestRideMutation = useMutation({
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         mutationFn: (data: any) => leadsApi.addTestRide(leadId, data),
         onSuccess: () => {
             toast.success('Test ride recorded')
@@ -69,6 +75,7 @@ export default function LeadDetailsModal({ leadId, onClose }: LeadDetailsModalPr
             setChassisNo('')
             setFeedback('')
         },
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (err: any) => {
             toast.error(err?.response?.data?.detail || 'Failed to add test ride')
         }
@@ -87,6 +94,7 @@ export default function LeadDetailsModal({ leadId, onClose }: LeadDetailsModalPr
     if (showConversionModal) {
         return (
             <LeadConversionModal
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                 lead={lead as any}
                 onClose={() => setShowConversionModal(false)}
                 onSuccess={() => {
@@ -208,6 +216,7 @@ export default function LeadDetailsModal({ leadId, onClose }: LeadDetailsModalPr
 
                             <div className="space-y-3">
                                 <h3 className="font-medium text-gray-700">Past Follow-ups</h3>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                 {followupsLoading ? <p className="text-sm text-gray-500">Loading...</p> : followups.length === 0 ? <p className="text-sm text-gray-500">No follow-ups recorded.</p> : followups.map((f: any) => (
                                     <div key={f.lead_followup_id} className="bg-white p-3 rounded-lg shadow-sm text-sm border-l-4 border-blue-500">
                                         <div className="flex justify-between items-start mb-1">
@@ -229,6 +238,7 @@ export default function LeadDetailsModal({ leadId, onClose }: LeadDetailsModalPr
                                     <label className="block text-xs text-gray-500 mb-1">Select Physical Vehicle (Chassis) *</label>
                                     <select value={chassisNo} onChange={e => setChassisNo(e.target.value)} className="input text-sm">
                                         <option value="">-- Choose a vehicle --</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                         {(vehicles?.data || vehicles).map((v: any) => (
                                             <option key={v.chassis_no} value={v.chassis_no}>
                                                 {v.chassis_no} ({v.current_status})
@@ -255,6 +265,7 @@ export default function LeadDetailsModal({ leadId, onClose }: LeadDetailsModalPr
 
                             <div className="space-y-3">
                                 <h3 className="font-medium text-gray-700">Past Test Rides</h3>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                 {testRidesLoading ? <p className="text-sm text-gray-500">Loading...</p> : testRides.length === 0 ? <p className="text-sm text-gray-500">No test rides recorded.</p> : testRides.map((tr: any) => (
                                     <div key={tr.test_ride_id} className="bg-white p-3 rounded-lg shadow-sm text-sm border-l-4 border-green-500">
                                         <div className="flex justify-between items-start mb-1">

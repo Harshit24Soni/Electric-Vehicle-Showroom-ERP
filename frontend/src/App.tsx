@@ -13,8 +13,10 @@ import DashboardPage from './modules/dashboard/pages/DashboardPage'
 import CrmPage from './modules/crm/pages/CrmPage'
 import SalesPage from './modules/sales/pages/SalesPage'
 import SaleDetailPage from './modules/sales/pages/SaleDetailPage'
+import SpareSalesPage from './modules/sales/pages/SpareSalesPage'
 import InventoryPage from './modules/inventory/pages/InventoryPage'
 import ServicePage from './modules/service/pages/ServicePage'
+import JobCardDetailPage from './modules/service/pages/JobCardDetailPage'
 import FollowupDashboardPage from './modules/followup/pages/FollowupDashboardPage'
 
 // Master Data
@@ -26,10 +28,12 @@ import VendorsPage from './modules/master/pages/VendorsPage'
 // Procurement
 import ProcurementPage from './modules/procurement/pages/ProcurementPage'
 import SparePurchasePage from './modules/procurement/pages/SparePurchasePage'
+import SparePurchaseDetailPage from './modules/procurement/pages/SparePurchaseDetailPage'
 import TemporaryItemPage from './modules/procurement/pages/TemporaryItemPage'
 
 // Admin
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import DealerManagementPage from './modules/admin/pages/DealerManagementPage'
 import StaffProfilePage from './modules/staff/pages/StaffProfilePage'
 import SetupPage from './modules/setup/pages/SetupPage'
@@ -77,8 +81,10 @@ function App() {
           <Route path="followups" element={<FollowupDashboardPage />} />
           <Route path="sales" element={<SalesPage />} />
           <Route path="sales/:saleId" element={<SaleDetailPage />} />
+          <Route path="spare-sales" element={<SpareSalesPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="service" element={<ServicePage />} />
+          <Route path="service/:jobCardId" element={<JobCardDetailPage />} />
 
           {/* Procurement */}
           <Route path="procurement" element={
@@ -89,6 +95,11 @@ function App() {
           <Route path="procurement/spares/new" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'DEALER']}>
               <SparePurchasePage />
+            </ProtectedRoute>
+          } />
+          <Route path="procurement/spares/:id" element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'DEALER']}>
+              <SparePurchaseDetailPage />
             </ProtectedRoute>
           } />
           <Route path="procurement/temporary-items" element={

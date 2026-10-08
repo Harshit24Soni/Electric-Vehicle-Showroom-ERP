@@ -63,12 +63,13 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
 
   const { data: models = [] } = useQuery({
     queryKey: ['vehicle-models'],
-    queryFn: masterApi.getVehicleModels,
+    queryFn: () => masterApi.getVehicleModels(),
   })
 
   // Fetch staff list only for Admin/Dealer
   const { data: staffList = [] } = useQuery({
     queryKey: ['admin-staff-list'],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     queryFn: () => api.get<any[]>('/admin/staff'),
     enabled: isAdminOrDealer,
   })
@@ -80,6 +81,7 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
   } = useForm<LeadFormData>({
     resolver: zodResolver(leadSchema),
     defaultValues: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
       lead_status_id: leadStatuses.find((s: any) => s.status_name === 'NEW')?.status_id || 1,
     },
   })
@@ -141,6 +143,7 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
               <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Model *</label>
               <select {...register('vehicle_model_id', { valueAsNumber: true })} className="input">
                 <option value="">Select model</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                 {models.map((model: any) => (
                   <option key={model.vehicle_model_id} value={model.vehicle_model_id}>
                     {model.brand} {model.model_name}
@@ -167,6 +170,7 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select {...register('lead_status_id', { valueAsNumber: true })} className="input">
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                 {leadStatuses.map((status: any) => (
                   <option key={status.status_id} value={status.status_id}>
                     {status.status_name}
@@ -186,6 +190,7 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
               <label className="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
               <select {...register('owner_staff_id', { valueAsNumber: true })} className="input">
                 <option value="">-- Auto Assign to Me --</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                 {staffList.map((staff: any) => (
                   <option key={staff.staff_id} value={staff.staff_id}>
                     {staff.full_name} ({staff.designation})

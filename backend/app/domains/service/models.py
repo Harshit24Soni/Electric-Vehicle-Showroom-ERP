@@ -56,10 +56,20 @@ class ServiceSpareConsumption(Base, AuditMixin, SoftDeleteMixin):
         nullable=False,
         index=True
     ) # Soft link to inventory module
-
+    
+    tracking_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="QUANTITY")
     quantity: Mapped[int] = mapped_column(nullable=False)
 
-    serial_id: Mapped[int | None] = mapped_column(
-        BigInteger,
-        index=True
-    ) # Soft link to inventory module
+    batch_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
+    serial_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
+
+    part_code_snapshot: Mapped[str | None] = mapped_column(String(100))
+    description_snapshot: Mapped[str | None] = mapped_column(String(255))
+    unit_cost_snapshot: Mapped[float | None] = mapped_column()
+    total_cost: Mapped[float | None] = mapped_column()
+
+    consumed_by: Mapped[int | None] = mapped_column(BigInteger)
+    consumed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="DRAFT") # DRAFT, CONSUMED, REVERSED
+    stock_movement_id: Mapped[int | None] = mapped_column(BigInteger)

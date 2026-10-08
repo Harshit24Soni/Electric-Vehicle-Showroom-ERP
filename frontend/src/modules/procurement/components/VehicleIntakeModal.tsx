@@ -1,3 +1,4 @@
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { X, Plus, Trash2, Truck } from 'lucide-react'
@@ -45,6 +46,7 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
     })
 
     const oemVendors = allVendors.filter(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         (v: any) => v.vendor_type === 'OEM' && !v.is_deleted && v.is_active !== false
     )
 
@@ -55,6 +57,7 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
 
     // Only show active, non-deleted models
     const activeModels = models.filter(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         (m: any) => !m.is_deleted && m.is_active !== false
     )
 
@@ -65,12 +68,14 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
         setVehicles(vehicles.filter((_, i) => i !== idx))
     }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     const updateRow = (idx: number, field: keyof VehicleRow, value: any) => {
         const updated = [...vehicles]
         updated[idx] = { ...updated[idx], [field]: value }
 
         // Auto-fill color from selected VehicleModel
         if (field === 'vehicle_model_id' && value) {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
             const selectedModel = activeModels.find((m: any) => m.vehicle_model_id === Number(value))
             if (selectedModel?.colour && !updated[idx].color) {
                 updated[idx].color = selectedModel.colour
@@ -87,6 +92,7 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
             queryClient.invalidateQueries({ queryKey: ['vehicles'] })
             onClose()
         },
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (err: any) => {
             setError(err?.response?.data?.detail || 'Failed to process vehicle intake.')
         },
@@ -196,6 +202,7 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
                                     className="input"
                                 >
                                     <option value="">Select OEM vendor</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                     {oemVendors.map((v: any) => (
                                         <option key={v.vendor_id} value={v.vendor_id}>
                                             {v.vendor_name}
@@ -266,6 +273,7 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
                                                 className="input text-sm"
                                             >
                                                 <option value="">Select</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                                 {activeModels.map((m: any) => (
                                                     <option key={m.vehicle_model_id} value={m.vehicle_model_id}>
                                                         {m.brand_name ? `${m.brand_name} — ${m.model_name}` : m.model_name}

@@ -19,7 +19,7 @@ export function Layout() {
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSidebarOpen(false)} />
           <div className="fixed left-0 top-0 bottom-0 w-64">
-            <Sidebar />
+            <Sidebar onItemClick={() => setSidebarOpen(false)} />
           </div>
         </div>
       )}

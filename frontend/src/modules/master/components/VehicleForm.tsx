@@ -28,7 +28,7 @@ interface VehicleFormProps {
 export default function VehicleForm({ onSubmit, onClose, isLoading }: VehicleFormProps) {
   const { data: models = [] } = useQuery({
     queryKey: ['vehicle-models'],
-    queryFn: masterApi.getVehicleModels,
+    queryFn: () => masterApi.getVehicleModels(),
   })
 
   const {
@@ -73,7 +73,7 @@ export default function VehicleForm({ onSubmit, onClose, isLoading }: VehicleFor
             <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Model *</label>
             <select {...register('vehicle_model_id', { valueAsNumber: true })} className="input">
               <option value="">Select a vehicle model</option>
-              {models.map((model) => (
+              {models.map((model: any) => (
                 <option key={model.vehicle_model_id} value={model.vehicle_model_id}>
                   {model.brand} {model.model_name} - {model.colour}
                 </option>

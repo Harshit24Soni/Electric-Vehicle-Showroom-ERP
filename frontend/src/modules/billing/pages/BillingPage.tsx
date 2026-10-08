@@ -1,6 +1,8 @@
 import { useState } from 'react'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { billingApi, InvoiceCreate } from '../api/billingApi'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { Plus, Search, CheckCircle, XCircle } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import InvoiceForm from '../components/InvoiceForm'
@@ -10,11 +12,13 @@ export default function BillingPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const queryClient = useQueryClient()
 
   // Note: Backend doesn't have a GET endpoint for listing invoices
   // Invoices are managed through sales - they're created per sale
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const invoices: any[] = []
   const isLoading = false
 

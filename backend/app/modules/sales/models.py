@@ -288,3 +288,49 @@ class SalePortalTracking(Base, AuditMixin, SoftDeleteMixin):
         ])
         self.all_portals_completed = all_done
         return all_done
+
+
+class SpareSale(Base, AuditMixin, SoftDeleteMixin):
+    __tablename__ = "spare_sale"
+    
+    sale_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    customer_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to master.customer
+    sale_date: Mapped[datetime] = mapped_column(Date, nullable=False, default=datetime.utcnow)
+    
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="DRAFT") # DRAFT, CONFIRMED, CANCELLED
+    
+    subtotal: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
+    discount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
+    tax: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
+    grand_total: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
+    
+    invoice_number: Mapped[str | None] = mapped_column(String(50), unique=True)
+    remarks: Mapped[str | None] = mapped_column(Text)
+    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    
+    items = relationship("SpareSaleItem", back_populates="sale", cascade="all, delete-orphan")
+
+
+class SpareSaleItem(Base, AuditMixin, SoftDeleteMixin):
+    __tablename__ = "spare_sale_item"
+    
+    sale_item_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("spare_sale.sale_id"), nullable=False)
+    
+    spare_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to inventory.spare_master
+    part_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    spare_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    tracking_mode: Mapped[str] = mapped_column(String(20), nullable=False)
+    
+    batch_id: Mapped[int | None] = mapped_column(BigInteger)
+    serial_id: Mapped[int | None] = mapped_column(BigInteger)
+    
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    unit_selling_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    discount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
+    tax: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
+    line_total: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    
+    unit_cost: Mapped[float | None] = mapped_column(Numeric(12, 2)) # Cost snapshot for profit
+    
+    sale = relationship("SpareSale", back_populates="items")

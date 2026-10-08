@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
 from app.auth.roles import require_roles
 from app.domains.procurement import schemas, services, models
+from app.domains.procurement.ocr_service import OCRService
 
 router = APIRouter(prefix="/procurement", tags=["Procurement"])
 
@@ -15,9 +16,56 @@ async def create_spare_purchase(
     current_staff=Depends(require_roles("DEALER", "ADMIN"))
 ):
     """Create a new Spare Purchase (Dealer/Admin)"""
-    # Note: User requirements said Dealer Workflow. Admin can probably do it too.
     return await services.create_spare_purchase(db, data)
 
+@router.post("/purchases/spares/ocr", response_model=schemas.SparePurchaseResponse, status_code=status.HTTP_201_CREATED)
+async def ocr_upload_invoice(
+    vendor_id: int = Form(...),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("DEALER", "ADMIN"))
+):
+    """Upload an A4 Invoice and trigger OCR to create a Draft Purchase Receipt"""
+    if not file.filename.lower().endswith(('.pdf', '.png', '.jpg', '.jpeg')):
+        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: pdf, png, jpg, jpeg")
+        
+    ocr_service = OCRService()
+    try:
+        purchase = await ocr_service.process_invoice(db, vendor_id, file)
+        return purchase
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
+
+@router.put("/purchases/spares/{spare_purchase_id}/verify", response_model=schemas.SparePurchaseResponse)
+async def verify_spare_purchase(
+    spare_purchase_id: int,
+    data: schemas.SparePurchaseCreate,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("DEALER", "ADMIN"))
+):
+    """Verify and update OCR extracted draft (Dealer/Admin)"""
+    return await services.verify_spare_purchase(db, spare_purchase_id, data)
+
+@router.post("/purchases/spares/{spare_purchase_id}/approve", response_model=schemas.SparePurchaseResponse)
+async def approve_spare_purchase(
+    spare_purchase_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("DEALER", "ADMIN"))
+):
+    """Approve verified draft, finalize Landed Cost and trigger Inventory Update"""
+    return await services.approve_spare_purchase(db, spare_purchase_id)
+
+
+
+@router.post("/purchases/spares/{spare_purchase_id}/post", response_model=schemas.SparePurchaseResponse)
+async def post_spare_purchase(
+    spare_purchase_id: int,
+    payload: schemas.PostPurchaseReceiptRequest,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("DEALER", "ADMIN"))
+):
+    """Post approved purchase receipt to inventory"""
+    return await services.post_spare_purchase(db, spare_purchase_id, payload)
 
 
 @router.post(
@@ -41,6 +89,15 @@ async def list_spare_purchases(
 ):
     """List Spare Purchases"""
     return await services.list_spare_purchases(db)
+
+@router.get("/purchases/spares/{spare_purchase_id}", response_model=schemas.SparePurchaseResponse)
+async def get_spare_purchase(
+    spare_purchase_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("DEALER", "ADMIN"))
+):
+    """Get single Spare Purchase"""
+    return await services.get_spare_purchase(db, spare_purchase_id)
 
 @router.get("/purchases/vehicles", response_model=list[schemas.VehiclePurchaseResponse])
 async def list_vehicle_purchases(

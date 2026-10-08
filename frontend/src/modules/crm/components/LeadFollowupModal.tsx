@@ -27,6 +27,7 @@ export default function LeadFollowupModal({ leadId, leadName, onClose }: LeadFol
             queryClient.invalidateQueries({ queryKey: ['followup-dashboard'] })
             onClose()
         },
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (err: any) => {
             setError(err?.response?.data?.detail || 'Failed to log follow-up.')
         },
@@ -98,6 +99,7 @@ export default function LeadFollowupModal({ leadId, leadName, onClose }: LeadFol
                             className="input w-full"
                         >
                             <option value="">Select outcome</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                             {leadStatuses.map((status: any) => (
                                 <option key={status.status_id} value={status.status_name}>
                                     {status.status_name}

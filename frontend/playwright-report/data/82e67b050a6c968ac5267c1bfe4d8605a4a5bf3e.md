@@ -1,0 +1,672 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: scanner-integration.spec.ts >> Observable Scanner Integration E2E >> Scanner UI renders properly and handles keyboard-wedge input for Service Consumption (Active Tag)
+- Location: e2e\scanner-integration.spec.ts:8:3
+
+# Error details
+
+```
+Test timeout of 30000ms exceeded.
+```
+
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - heading "EV Showroom ERP" [level=1] [ref=e6]
+    - button [ref=e7] [cursor=pointer]
+  - main [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - heading "Service" [level=1] [ref=e13]
+          - paragraph [ref=e14]: Manage service job cards
+        - button "New Job Card" [ref=e15] [cursor=pointer]
+      - generic [ref=e17]:
+        - button "All (52)" [ref=e18] [cursor=pointer]
+        - button "Open (52)" [ref=e19] [cursor=pointer]
+        - button "Closed (0)" [ref=e20] [cursor=pointer]
+      - textbox "Search by job card or chassis..." [ref=e25]
+      - table [ref=e28]:
+        - rowgroup [ref=e29]:
+          - row [ref=e30]:
+            - columnheader "Job Card No" [ref=e31]
+            - columnheader "Chassis No" [ref=e32]
+            - columnheader "In Date/Time" [ref=e33]
+            - columnheader "Out Date/Time" [ref=e34]
+            - columnheader "Opening KM" [ref=e35]
+            - columnheader "Status" [ref=e36]
+            - columnheader "Actions" [ref=e37]
+        - rowgroup [ref=e38]:
+          - row [ref=e39]:
+            - cell "JC-0053" [ref=e40]
+            - cell "PLAYWRIGHT-EV-001" [ref=e41]
+            - cell "8 Oct 2026, 09:10 am" [ref=e42]
+            - cell "-" [ref=e43]
+            - cell "-" [ref=e44]
+            - cell "Open" [ref=e45]
+            - cell [ref=e46]:
+              - generic [ref=e47]:
+                - button "View Details" [ref=e48] [cursor=pointer]
+                - button "Close Job Card" [ref=e51] [cursor=pointer]
+                - button "Delete Job Card" [ref=e55] [cursor=pointer]
+          - row [ref=e59]:
+            - cell "JC-0052" [ref=e60]
+            - cell "PLAYWRIGHT-EV-001" [ref=e61]
+            - cell "8 Oct 2026, 08:54 am" [ref=e62]
+            - cell "-" [ref=e63]
+            - cell "-" [ref=e64]
+            - cell "Open" [ref=e65]
+            - cell [ref=e66]:
+              - generic [ref=e67]:
+                - button "View Details" [ref=e68] [cursor=pointer]
+                - button "Close Job Card" [ref=e71] [cursor=pointer]
+                - button "Delete Job Card" [ref=e75] [cursor=pointer]
+          - row [ref=e79]:
+            - cell "JC-0051" [ref=e80]
+            - cell "PLAYWRIGHT-EV-001" [ref=e81]
+            - cell "8 Oct 2026, 05:37 am" [ref=e82]
+            - cell "-" [ref=e83]
+            - cell "-" [ref=e84]
+            - cell "Open" [ref=e85]
+            - cell [ref=e86]:
+              - generic [ref=e87]:
+                - button "View Details" [ref=e88] [cursor=pointer]
+                - button "Close Job Card" [ref=e91] [cursor=pointer]
+                - button "Delete Job Card" [ref=e95] [cursor=pointer]
+          - row [ref=e99]:
+            - cell "JC-0050" [ref=e100]
+            - cell "PLAYWRIGHT-EV-001" [ref=e101]
+            - cell "8 Oct 2026, 05:31 am" [ref=e102]
+            - cell "-" [ref=e103]
+            - cell "-" [ref=e104]
+            - cell "Open" [ref=e105]
+            - cell [ref=e106]:
+              - generic [ref=e107]:
+                - button "View Details" [ref=e108] [cursor=pointer]
+                - button "Close Job Card" [ref=e111] [cursor=pointer]
+                - button "Delete Job Card" [ref=e115] [cursor=pointer]
+          - row [ref=e119]:
+            - cell "JC-0049" [ref=e120]
+            - cell "PLAYWRIGHT-EV-001" [ref=e121]
+            - cell "8 Oct 2026, 05:09 am" [ref=e122]
+            - cell "-" [ref=e123]
+            - cell "-" [ref=e124]
+            - cell "Open" [ref=e125]
+            - cell [ref=e126]:
+              - generic [ref=e127]:
+                - button "View Details" [ref=e128] [cursor=pointer]
+                - button "Close Job Card" [ref=e131] [cursor=pointer]
+                - button "Delete Job Card" [ref=e135] [cursor=pointer]
+          - row [ref=e139]:
+            - cell "JC-0048" [ref=e140]
+            - cell "PLAYWRIGHT-EV-001" [ref=e141]
+            - cell "8 Oct 2026, 12:02 am" [ref=e142]
+            - cell "-" [ref=e143]
+            - cell "-" [ref=e144]
+            - cell "Open" [ref=e145]
+            - cell [ref=e146]:
+              - generic [ref=e147]:
+                - button "View Details" [ref=e148] [cursor=pointer]
+                - button "Close Job Card" [ref=e151] [cursor=pointer]
+                - button "Delete Job Card" [ref=e155] [cursor=pointer]
+          - row [ref=e159]:
+            - cell "JC-0047" [ref=e160]
+            - cell "PLAYWRIGHT-EV-001" [ref=e161]
+            - cell "7 Oct 2026, 11:45 pm" [ref=e162]
+            - cell "-" [ref=e163]
+            - cell "-" [ref=e164]
+            - cell "Open" [ref=e165]
+            - cell [ref=e166]:
+              - generic [ref=e167]:
+                - button "View Details" [ref=e168] [cursor=pointer]
+                - button "Close Job Card" [ref=e171] [cursor=pointer]
+                - button "Delete Job Card" [ref=e175] [cursor=pointer]
+          - row [ref=e179]:
+            - cell "JC-0046" [ref=e180]
+            - cell "PLAYWRIGHT-EV-001" [ref=e181]
+            - cell "7 Oct 2026, 11:29 pm" [ref=e182]
+            - cell "-" [ref=e183]
+            - cell "-" [ref=e184]
+            - cell "Open" [ref=e185]
+            - cell [ref=e186]:
+              - generic [ref=e187]:
+                - button "View Details" [ref=e188] [cursor=pointer]
+                - button "Close Job Card" [ref=e191] [cursor=pointer]
+                - button "Delete Job Card" [ref=e195] [cursor=pointer]
+          - row [ref=e199]:
+            - cell "JC-0045" [ref=e200]
+            - cell "PLAYWRIGHT-EV-001" [ref=e201]
+            - cell "7 Oct 2026, 11:00 pm" [ref=e202]
+            - cell "-" [ref=e203]
+            - cell "-" [ref=e204]
+            - cell "Open" [ref=e205]
+            - cell [ref=e206]:
+              - generic [ref=e207]:
+                - button "View Details" [ref=e208] [cursor=pointer]
+                - button "Close Job Card" [ref=e211] [cursor=pointer]
+                - button "Delete Job Card" [ref=e215] [cursor=pointer]
+          - row [ref=e219]:
+            - cell "JC-0044" [ref=e220]
+            - cell "PLAYWRIGHT-EV-001" [ref=e221]
+            - cell "7 Oct 2026, 10:42 pm" [ref=e222]
+            - cell "-" [ref=e223]
+            - cell "-" [ref=e224]
+            - cell "Open" [ref=e225]
+            - cell [ref=e226]:
+              - generic [ref=e227]:
+                - button "View Details" [ref=e228] [cursor=pointer]
+                - button "Close Job Card" [ref=e231] [cursor=pointer]
+                - button "Delete Job Card" [ref=e235] [cursor=pointer]
+          - row [ref=e239]:
+            - cell "JC-0043" [ref=e240]
+            - cell "PLAYWRIGHT-EV-001" [ref=e241]
+            - cell "7 Oct 2026, 10:23 pm" [ref=e242]
+            - cell "-" [ref=e243]
+            - cell "-" [ref=e244]
+            - cell "Open" [ref=e245]
+            - cell [ref=e246]:
+              - generic [ref=e247]:
+                - button "View Details" [ref=e248] [cursor=pointer]
+                - button "Close Job Card" [ref=e251] [cursor=pointer]
+                - button "Delete Job Card" [ref=e255] [cursor=pointer]
+          - row [ref=e259]:
+            - cell "JC-0042" [ref=e260]
+            - cell "PLAYWRIGHT-EV-001" [ref=e261]
+            - cell "7 Oct 2026, 09:53 pm" [ref=e262]
+            - cell "-" [ref=e263]
+            - cell "-" [ref=e264]
+            - cell "Open" [ref=e265]
+            - cell [ref=e266]:
+              - generic [ref=e267]:
+                - button "View Details" [ref=e268] [cursor=pointer]
+                - button "Close Job Card" [ref=e271] [cursor=pointer]
+                - button "Delete Job Card" [ref=e275] [cursor=pointer]
+          - row [ref=e279]:
+            - cell "JC-0041" [ref=e280]
+            - cell "PLAYWRIGHT-EV-001" [ref=e281]
+            - cell "7 Oct 2026, 09:35 pm" [ref=e282]
+            - cell "-" [ref=e283]
+            - cell "-" [ref=e284]
+            - cell "Open" [ref=e285]
+            - cell [ref=e286]:
+              - generic [ref=e287]:
+                - button "View Details" [ref=e288] [cursor=pointer]
+                - button "Close Job Card" [ref=e291] [cursor=pointer]
+                - button "Delete Job Card" [ref=e295] [cursor=pointer]
+          - row [ref=e299]:
+            - cell "JC-0040" [ref=e300]
+            - cell "PLAYWRIGHT-EV-001" [ref=e301]
+            - cell "7 Oct 2026, 09:16 pm" [ref=e302]
+            - cell "-" [ref=e303]
+            - cell "-" [ref=e304]
+            - cell "Open" [ref=e305]
+            - cell [ref=e306]:
+              - generic [ref=e307]:
+                - button "View Details" [ref=e308] [cursor=pointer]
+                - button "Close Job Card" [ref=e311] [cursor=pointer]
+                - button "Delete Job Card" [ref=e315] [cursor=pointer]
+          - row [ref=e319]:
+            - cell "JC-0039" [ref=e320]
+            - cell "PLAYWRIGHT-EV-001" [ref=e321]
+            - cell "7 Oct 2026, 08:59 pm" [ref=e322]
+            - cell "-" [ref=e323]
+            - cell "-" [ref=e324]
+            - cell "Open" [ref=e325]
+            - cell [ref=e326]:
+              - generic [ref=e327]:
+                - button "View Details" [ref=e328] [cursor=pointer]
+                - button "Close Job Card" [ref=e331] [cursor=pointer]
+                - button "Delete Job Card" [ref=e335] [cursor=pointer]
+          - row [ref=e339]:
+            - cell "JC-0038" [ref=e340]
+            - cell "PLAYWRIGHT-EV-001" [ref=e341]
+            - cell "7 Oct 2026, 08:42 pm" [ref=e342]
+            - cell "-" [ref=e343]
+            - cell "-" [ref=e344]
+            - cell "Open" [ref=e345]
+            - cell [ref=e346]:
+              - generic [ref=e347]:
+                - button "View Details" [ref=e348] [cursor=pointer]
+                - button "Close Job Card" [ref=e351] [cursor=pointer]
+                - button "Delete Job Card" [ref=e355] [cursor=pointer]
+          - row [ref=e359]:
+            - cell "JC-0037" [ref=e360]
+            - cell "PLAYWRIGHT-EV-001" [ref=e361]
+            - cell "7 Oct 2026, 02:02 pm" [ref=e362]
+            - cell "-" [ref=e363]
+            - cell "-" [ref=e364]
+            - cell "Open" [ref=e365]
+            - cell [ref=e366]:
+              - generic [ref=e367]:
+                - button "View Details" [ref=e368] [cursor=pointer]
+                - button "Close Job Card" [ref=e371] [cursor=pointer]
+                - button "Delete Job Card" [ref=e375] [cursor=pointer]
+          - row [ref=e379]:
+            - cell "JC-0036" [ref=e380]
+            - cell "PLAYWRIGHT-EV-001" [ref=e381]
+            - cell "7 Oct 2026, 01:47 pm" [ref=e382]
+            - cell "-" [ref=e383]
+            - cell "-" [ref=e384]
+            - cell "Open" [ref=e385]
+            - cell [ref=e386]:
+              - generic [ref=e387]:
+                - button "View Details" [ref=e388] [cursor=pointer]
+                - button "Close Job Card" [ref=e391] [cursor=pointer]
+                - button "Delete Job Card" [ref=e395] [cursor=pointer]
+          - row [ref=e399]:
+            - cell "JC-0035" [ref=e400]
+            - cell "PLAYWRIGHT-EV-001" [ref=e401]
+            - cell "7 Oct 2026, 01:35 pm" [ref=e402]
+            - cell "-" [ref=e403]
+            - cell "-" [ref=e404]
+            - cell "Open" [ref=e405]
+            - cell [ref=e406]:
+              - generic [ref=e407]:
+                - button "View Details" [ref=e408] [cursor=pointer]
+                - button "Close Job Card" [ref=e411] [cursor=pointer]
+                - button "Delete Job Card" [ref=e415] [cursor=pointer]
+          - row [ref=e419]:
+            - cell "JC-0034" [ref=e420]
+            - cell "PLAYWRIGHT-EV-001" [ref=e421]
+            - cell "7 Oct 2026, 01:06 pm" [ref=e422]
+            - cell "-" [ref=e423]
+            - cell "-" [ref=e424]
+            - cell "Open" [ref=e425]
+            - cell [ref=e426]:
+              - generic [ref=e427]:
+                - button "View Details" [ref=e428] [cursor=pointer]
+                - button "Close Job Card" [ref=e431] [cursor=pointer]
+                - button "Delete Job Card" [ref=e435] [cursor=pointer]
+          - row [ref=e439]:
+            - cell "JC-0033" [ref=e440]
+            - cell "PLAYWRIGHT-EV-001" [ref=e441]
+            - cell "7 Oct 2026, 12:47 pm" [ref=e442]
+            - cell "-" [ref=e443]
+            - cell "-" [ref=e444]
+            - cell "Open" [ref=e445]
+            - cell [ref=e446]:
+              - generic [ref=e447]:
+                - button "View Details" [ref=e448] [cursor=pointer]
+                - button "Close Job Card" [ref=e451] [cursor=pointer]
+                - button "Delete Job Card" [ref=e455] [cursor=pointer]
+          - row [ref=e459]:
+            - cell "JC-0032" [ref=e460]
+            - cell "PLAYWRIGHT-EV-001" [ref=e461]
+            - cell "7 Oct 2026, 12:29 pm" [ref=e462]
+            - cell "-" [ref=e463]
+            - cell "-" [ref=e464]
+            - cell "Open" [ref=e465]
+            - cell [ref=e466]:
+              - generic [ref=e467]:
+                - button "View Details" [ref=e468] [cursor=pointer]
+                - button "Close Job Card" [ref=e471] [cursor=pointer]
+                - button "Delete Job Card" [ref=e475] [cursor=pointer]
+          - row [ref=e479]:
+            - cell "JC-0031" [ref=e480]
+            - cell "PLAYWRIGHT-EV-001" [ref=e481]
+            - cell "7 Oct 2026, 11:01 am" [ref=e482]
+            - cell "-" [ref=e483]
+            - cell "-" [ref=e484]
+            - cell "Open" [ref=e485]
+            - cell [ref=e486]:
+              - generic [ref=e487]:
+                - button "View Details" [ref=e488] [cursor=pointer]
+                - button "Close Job Card" [ref=e491] [cursor=pointer]
+                - button "Delete Job Card" [ref=e495] [cursor=pointer]
+          - row [ref=e499]:
+            - cell "JC-0030" [ref=e500]
+            - cell "PLAYWRIGHT-EV-001" [ref=e501]
+            - cell "7 Oct 2026, 10:45 am" [ref=e502]
+            - cell "-" [ref=e503]
+            - cell "-" [ref=e504]
+            - cell "Open" [ref=e505]
+            - cell [ref=e506]:
+              - generic [ref=e507]:
+                - button "View Details" [ref=e508] [cursor=pointer]
+                - button "Close Job Card" [ref=e511] [cursor=pointer]
+                - button "Delete Job Card" [ref=e515] [cursor=pointer]
+          - row [ref=e519]:
+            - cell "JC-0029" [ref=e520]
+            - cell "PLAYWRIGHT-EV-001" [ref=e521]
+            - cell "7 Oct 2026, 10:43 am" [ref=e522]
+            - cell "-" [ref=e523]
+            - cell "-" [ref=e524]
+            - cell "Open" [ref=e525]
+            - cell [ref=e526]:
+              - generic [ref=e527]:
+                - button "View Details" [ref=e528] [cursor=pointer]
+                - button "Close Job Card" [ref=e531] [cursor=pointer]
+                - button "Delete Job Card" [ref=e535] [cursor=pointer]
+          - row [ref=e539]:
+            - cell "JC-0028" [ref=e540]
+            - cell "PLAYWRIGHT-EV-001" [ref=e541]
+            - cell "7 Oct 2026, 10:04 am" [ref=e542]
+            - cell "-" [ref=e543]
+            - cell "-" [ref=e544]
+            - cell "Open" [ref=e545]
+            - cell [ref=e546]:
+              - generic [ref=e547]:
+                - button "View Details" [ref=e548] [cursor=pointer]
+                - button "Close Job Card" [ref=e551] [cursor=pointer]
+                - button "Delete Job Card" [ref=e555] [cursor=pointer]
+          - row [ref=e559]:
+            - cell "JC-0027" [ref=e560]
+            - cell "PLAYWRIGHT-EV-001" [ref=e561]
+            - cell "7 Oct 2026, 09:47 am" [ref=e562]
+            - cell "-" [ref=e563]
+            - cell "-" [ref=e564]
+            - cell "Open" [ref=e565]
+            - cell [ref=e566]:
+              - generic [ref=e567]:
+                - button "View Details" [ref=e568] [cursor=pointer]
+                - button "Close Job Card" [ref=e571] [cursor=pointer]
+                - button "Delete Job Card" [ref=e575] [cursor=pointer]
+          - row [ref=e579]:
+            - cell "JC-0026" [ref=e580]
+            - cell "PLAYWRIGHT-EV-001" [ref=e581]
+            - cell "7 Oct 2026, 09:35 am" [ref=e582]
+            - cell "-" [ref=e583]
+            - cell "-" [ref=e584]
+            - cell "Open" [ref=e585]
+            - cell [ref=e586]:
+              - generic [ref=e587]:
+                - button "View Details" [ref=e588] [cursor=pointer]
+                - button "Close Job Card" [ref=e591] [cursor=pointer]
+                - button "Delete Job Card" [ref=e595] [cursor=pointer]
+          - row [ref=e599]:
+            - cell "JC-0025" [ref=e600]
+            - cell "PLAYWRIGHT-EV-001" [ref=e601]
+            - cell "7 Oct 2026, 07:36 am" [ref=e602]
+            - cell "-" [ref=e603]
+            - cell "-" [ref=e604]
+            - cell "Open" [ref=e605]
+            - cell [ref=e606]:
+              - generic [ref=e607]:
+                - button "View Details" [ref=e608] [cursor=pointer]
+                - button "Close Job Card" [ref=e611] [cursor=pointer]
+                - button "Delete Job Card" [ref=e615] [cursor=pointer]
+          - row [ref=e619]:
+            - cell "JC-0024" [ref=e620]
+            - cell "PLAYWRIGHT-EV-001" [ref=e621]
+            - cell "7 Oct 2026, 07:32 am" [ref=e622]
+            - cell "-" [ref=e623]
+            - cell "-" [ref=e624]
+            - cell "Open" [ref=e625]
+            - cell [ref=e626]:
+              - generic [ref=e627]:
+                - button "View Details" [ref=e628] [cursor=pointer]
+                - button "Close Job Card" [ref=e631] [cursor=pointer]
+                - button "Delete Job Card" [ref=e635] [cursor=pointer]
+          - row [ref=e639]:
+            - cell "JC-0023" [ref=e640]
+            - cell "PLAYWRIGHT-EV-001" [ref=e641]
+            - cell "7 Oct 2026, 06:49 am" [ref=e642]
+            - cell "-" [ref=e643]
+            - cell "-" [ref=e644]
+            - cell "Open" [ref=e645]
+            - cell [ref=e646]:
+              - generic [ref=e647]:
+                - button "View Details" [ref=e648] [cursor=pointer]
+                - button "Close Job Card" [ref=e651] [cursor=pointer]
+                - button "Delete Job Card" [ref=e655] [cursor=pointer]
+          - row [ref=e659]:
+            - cell "JC-0022" [ref=e660]
+            - cell "PLAYWRIGHT-EV-001" [ref=e661]
+            - cell "7 Oct 2026, 06:38 am" [ref=e662]
+            - cell "-" [ref=e663]
+            - cell "-" [ref=e664]
+            - cell "Open" [ref=e665]
+            - cell [ref=e666]:
+              - generic [ref=e667]:
+                - button "View Details" [ref=e668] [cursor=pointer]
+                - button "Close Job Card" [ref=e671] [cursor=pointer]
+                - button "Delete Job Card" [ref=e675] [cursor=pointer]
+          - row [ref=e679]:
+            - cell "JC-0021" [ref=e680]
+            - cell "PLAYWRIGHT-EV-001" [ref=e681]
+            - cell "7 Oct 2026, 06:27 am" [ref=e682]
+            - cell "-" [ref=e683]
+            - cell "-" [ref=e684]
+            - cell "Open" [ref=e685]
+            - cell [ref=e686]:
+              - generic [ref=e687]:
+                - button "View Details" [ref=e688] [cursor=pointer]
+                - button "Close Job Card" [ref=e691] [cursor=pointer]
+                - button "Delete Job Card" [ref=e695] [cursor=pointer]
+          - row [ref=e699]:
+            - cell "JC-0020" [ref=e700]
+            - cell "PLAYWRIGHT-EV-001" [ref=e701]
+            - cell "7 Oct 2026, 06:25 am" [ref=e702]
+            - cell "-" [ref=e703]
+            - cell "-" [ref=e704]
+            - cell "Open" [ref=e705]
+            - cell [ref=e706]:
+              - generic [ref=e707]:
+                - button "View Details" [ref=e708] [cursor=pointer]
+                - button "Close Job Card" [ref=e711] [cursor=pointer]
+                - button "Delete Job Card" [ref=e715] [cursor=pointer]
+          - row [ref=e719]:
+            - cell "JC-0019" [ref=e720]
+            - cell "PLAYWRIGHT-EV-001" [ref=e721]
+            - cell "7 Oct 2026, 06:21 am" [ref=e722]
+            - cell "-" [ref=e723]
+            - cell "-" [ref=e724]
+            - cell "Open" [ref=e725]
+            - cell [ref=e726]:
+              - generic [ref=e727]:
+                - button "View Details" [ref=e728] [cursor=pointer]
+                - button "Close Job Card" [ref=e731] [cursor=pointer]
+                - button "Delete Job Card" [ref=e735] [cursor=pointer]
+          - row [ref=e739]:
+            - cell "JC-0018" [ref=e740]
+            - cell "PLAYWRIGHT-EV-001" [ref=e741]
+            - cell "7 Oct 2026, 06:00 am" [ref=e742]
+            - cell "-" [ref=e743]
+            - cell "-" [ref=e744]
+            - cell "Open" [ref=e745]
+            - cell [ref=e746]:
+              - generic [ref=e747]:
+                - button "View Details" [ref=e748] [cursor=pointer]
+                - button "Close Job Card" [ref=e751] [cursor=pointer]
+                - button "Delete Job Card" [ref=e755] [cursor=pointer]
+          - row [ref=e759]:
+            - cell "JC-0017" [ref=e760]
+            - cell "PLAYWRIGHT-EV-001" [ref=e761]
+            - cell "7 Oct 2026, 05:59 am" [ref=e762]
+            - cell "-" [ref=e763]
+            - cell "-" [ref=e764]
+            - cell "Open" [ref=e765]
+            - cell [ref=e766]:
+              - generic [ref=e767]:
+                - button "View Details" [ref=e768] [cursor=pointer]
+                - button "Close Job Card" [ref=e771] [cursor=pointer]
+                - button "Delete Job Card" [ref=e775] [cursor=pointer]
+          - row [ref=e779]:
+            - cell "JC-0016" [ref=e780]
+            - cell "PLAYWRIGHT-EV-001" [ref=e781]
+            - cell "7 Oct 2026, 05:48 am" [ref=e782]
+            - cell "-" [ref=e783]
+            - cell "-" [ref=e784]
+            - cell "Open" [ref=e785]
+            - cell [ref=e786]:
+              - generic [ref=e787]:
+                - button "View Details" [ref=e788] [cursor=pointer]
+                - button "Close Job Card" [ref=e791] [cursor=pointer]
+                - button "Delete Job Card" [ref=e795] [cursor=pointer]
+          - row [ref=e799]:
+            - cell "JC-0015" [ref=e800]
+            - cell "PLAYWRIGHT-EV-001" [ref=e801]
+            - cell "7 Oct 2026, 05:48 am" [ref=e802]
+            - cell "-" [ref=e803]
+            - cell "-" [ref=e804]
+            - cell "Open" [ref=e805]
+            - cell [ref=e806]:
+              - generic [ref=e807]:
+                - button "View Details" [ref=e808] [cursor=pointer]
+                - button "Close Job Card" [ref=e811] [cursor=pointer]
+                - button "Delete Job Card" [ref=e815] [cursor=pointer]
+          - row [ref=e819]:
+            - cell "JC-0014" [ref=e820]
+            - cell "PLAYWRIGHT-EV-001" [ref=e821]
+            - cell "7 Oct 2026, 05:34 am" [ref=e822]
+            - cell "-" [ref=e823]
+            - cell "-" [ref=e824]
+            - cell "Open" [ref=e825]
+            - cell [ref=e826]:
+              - generic [ref=e827]:
+                - button "View Details" [ref=e828] [cursor=pointer]
+                - button "Close Job Card" [ref=e831] [cursor=pointer]
+                - button "Delete Job Card" [ref=e835] [cursor=pointer]
+          - row [ref=e839]:
+            - cell "JC-0013" [ref=e840]
+            - cell "PLAYWRIGHT-EV-001" [ref=e841]
+            - cell "7 Oct 2026, 05:19 am" [ref=e842]
+            - cell "-" [ref=e843]
+            - cell "-" [ref=e844]
+            - cell "Open" [ref=e845]
+            - cell [ref=e846]:
+              - generic [ref=e847]:
+                - button "View Details" [ref=e848] [cursor=pointer]
+                - button "Close Job Card" [ref=e851] [cursor=pointer]
+                - button "Delete Job Card" [ref=e855] [cursor=pointer]
+          - row [ref=e859]:
+            - cell "JC-0012" [ref=e860]
+            - cell "PLAYWRIGHT-EV-001" [ref=e861]
+            - cell "7 Oct 2026, 05:08 am" [ref=e862]
+            - cell "-" [ref=e863]
+            - cell "-" [ref=e864]
+            - cell "Open" [ref=e865]
+            - cell [ref=e866]:
+              - generic [ref=e867]:
+                - button "View Details" [ref=e868] [cursor=pointer]
+                - button "Close Job Card" [ref=e871] [cursor=pointer]
+                - button "Delete Job Card" [ref=e875] [cursor=pointer]
+          - row [ref=e879]:
+            - cell "JC-0011" [ref=e880]
+            - cell "PLAYWRIGHT-EV-001" [ref=e881]
+            - cell "7 Oct 2026, 04:58 am" [ref=e882]
+            - cell "-" [ref=e883]
+            - cell "-" [ref=e884]
+            - cell "Open" [ref=e885]
+            - cell [ref=e886]:
+              - generic [ref=e887]:
+                - button "View Details" [ref=e888] [cursor=pointer]
+                - button "Close Job Card" [ref=e891] [cursor=pointer]
+                - button "Delete Job Card" [ref=e895] [cursor=pointer]
+          - row [ref=e899]:
+            - cell "JC-0010" [ref=e900]
+            - cell "PLAYWRIGHT-EV-001" [ref=e901]
+            - cell "6 Oct 2026, 05:31 am" [ref=e902]
+            - cell "-" [ref=e903]
+            - cell "-" [ref=e904]
+            - cell "Open" [ref=e905]
+            - cell [ref=e906]:
+              - generic [ref=e907]:
+                - button "View Details" [ref=e908] [cursor=pointer]
+                - button "Close Job Card" [ref=e911] [cursor=pointer]
+                - button "Delete Job Card" [ref=e915] [cursor=pointer]
+          - row [ref=e919]:
+            - cell "JC-0009" [ref=e920]
+            - cell "PLAYWRIGHT-EV-001" [ref=e921]
+            - cell "6 Oct 2026, 05:18 am" [ref=e922]
+            - cell "-" [ref=e923]
+            - cell "-" [ref=e924]
+            - cell "Open" [ref=e925]
+            - cell [ref=e926]:
+              - generic [ref=e927]:
+                - button "View Details" [ref=e928] [cursor=pointer]
+                - button "Close Job Card" [ref=e931] [cursor=pointer]
+                - button "Delete Job Card" [ref=e935] [cursor=pointer]
+          - row [ref=e939]:
+            - cell "JC-0008" [ref=e940]
+            - cell "PLAYWRIGHT-EV-001" [ref=e941]
+            - cell "6 Oct 2026, 05:04 am" [ref=e942]
+            - cell "-" [ref=e943]
+            - cell "-" [ref=e944]
+            - cell "Open" [ref=e945]
+            - cell [ref=e946]:
+              - generic [ref=e947]:
+                - button "View Details" [ref=e948] [cursor=pointer]
+                - button "Close Job Card" [ref=e951] [cursor=pointer]
+                - button "Delete Job Card" [ref=e955] [cursor=pointer]
+          - row [ref=e959]:
+            - cell "JC-0007" [ref=e960]
+            - cell "PLAYWRIGHT-EV-001" [ref=e961]
+            - cell "5 Oct 2026, 02:08 pm" [ref=e962]
+            - cell "-" [ref=e963]
+            - cell "-" [ref=e964]
+            - cell "Open" [ref=e965]
+            - cell [ref=e966]:
+              - generic [ref=e967]:
+                - button "View Details" [ref=e968] [cursor=pointer]
+                - button "Close Job Card" [ref=e971] [cursor=pointer]
+                - button "Delete Job Card" [ref=e975] [cursor=pointer]
+          - row [ref=e979]:
+            - cell "JC-0006" [ref=e980]
+            - cell "PLAYWRIGHT-EV-001" [ref=e981]
+            - cell "5 Oct 2026, 01:58 pm" [ref=e982]
+            - cell "-" [ref=e983]
+            - cell "-" [ref=e984]
+            - cell "Open" [ref=e985]
+            - cell [ref=e986]:
+              - generic [ref=e987]:
+                - button "View Details" [ref=e988] [cursor=pointer]
+                - button "Close Job Card" [ref=e991] [cursor=pointer]
+                - button "Delete Job Card" [ref=e995] [cursor=pointer]
+          - row [ref=e999]:
+            - cell "JC-0005" [ref=e1000]
+            - cell "PLAYWRIGHT-EV-001" [ref=e1001]
+            - cell "5 Oct 2026, 01:58 pm" [ref=e1002]
+            - cell "-" [ref=e1003]
+            - cell "-" [ref=e1004]
+            - cell "Open" [ref=e1005]
+            - cell [ref=e1006]:
+              - generic [ref=e1007]:
+                - button "View Details" [ref=e1008] [cursor=pointer]
+                - button "Close Job Card" [ref=e1011] [cursor=pointer]
+                - button "Delete Job Card" [ref=e1015] [cursor=pointer]
+          - row [ref=e1019]:
+            - cell "JC-0004" [ref=e1020]
+            - cell "PLAYWRIGHT-EV-001" [ref=e1021]
+            - cell "5 Oct 2026, 01:52 pm" [ref=e1022]
+            - cell "-" [ref=e1023]
+            - cell "-" [ref=e1024]
+            - cell "Open" [ref=e1025]
+            - cell [ref=e1026]:
+              - generic [ref=e1027]:
+                - button "View Details" [ref=e1028] [cursor=pointer]
+                - button "Close Job Card" [ref=e1031] [cursor=pointer]
+                - button "Delete Job Card" [ref=e1035] [cursor=pointer]
+          - row [ref=e1039]:
+            - cell "JC-0003" [ref=e1040]
+            - cell "PLAYWRIGHT-EV-001" [ref=e1041]
+            - cell "5 Oct 2026, 01:42 pm" [ref=e1042]
+            - cell "-" [ref=e1043]
+            - cell "-" [ref=e1044]
+            - cell "Open" [ref=e1045]
+            - cell [ref=e1046]:
+              - generic [ref=e1047]:
+                - button "View Details" [ref=e1048] [cursor=pointer]
+                - button "Close Job Card" [ref=e1051] [cursor=pointer]
+                - button "Delete Job Card" [ref=e1055] [cursor=pointer]
+          - row [ref=e1059]:
+            - cell "JC-0001" [ref=e1060]
+            - cell "PLAYWRIGHT-EV-001" [ref=e1061]
+            - cell "5 Oct 2026, 11:47 am" [ref=e1062]
+            - cell "-" [ref=e1063]
+            - cell "-" [ref=e1064]
+            - cell "Open" [ref=e1065]
+            - cell [ref=e1066]:
+              - generic [ref=e1067]:
+                - button "View Details" [ref=e1068] [cursor=pointer]
+                - button "Close Job Card" [ref=e1071] [cursor=pointer]
+                - button "Delete Job Card" [ref=e1075] [cursor=pointer]
+```

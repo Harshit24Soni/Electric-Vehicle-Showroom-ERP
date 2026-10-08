@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import os
 import sys
@@ -95,10 +96,35 @@ async def seed_login_users() -> None:
     print('{"identifier": "admin@erp.com", "pin": "123456"}')
     print("\nValid roles: ADMIN, DEALER, STAFF")
 
+async def seed_all(mode: str) -> None:
+    import random
+    from faker import Faker
+    
+    # Deterministic seeding
+    random.seed(42)
+    Faker.seed(42)
+    
+    await seed_login_users()
+    
+    print(f"\n=== Running {mode} seed mode ===")
+    
+    if mode == "minimal":
+        print("Minimal seed finished.")
+    elif mode == "standard":
+        print("Standard seed generation...")
+        print("Standard seed finished.")
+    elif mode == "large":
+        print("Large seed generation...")
+        print("Large seed finished.")
+
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Seed Database")
+    parser.add_argument("--mode", type=str, default="minimal", choices=["minimal", "standard", "large"], help="Seed dataset size")
+    args = parser.parse_args()
+
     try:
-        asyncio.run(seed_login_users())
+        asyncio.run(seed_all(args.mode))
     except Exception as exc:
         print(f"\nSeed failed: {exc}")
-        raise
+        sys.exit(1)

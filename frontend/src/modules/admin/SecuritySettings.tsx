@@ -17,6 +17,7 @@ export default function SecuritySettings() {
             const data = await authApi.setupTotp()
             setTotpData(data)
             setStep('setup')
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to initialize setup')
         } finally {
@@ -34,6 +35,7 @@ export default function SecuritySettings() {
                 code: verifyCode
             })
             setStep('success')
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Verification failed. Check the code and try again.')
         } finally {

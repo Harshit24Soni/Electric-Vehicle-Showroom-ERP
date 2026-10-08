@@ -25,6 +25,7 @@ export default function ReportsPage() {
     queryFn: async () => {
       const res = await api.get<{ items: SalesSummary[] }>(`/reports/sales-summary?from_date=${dateRange.from}&to_date=${dateRange.to}`)
       // api.get usually returns the data directly if configured so, assuming it returns { items: ... } based on our backend
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
       return res.items || (res as any)?.data?.items || []
     },
   })

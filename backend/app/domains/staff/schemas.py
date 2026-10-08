@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 class StaffDesignation(str, Enum):
     ADMIN = "ADMIN"
@@ -11,8 +11,8 @@ class StaffDesignation(str, Enum):
 
 # --- AUTH & PIN SCHEMAS ---
 class PinLoginRequest(BaseModel):
-    identifier: str = Field(..., description="Mobile number or email", example="9876543210")
-    pin: str = Field(..., min_length=6, max_length=6, example="123456")
+    identifier: str = Field(..., description="Mobile number or email", examples=["9876543210"])
+    pin: str = Field(..., min_length=6, max_length=6, examples=["123456"])
 
 class PinChangeRequest(BaseModel):
     old_pin: str = Field(..., min_length=6, max_length=6)
@@ -40,7 +40,7 @@ class TOTPVerifyRequest(BaseModel):
 
 class DealerPinResetRequest(BaseModel):
     """For dealers to reset their own PIN - requires TOTP verification"""
-    identifier: str = Field(..., description="Mobile number or email", example="9876543210")
+    identifier: str = Field(..., description="Mobile number or email", examples=["9876543210"])
     totp_code: str = Field(..., min_length=6, max_length=6, description="Code from Authenticator App")
     new_pin: str = Field(..., min_length=6, max_length=6)
 
@@ -107,5 +107,4 @@ class StaffResponse(BaseModel):
     created_at: datetime
     totp_enabled: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

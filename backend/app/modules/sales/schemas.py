@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 
 
@@ -37,8 +37,7 @@ class ServiceScheduleResponse(BaseModel):
     due_date: date
     status: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChecklistUpdate(BaseModel):
@@ -69,8 +68,7 @@ class ChecklistResponse(BaseModel):
     plate_fixation_date: Optional[date] = None
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SaleResponse(BaseModel):
@@ -102,8 +100,7 @@ class SaleResponse(BaseModel):
     # Forward reference handled by Pydantic usually, but to be safe:
     delivery_checklist: Optional['ChecklistResponse'] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReceiptCreate(BaseModel):
@@ -124,8 +121,7 @@ class ReceiptResponse(BaseModel):
     created_by_staff_id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== NEW WORKFLOW SCHEMAS ====================
@@ -160,8 +156,7 @@ class SalePaymentResponse(BaseModel):
     created_by_staff_id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SaleDocumentCreate(BaseModel):
@@ -180,8 +175,7 @@ class SaleDocumentResponse(BaseModel):
     print_count: int
     last_printed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PortalTrackingUpdate(BaseModel):
@@ -219,8 +213,7 @@ class PortalTrackingResponse(BaseModel):
     helmet_invoice_generated: bool
     all_portals_completed: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StageHistoryResponse(BaseModel):
@@ -232,8 +225,7 @@ class StageHistoryResponse(BaseModel):
     remarks: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SaleProgressResponse(BaseModel):

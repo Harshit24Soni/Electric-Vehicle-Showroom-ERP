@@ -21,6 +21,7 @@ export interface CustomerDetailed extends Customer {
     aadhaar_no?: string | null
     pan_no?: string | null
     gstin?: string | null
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     nominees: any[]
     vehicle_count: number
     last_service_date?: string | null

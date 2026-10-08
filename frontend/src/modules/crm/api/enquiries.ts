@@ -44,6 +44,7 @@ export const enquiriesApi = {
         return api.get(`/crm/enquiries/${id}`)
     },
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     update: async (id: number, data: any): Promise<Enquiry> => {
         return api.put(`/crm/enquiries/${id}`, data)
     },

@@ -7,7 +7,7 @@ import { SpareMovementCreate } from '../api/inventoryApi'
 const movementSchema = z.object({
   spare_id: z.number().min(1, 'Spare part is required'),
   quantity: z.number().min(1, 'Quantity must be positive'),
-  movement_type: z.enum(['PURCHASE', 'SALE', 'SERVICE_PAID', 'SERVICE_INSURANCE', 'ADJUSTMENT']),
+  movement_type: z.enum(['PURCHASE', 'SALE', 'SERVICE_CONSUMPTION', 'WARRANTY_INWARD', 'WARRANTY_OUTWARD', 'ADJUSTMENT']),
   serial_id: z.number().optional(),
   reference_type: z.string().optional(),
   reference_id: z.number().optional(),
@@ -81,8 +81,9 @@ export default function SpareMovementForm({ onSubmit, onClose, isLoading }: Spar
             <select {...register('movement_type')} className="input">
               <option value="PURCHASE">Purchase</option>
               <option value="SALE">Sale</option>
-              <option value="SERVICE_PAID">Service (Paid)</option>
-              <option value="SERVICE_INSURANCE">Service (Insurance)</option>
+              <option value="SERVICE_CONSUMPTION">Service Consumption</option>
+              <option value="WARRANTY_INWARD">Warranty Inward</option>
+              <option value="WARRANTY_OUTWARD">Warranty Outward</option>
               <option value="ADJUSTMENT">Adjustment</option>
             </select>
             {errors.movement_type && (

@@ -7,6 +7,7 @@ export default function EnquiryList() {
 
     useEffect(() => {
         fetchEnquiries()
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- TODO(Phase1.1 Baseline): Legacy warning
     }, [])
 
     return (
@@ -30,6 +31,7 @@ export default function EnquiryList() {
                             </tr>
                         </thead>
                         <tbody>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                             {enquiries.map((e: any) => (
                                 <tr key={e.enquiry_id}>
                                     <td>{e.enquiry_id}</td>

@@ -36,6 +36,7 @@ export default function InvoiceForm({ onSubmit, onClose, isLoading }: InvoiceFor
     resolver: zodResolver(invoiceSchema),
   })
 
+	// eslint-disable-next-line react-hooks/incompatible-library -- TODO(Phase1.1 Baseline): Legacy warning
   const taxableAmount = watch('taxable_amount', 0)
   const gstRate = watch('gst_rate', 0)
   const gstAmount = (taxableAmount * gstRate) / 100

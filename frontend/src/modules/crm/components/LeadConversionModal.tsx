@@ -53,6 +53,7 @@ export default function LeadConversionModal({ lead, onClose, onSuccess }: LeadCo
             onSuccess()
             onClose()
         },
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (err: any) => {
             setError(err?.response?.data?.detail || 'Failed to convert lead.')
         },

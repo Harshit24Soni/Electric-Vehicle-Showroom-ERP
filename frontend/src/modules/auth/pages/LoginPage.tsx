@@ -26,6 +26,7 @@ export default function LoginPage() {
   const [retryTime, setRetryTime] = useState<number | null>(null)
 
   useEffect(() => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     let timer: any
     if (retryTime !== null && retryTime > 0) {
       timer = setInterval(() => {
@@ -70,6 +71,7 @@ export default function LoginPage() {
       } else {
         navigate('/dashboard')
       }
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     } catch (err: any) {
       console.error('Login error:', err)
 

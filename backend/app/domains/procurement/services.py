@@ -8,6 +8,7 @@ from app.domains.procurement import schemas as procurement_schemas
 from app.domains.master import models as master_models
 from app.core.event_bus import event_bus, SparePurchasedEvent, VehicleIntakeEvent
 from app.modules.inventory import services as inventory_services
+from app.domains.inventory import services as domain_inventory_services
 
 async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.SparePurchaseCreate):
     # 1. Create Purchase Record
@@ -18,6 +19,13 @@ async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.Spar
         purchase_date=data.purchase_date,
         remarks=data.remarks,
         include_in_accounting=data.include_in_accounting,
+        status="APPROVED", # Manual creation auto-approves for now, or use VERIFIED
+        docket_reference=data.docket_reference,
+        subtotal=data.subtotal,
+        tax_total=data.tax_total,
+        additional_charges=data.additional_charges,
+        landed_cost_total=data.landed_cost_total,
+        verification_status="VERIFIED",
         created_at=datetime.utcnow()
     )
     db.add(purchase)
@@ -26,16 +34,20 @@ async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.Spar
     # 2. Process Items
     for item in data.items:
         # Calculate totals
-        total_cost = item.unit_cost * item.quantity
-        # Add tax if needed logic not full implemented in schema but schema has total_cost
+        total_cost = (item.unit_cost * item.quantity) - (item.discount or 0) + (item.tax_amount or 0)
         
         purchase_item = procurement_models.SparePurchaseItem(
             spare_purchase_id=purchase.spare_purchase_id,
             spare_id=item.spare_id,
+            part_code=item.part_code,
+            part_description=item.part_description,
             quantity=item.quantity,
             unit_cost=item.unit_cost,
+            discount=item.discount,
+            tax_amount=item.tax_amount,
             gst_percentage=item.gst_percentage,
-            total_cost=total_cost
+            total_cost=total_cost,
+            verification_status="CONFIRMED"
         )
         db.add(purchase_item)
 
@@ -47,11 +59,107 @@ async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.Spar
             )
         )
         
-        # Note: We do NOT update master price here. 
-        # Price snapshot is stored in purchase_item.unit_cost.
-
     await db.commit()
-    await db.refresh(purchase)
+    await db.refresh(purchase, ["items"])
+    return purchase
+
+async def verify_spare_purchase(db: AsyncSession, spare_purchase_id: int, data: procurement_schemas.SparePurchaseCreate):
+    from sqlalchemy.orm import selectinload
+    stmt = select(procurement_models.SparePurchase).options(
+        selectinload(procurement_models.SparePurchase.items)
+    ).filter_by(spare_purchase_id=spare_purchase_id)
+    result = await db.execute(stmt)
+    purchase = result.scalars().first()
+    
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+        
+    if purchase.status not in ["DRAFT", "OCR_PROCESSED", "PENDING_VERIFICATION"]:
+        raise HTTPException(status_code=400, detail="Only drafts can be verified")
+        
+    # Update fields
+    purchase.vendor_id = data.vendor_id
+    purchase.vendor_invoice_no = data.vendor_invoice_no
+    purchase.vendor_invoice_date = data.vendor_invoice_date
+    purchase.purchase_date = data.purchase_date
+    purchase.remarks = data.remarks
+    purchase.docket_reference = data.docket_reference
+    purchase.subtotal = data.subtotal
+    purchase.tax_total = data.tax_total
+    purchase.additional_charges = data.additional_charges
+    purchase.landed_cost_total = data.landed_cost_total
+    purchase.verification_status = "VERIFIED"
+    purchase.status = "VERIFIED"
+    
+    # Delete old items and replace with verified
+    for item in purchase.items:
+        await db.delete(item)
+        
+    for item in data.items:
+        if not item.spare_id:
+            raise HTTPException(status_code=400, detail=f"Cannot verify without resolving spare_id for {item.part_code}")
+            
+        total_cost = (item.unit_cost * item.quantity) - (item.discount or 0) + (item.tax_amount or 0)
+        
+        new_item = procurement_models.SparePurchaseItem(
+            spare_purchase_id=purchase.spare_purchase_id,
+            spare_id=item.spare_id,
+            part_code=item.part_code,
+            part_description=item.part_description,
+            quantity=item.quantity,
+            unit_cost=item.unit_cost,
+            discount=item.discount,
+            tax_amount=item.tax_amount,
+            gst_percentage=item.gst_percentage,
+            total_cost=total_cost,
+            verification_status="CONFIRMED"
+        )
+        db.add(new_item)
+        
+    await db.commit()
+    await db.refresh(purchase, ["items"])
+    return purchase
+
+async def approve_spare_purchase(db: AsyncSession, spare_purchase_id: int):
+    from sqlalchemy.orm import selectinload
+    stmt = select(procurement_models.SparePurchase).options(
+        selectinload(procurement_models.SparePurchase.items)
+    ).filter_by(spare_purchase_id=spare_purchase_id)
+    result = await db.execute(stmt)
+    purchase = result.scalars().first()
+    
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+        
+    if purchase.status != "VERIFIED":
+        raise HTTPException(status_code=400, detail="Must be verified before approval")
+        
+    purchase.status = "APPROVED"
+        
+    await db.commit()
+    await db.refresh(purchase, ["items"])
+    return purchase
+
+async def post_spare_purchase(db: AsyncSession, spare_purchase_id: int, payload: procurement_schemas.PostPurchaseReceiptRequest):
+    from sqlalchemy.orm import selectinload
+    stmt = select(procurement_models.SparePurchase).options(
+        selectinload(procurement_models.SparePurchase.items)
+    ).filter_by(spare_purchase_id=spare_purchase_id)
+    result = await db.execute(stmt)
+    purchase = result.scalars().first()
+    
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+        
+    if purchase.status != "APPROVED":
+        raise HTTPException(status_code=400, detail="Must be approved before posting to inventory")
+    
+    # Call inventory domain to process the receipt
+    await domain_inventory_services.post_purchase_receipt(db, purchase, payload)
+    
+    purchase.status = "POSTED"
+    await db.commit()
+    await db.refresh(purchase, ["items"])
     return purchase
 
 
@@ -61,7 +169,7 @@ async def create_temporary_item(db: AsyncSession, data: procurement_schemas.Temp
     try:
         spare_id = await inventory_services.create_temporary_spare(
             db,
-            spare_code=data.spare_code,
+            spare_code=data.initial_code,
             spare_name=data.spare_name,
             category=data.category,
             remarks=data.remarks
@@ -82,7 +190,7 @@ async def create_temporary_item(db: AsyncSession, data: procurement_schemas.Temp
         db.add(price_hist)
         await db.commit()
 
-    return {"spare_id": spare_id, "spare_code": data.spare_code}
+    return {"spare_id": spare_id, "spare_name": data.spare_name}
 
 async def list_temporary_items(db: AsyncSession):
     """List unverified temporary items (excludes soft-deleted)"""
@@ -98,22 +206,37 @@ async def approve_temporary_item(db: AsyncSession, spare_id: int):
 async def list_spare_purchases(db: AsyncSession):
     """List all spare purchases with items, enriched with vendor_name and spare info."""
     from sqlalchemy.orm import selectinload
+    from app.modules.inventory.models import SpareMaster
     stmt = select(procurement_models.SparePurchase).options(
-        selectinload(procurement_models.SparePurchase.items).selectinload(procurement_models.SparePurchaseItem.spare),
+        selectinload(procurement_models.SparePurchase.items),
         selectinload(procurement_models.SparePurchase.vendor),
     ).order_by(procurement_models.SparePurchase.created_at.desc())
     
     result = await db.execute(stmt)
     purchases = result.scalars().all()
+    
+    # Collect all spare_ids to fetch names in one go
+    spare_ids = set()
+    for p in purchases:
+        for item in (p.items or []):
+            spare_ids.add(item.spare_id)
+            
+    spare_map = {}
+    if spare_ids:
+        spare_stmt = select(SpareMaster).filter(SpareMaster.spare_id.in_(spare_ids))
+        spare_res = await db.execute(spare_stmt)
+        for s in spare_res.scalars().all():
+            spare_map[s.spare_id] = s
+            
     out = []
     for p in purchases:
         items_list = []
         for item in (p.items or []):
+            spare_obj = spare_map.get(item.spare_id)
             items_list.append({
                 "purchase_item_id": item.purchase_item_id,
                 "spare_id": item.spare_id,
-                "spare_name": item.spare.spare_name if item.spare else None,
-                "spare_code": item.spare.spare_code if item.spare else None,
+                "spare_name": spare_obj.spare_name if spare_obj else None,
                 "quantity": item.quantity,
                 "unit_cost": item.unit_cost,
                 "gst_percentage": item.gst_percentage or 0,

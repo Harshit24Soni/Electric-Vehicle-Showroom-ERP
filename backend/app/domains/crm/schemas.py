@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List
 
 
@@ -55,8 +55,7 @@ class LeadResponse(BaseModel):
     is_converted: Optional[bool] = None
     converted_sale_id: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LeadConversionRequest(BaseModel):
@@ -86,8 +85,7 @@ class EnquiryResponse(BaseModel):
     remarks: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FollowupCreate(BaseModel):
@@ -114,8 +112,7 @@ class FollowupResponse(BaseModel):
     remarks: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ActivityCreate(BaseModel):
     lead_id: int
@@ -160,8 +157,7 @@ class LeadFollowupResponse(BaseModel):
     staff_id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LeadDashboardItem(BaseModel):
@@ -172,8 +168,7 @@ class LeadDashboardItem(BaseModel):
     next_followup_date: Optional[date] = None
     owner_staff_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LeadFollowupDashboardResponse(BaseModel):
@@ -226,6 +221,5 @@ class LeadConvertResponse(BaseModel):
     lead_id: int
     nominee_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 

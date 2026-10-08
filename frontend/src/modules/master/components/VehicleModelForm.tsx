@@ -34,6 +34,7 @@ export default function VehicleModelForm({ model, isEditing = false, onSubmit, o
     handleSubmit,
     formState: { errors },
     reset,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
     setValue,
   } = useForm<VehicleModelFormData>({
     resolver: zodResolver(vehicleModelSchema),
@@ -110,7 +111,9 @@ export default function VehicleModelForm({ model, isEditing = false, onSubmit, o
               >
                 <option value="">— Select Brand —</option>
                 {brands
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                   .filter((b: any) => !b.is_deleted && b.is_active !== false)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                   .map((b: any) => (
                     <option key={b.brand_id} value={b.brand_id}>{b.brand_name}</option>
                   ))

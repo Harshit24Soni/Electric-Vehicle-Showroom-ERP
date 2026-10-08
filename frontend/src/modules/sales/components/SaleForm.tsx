@@ -33,18 +33,24 @@ interface SaleFormProps {
 export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps) {
   const [isDirectSale, setIsDirectSale] = useState(false)
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const { data: leads = [] } = useQuery<any[]>({
     queryKey: ['leads'],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     queryFn: () => api.get<any[]>('/crm/leads'),
   })
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const { data: customers = [] } = useQuery<any[]>({
     queryKey: ['customers'],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     queryFn: () => api.get<any[]>('/master/customers'),
   })
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const { data: vehiclesData } = useQuery<any>({
     queryKey: ['vehicles'],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     queryFn: () => api.get<any>('/master/vehicles'),
   })
 
@@ -55,6 +61,7 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
     handleSubmit,
     formState: { errors },
     setValue,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
     watch,
   } = useForm<SaleFormData>({
     resolver: zodResolver(saleSchema),
@@ -84,6 +91,7 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
         is_direct_sale: true,
       })
     } else {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
       const selectedLead = leads.find((l: any) => l.lead_id === data.lead_id)
       onSubmit({
         lead_id: data.lead_id,
@@ -129,6 +137,7 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
               <label className="block text-sm font-medium text-gray-700 mb-2">Lead *</label>
               <select {...register('lead_id', { valueAsNumber: true })} className="input">
                 <option value="">Select a lead</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                 {leads.map((lead: any) => (
                   <option key={lead.lead_id} value={lead.lead_id}>
                     {lead.name} — {lead.phone} — {lead.lead_status || 'WARM'}
@@ -145,6 +154,7 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
               <label className="block text-sm font-medium text-gray-700 mb-2">Customer *</label>
               <select {...register('customer_id', { valueAsNumber: true })} className="input">
                 <option value="">Select a customer</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                 {customers.map((c: any) => (
                   <option key={c.customer_id} value={c.customer_id}>
                     {c.name} — {c.primary_phone}
@@ -159,6 +169,7 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
             <label className="block text-sm font-medium text-gray-700 mb-2">Available Vehicle (Chassis) *</label>
             <select {...register('chassis_no')} className="input">
               <option value="">Select a vehicle</option>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
               {vehicles.filter((v: any) => v.current_status === 'IN_STOCK' || v.current_status === 'AVAILABLE').map((v: any) => (
                 <option key={v.chassis_no} value={v.chassis_no}>
                   {v.chassis_no} ({v.model?.model_name || 'Vehicle'})

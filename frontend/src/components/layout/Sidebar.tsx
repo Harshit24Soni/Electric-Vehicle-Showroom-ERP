@@ -49,7 +49,7 @@ const menuItems: MenuItem[] = [
   { path: '/setup', label: 'Setup', icon: Settings, roles: ['ADMIN', 'DEALER'] },
 ]
 
-export function Sidebar() {
+export function Sidebar({ onItemClick }: { onItemClick?: () => void } = {}) {
   const location = useLocation()
   const { user, hasRole, clearAuth } = useAuthStore()
   const [expandedMenus, setExpandedMenus] = useState<string[]>([])
@@ -107,6 +107,7 @@ export function Sidebar() {
                             ? 'bg-primary-600 text-white'
                             : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                         )}
+                        onClick={onItemClick}
                       >
                         {child.label}
                       </Link>
@@ -127,6 +128,7 @@ export function Sidebar() {
                   ? 'bg-primary-600 text-white'
                   : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               )}
+              onClick={onItemClick}
             >
               <Icon className="w-5 h-5" />
               <span>{item.label}</span>
@@ -139,6 +141,7 @@ export function Sidebar() {
         <Link
           to="/staff/profile"
           className="flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+          onClick={onItemClick}
         >
           <User className="w-5 h-5" />
           <div className="flex-1 min-w-0">

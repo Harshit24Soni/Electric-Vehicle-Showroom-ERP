@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { authApi, TOTPSetupResponse } from '../../auth/api/authApi'
 import { toast } from 'react-hot-toast'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { X, Copy, Check } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -20,6 +21,7 @@ export default function Enable2FAModal({ onClose }: Enable2FAModalProps) {
 
     useEffect(() => {
         fetchSetupData()
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- TODO(Phase1.1 Baseline): Legacy warning
     }, [])
 
     const fetchSetupData = async () => {
@@ -27,6 +29,7 @@ export default function Enable2FAModal({ onClose }: Enable2FAModalProps) {
         try {
             const response = await authApi.setupTotp()
             setSetupData(response)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         } catch (error: any) {
             toast.error(error.response?.data?.detail || 'Failed to initialize 2FA setup')
             onClose()
@@ -48,6 +51,7 @@ export default function Enable2FAModal({ onClose }: Enable2FAModalProps) {
             toast.success('Two-factor authentication enabled successfully')
             await queryClient.invalidateQueries({ queryKey: ['staff-profile'] })
             onClose()
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         } catch (error: any) {
             toast.error(error.response?.data?.detail || 'Invalid code. Please try again.')
         } finally {

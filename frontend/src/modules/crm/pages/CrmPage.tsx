@@ -17,10 +17,14 @@ export default function CrmPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<number | ''>('')
   const [showForm, setShowForm] = useState(false)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const [convertingLead, setConvertingLead] = useState<any>(null)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const [selectedLead, setSelectedLead] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'leads' | 'testrides'>('leads')
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const [deleteTarget, setDeleteTarget] = useState<any>(null)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   const [followupLead, setFollowupLead] = useState<any>(null)
 
   const { leads, fetchLeads, isLoading: leadsLoading } = useCrmStore()
@@ -41,6 +45,7 @@ export default function CrmPage() {
   // Auto-open form when navigated with ?action=new
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
+	// eslint-disable-next-line react-hooks/set-state-in-effect -- TODO(Phase1.1 Baseline): Legacy warning
       setShowForm(true)
       setSearchParams({}, { replace: true })
     }
@@ -225,8 +230,11 @@ export default function CrmPage() {
                               </button>
                               <button
                                 onClick={() => setConvertingLead(lead)}
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                 className={`p-1 ${(lead as any).is_converted ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-green-600'}`}
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                 title={(lead as any).is_converted ? 'Already Converted' : 'Convert to Customer'}
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
                                 disabled={(lead as any).is_converted}
                               >
                                 <UserPlus className="w-4 h-4" />

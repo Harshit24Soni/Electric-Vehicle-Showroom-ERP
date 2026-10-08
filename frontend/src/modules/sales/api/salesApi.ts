@@ -118,6 +118,7 @@ export interface Sale {
   is_challan_generated: boolean
   is_insurance_generated: boolean
   is_service_schedule_generated: boolean
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   receipts?: any[]
   vehicle_available?: boolean
   booking_amount?: number
@@ -181,10 +182,12 @@ export const salesApi = {
   createSaleBilling: (data: SaleCreatePayload) => api.post<Sale>('/sales/billing', data),
   getSales: (status?: string) => api.get<Sale[]>(`/sales${status ? `?status=${status}` : ''}`),
   getSale: (id: number) => api.get<Sale>(`/sales/${id}`),
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   addReceipt: (data: any) => api.post(`/sales/receipts`, data),
   generateInvoice: (id: number) => api.post<Sale>(`/sales/${id}/invoice`),
   generateChallan: (id: number) => api.post<Sale>(`/sales/${id}/challan`),
   generateServiceSchedule: (id: number) => api.post<Sale>(`/sales/${id}/service-schedule`),
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   getDeliveryStatus: (id: number) => api.get<{ allowed: boolean; documents: any }>(`/sales/${id}/delivery-status`),
   deliverVehicle: (id: number, data: { remarks?: string }) =>
     api.post<Sale>(`/sales/${id}/deliver${data.remarks ? `?remarks=${encodeURIComponent(data.remarks)}` : ''}`),

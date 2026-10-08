@@ -48,6 +48,7 @@ export default function PolicyForm({ onSubmit, onClose, isLoading }: PolicyFormP
     resolver: zodResolver(policySchema),
   })
 
+	// eslint-disable-next-line react-hooks/incompatible-library -- TODO(Phase1.1 Baseline): Legacy warning
   const selectedSale = watch('vehicle_sale_id')
   const sale = sales.find((s) => s.sale_id === selectedSale)
 

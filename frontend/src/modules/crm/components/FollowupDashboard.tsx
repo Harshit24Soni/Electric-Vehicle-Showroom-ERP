@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, isToday, isPast, isFuture, parseISO } from 'date-fns'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { Calendar, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import { crmApi, Followup } from '../api/crmApi'
 import { cn } from '@/lib/utils'
@@ -26,6 +27,7 @@ export default function FollowupDashboard() {
             setRemarks('')
             setError(null)
         },
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
         onError: (err: any) => {
             setError(err.response?.data?.detail || 'Failed to update follow-up')
         }

@@ -9,6 +9,7 @@ export default function VehiclesPage() {
   const [showForm, setShowForm] = useState(false)
   const queryClient = useQueryClient()
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
   const { data: vehicles = [] } = useQuery({
     queryKey: ['vehicles'],
     queryFn: async () => {

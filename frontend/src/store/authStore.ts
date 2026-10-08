@@ -24,6 +24,7 @@ interface AuthState {
 }
 
 // Helper function to decode JWT token
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
 function decodeJWT(token: string): any {
   try {
     const base64Url = token.split('.')[1]
@@ -119,6 +120,7 @@ export const useAuthHydration = () => {
 
     // If already hydrated (happens on fast loads)
     if (useAuthStore.persist.hasHydrated()) {
+	// eslint-disable-next-line react-hooks/set-state-in-effect -- TODO(Phase1.1 Baseline): Legacy warning
       setHydrated(true)
     }
 

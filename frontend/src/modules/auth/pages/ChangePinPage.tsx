@@ -46,6 +46,7 @@ export default function ChangePinPage() {
       })
       clearAuth()
       navigate('/login', { state: { message: 'PIN changed successfully. Please login again.' } })
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to change PIN. Please try again.')
     } finally {

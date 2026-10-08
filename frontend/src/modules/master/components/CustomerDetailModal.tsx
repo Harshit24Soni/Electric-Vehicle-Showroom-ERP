@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { masterApi, Customer } from '../api/masterApi'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { X, User, Phone, Mail, MapPin, CreditCard, Car } from 'lucide-react'
 import NomineeList from './NomineeList'
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { formatDate } from '@/lib/utils'
 
 interface CustomerDetailModalProps {

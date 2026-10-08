@@ -20,6 +20,7 @@ export default function InsurancePage() {
     queryFn: insuranceApi.getPolicies,
   })
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
   const { data: companies = [] } = useQuery({
     queryKey: ['insurance-companies'],
     queryFn: insuranceApi.getCompanies,
@@ -190,6 +191,7 @@ function CompanyForm({
   onClose: () => void
   isLoading?: boolean
 }) {
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
   const { register, handleSubmit, formState: { errors } } = useForm<InsuranceCompanyCreate>({
     defaultValues: {},
   })

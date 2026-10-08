@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from enum import Enum
 from typing import Optional, Literal
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 import re
 
 
@@ -49,8 +49,7 @@ class NomineeResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== CUSTOMER SCHEMAS ====================
@@ -99,8 +98,7 @@ class CustomerResponse(BaseModel):
     created_at: datetime
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CustomerDetailedResponse(BaseModel):
@@ -125,8 +123,7 @@ class CustomerDetailedResponse(BaseModel):
     last_service_date: Optional[datetime] = None
     last_warranty_date: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== VEHICLE MODEL SCHEMAS ====================
@@ -168,8 +165,7 @@ class VehicleModelResponse(BaseModel):
     is_deleted: bool = False
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== VEHICLE SCHEMAS ====================
@@ -186,8 +182,7 @@ class VehicleResponse(BaseModel):
     current_status: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== VENDOR SCHEMAS ====================
@@ -280,8 +275,7 @@ class VendorResponse(BaseModel):
     is_deleted: bool = False
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== PRICING SCHEMAS ====================
@@ -302,8 +296,7 @@ class SparePriceHistoryResponse(BaseModel):
     created_at: datetime
     created_by: Optional[int]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VehiclePriceUpdate(BaseModel):
@@ -320,5 +313,4 @@ class VehiclePriceHistoryResponse(BaseModel):
     created_at: datetime
     created_by: Optional[int]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

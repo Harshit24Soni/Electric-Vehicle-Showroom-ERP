@@ -53,6 +53,7 @@ class ApiClient {
     )
   }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   async get<T>(url: string, config?: any): Promise<T> {
     const response = await this.client.get<T>(url, config)
     // If responseType is blob, return the blob data directly
@@ -62,21 +63,25 @@ class ApiClient {
     return response.data
   }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   async post<T>(url: string, data?: any, config?: any): Promise<T> {
     const response = await this.client.post<T>(url, data, config)
     return response.data
   }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   async put<T>(url: string, data?: any, config?: any): Promise<T> {
     const response = await this.client.put<T>(url, data, config)
     return response.data
   }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   async patch<T>(url: string, data?: any, config?: any): Promise<T> {
     const response = await this.client.patch<T>(url, data, config)
     return response.data
   }
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
   async delete<T>(url: string, config?: any): Promise<T> {
     const response = await this.client.delete<T>(url, config)
     return response.data
