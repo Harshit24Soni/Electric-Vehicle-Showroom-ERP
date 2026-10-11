@@ -46,6 +46,7 @@ jobs:
         ENVIRONMENT: test
         DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/ev_erp_test
         JWT_SECRET_KEY: test_secret
+        PYTHONPATH: .
       run: |
         pytest
 
