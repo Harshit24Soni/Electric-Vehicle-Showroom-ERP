@@ -5,7 +5,7 @@ from app.domains.service.models import ServiceJobCard, ServiceSpareConsumption
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from app.modules.inventory.models import SpareStockBalance, SpareBatch, SpareSerial, SpareMaster
+from app.domains.inventory.models import SpareStockBalance, SpareBatch, SpareSerial, SpareMaster
 from app.domains.inventory.services import add_spare_movement
 
 class ServiceError(Exception):
@@ -103,7 +103,7 @@ async def create_draft_consumption(
         raise ServiceError("Spare not found")
 
     part_code = "UNKNOWN"
-    from app.modules.inventory.models import SparePartCode
+    from app.domains.inventory.models import SparePartCode
     code_stmt = select(SparePartCode).where(SparePartCode.spare_id == spare_id, SparePartCode.is_current == True)
     code_result = await db.execute(code_stmt)
     current_code = code_result.scalar_one_or_none()

@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from app.domains.procurement.ocr_provider import FakeOCRProvider, OCRResult
 from app.domains.procurement import models as proc_models
-from app.modules.inventory.models import SparePartCode
+from app.domains.inventory.models import SparePartCode
 
 class OCRService:
     def __init__(self, provider=None):

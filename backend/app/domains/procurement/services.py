@@ -7,7 +7,7 @@ from app.domains.procurement import models as procurement_models
 from app.domains.procurement import schemas as procurement_schemas
 from app.domains.master import models as master_models
 from app.core.event_bus import event_bus, SparePurchasedEvent, VehicleIntakeEvent
-from app.modules.inventory import services as inventory_services
+from app.domains.inventory import services as inventory_services
 from app.domains.inventory import services as domain_inventory_services
 
 async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.SparePurchaseCreate):
@@ -206,7 +206,7 @@ async def approve_temporary_item(db: AsyncSession, spare_id: int):
 async def list_spare_purchases(db: AsyncSession):
     """List all spare purchases with items, enriched with vendor_name and spare info."""
     from sqlalchemy.orm import selectinload
-    from app.modules.inventory.models import SpareMaster
+    from app.domains.inventory.models import SpareMaster
     stmt = select(procurement_models.SparePurchase).options(
         selectinload(procurement_models.SparePurchase.items),
         selectinload(procurement_models.SparePurchase.vendor),

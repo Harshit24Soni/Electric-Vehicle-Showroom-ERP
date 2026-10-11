@@ -3,7 +3,7 @@ from sqlalchemy import select, func, or_, and_, desc
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta, timezone
 
-from app.modules.inventory.models import (
+from app.domains.inventory.models import (
     SpareStockBalance, SpareMaster, SpareBatch, SpareSerial, SpareStockMovement, SpareCostHistory, SparePartCode
 )
 from app.domains.inventory.schemas_stock import (

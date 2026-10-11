@@ -63,7 +63,7 @@ async def get_tag_qr(
 ):
     # Just fetch tag identifier to generate QR
     from sqlalchemy import select
-    from app.modules.inventory.models import InventoryTag
+    from app.domains.inventory.models import InventoryTag
     res = await db.execute(select(InventoryTag.tag_identifier).where(InventoryTag.tag_id == tag_id))
     identifier = res.scalar_one_or_none()
     if not identifier:

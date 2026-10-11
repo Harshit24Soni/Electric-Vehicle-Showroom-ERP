@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.modules.inventory.models import (
+from app.domains.inventory.models import (
     VehicleStockMovement,
     SpareStockMovement,
     SpareMaster,
@@ -13,6 +13,13 @@ from app.modules.inventory.models import (
     SpareBatch,
     SpareStockBalance,
     SpareCostHistory
+)
+from app.domains.inventory.contracts import (
+    CheckSpareStockRequest,
+    SpareStockAvailabilityResponse,
+    SpareStockAvailabilityInfo,
+    CheckVehicleAvailabilityRequest,
+    VehicleAvailabilityResponse,
 )
 
 class InventoryError(Exception):
@@ -495,3 +502,121 @@ async def post_purchase_receipt(
         db.add(new_cost)
         
     await db.flush()
+
+
+# ==================== CROSS-MODULE CONTRACT SERVICES & TEMPORARY SPARES ====================
+
+async def check_vehicle_availability(
+    db: AsyncSession, req: CheckVehicleAvailabilityRequest
+) -> VehicleAvailabilityResponse:
+    """
+    Synchronous cross-module read.
+    Returns a contract (Pydantic model) rather than the raw database model.
+    """
+    last = await get_latest_vehicle_movement(db, req.chassis_no)
+
+    if last is None:
+        return VehicleAvailabilityResponse(
+            chassis_no=req.chassis_no,
+            is_available=False,
+            current_status=None
+        )
+
+    is_available = last.movement_type in ("INWARD", "AVAILABLE")
+    return VehicleAvailabilityResponse(
+        chassis_no=req.chassis_no,
+        is_available=is_available,
+        current_status=last.movement_type
+    )
+
+
+async def check_spare_stock(
+    db: AsyncSession, req: CheckSpareStockRequest
+) -> SpareStockAvailabilityResponse:
+    """
+    Synchronous cross-module read.
+    Aggregates stock quantities for the requested spares and returns a contract.
+    """
+    results = []
+    for spare_id in req.spare_ids:
+        stmt = (
+            select(func.coalesce(func.sum(SpareStockMovement.quantity), 0))
+            .filter(SpareStockMovement.spare_id == spare_id)
+        )
+        result = await db.execute(stmt)
+        qty = result.scalar() or 0
+
+        results.append(
+            SpareStockAvailabilityInfo(
+                spare_id=spare_id,
+                available_quantity=int(qty),
+                is_available=qty > 0
+            )
+        )
+
+    return SpareStockAvailabilityResponse(results=results)
+
+
+async def create_temporary_spare(
+    db: AsyncSession,
+    *,
+    spare_code: str,
+    spare_name: str,
+    category: str | None = None,
+    remarks: str | None = None,
+) -> int:
+    """
+    Internal logic to create a temporary spare part.
+    Returns the created spare_id to keep ORM objects internal.
+    """
+    existing_code_stmt = select(SparePartCode).filter(SparePartCode.code == spare_code, SparePartCode.is_deleted == False)
+    existing_code = await db.execute(existing_code_stmt)
+    if existing_code.scalars().first():
+        raise InventoryError(f"Part code {spare_code} already exists.")
+
+    spare = SpareMaster(
+        spare_name=spare_name,
+        category=category,
+        tracking_mode="QUANTITY",
+        status="ACTIVE",
+        is_temporary=True,
+        is_verified=False,
+        remarks=remarks,
+    )
+    db.add(spare)
+    await db.flush()
+
+    code_record = SparePartCode(
+        spare_id=spare.spare_id,
+        code=spare_code,
+        is_current=True,
+        effective_from=datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+    db.add(code_record)
+    await db.flush()
+    return spare.spare_id
+
+
+async def list_temporary_spares(db: AsyncSession) -> list[SpareMaster]:
+    """List unverified temporary items (excludes soft-deleted)"""
+    stmt = select(SpareMaster).options(selectinload(SpareMaster.codes)).filter(
+        SpareMaster.is_temporary == True,
+        SpareMaster.is_verified == False,
+        SpareMaster.is_deleted == False
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+async def approve_temporary_spare(db: AsyncSession, spare_id: int) -> SpareMaster | None:
+    """Approve a temporary item"""
+    stmt = select(SpareMaster).options(selectinload(SpareMaster.codes)).filter_by(spare_id=spare_id)
+    result = await db.execute(stmt)
+    item = result.scalars().first()
+    if not item:
+        return None
+    item.is_verified = True
+    item.is_temporary = False
+    await db.commit()
+    await db.refresh(item)
+    return item

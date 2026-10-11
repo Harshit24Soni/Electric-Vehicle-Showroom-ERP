@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.modules.inventory.models import SpareMaster, SparePartCode, SparePartVehicleCompatibility
+from app.domains.inventory.models import SpareMaster, SparePartCode, SparePartVehicleCompatibility
 from app.domains.master.models import VehicleModel
 
 pytestmark = pytest.mark.asyncio

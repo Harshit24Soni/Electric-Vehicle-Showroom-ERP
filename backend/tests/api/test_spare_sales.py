@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from app.modules.sales.models import SpareSale, SpareSaleItem
 from sqlalchemy import select
 from decimal import Decimal
-from app.modules.inventory.models import SpareStockBalance, SpareBatch, SpareSerial, SpareStockMovement, SpareMaster, SparePartCode
+from app.domains.inventory.models import SpareStockBalance, SpareBatch, SpareSerial, SpareStockMovement, SpareMaster, SparePartCode
 from app.domains.master.models import Customer
 
 @pytest.fixture

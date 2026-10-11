@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 from app.domains.service.models import ServiceJobCard, ServiceSpareConsumption
-from app.modules.inventory.models import SpareStockMovement, SpareStockBalance, SpareMaster
+from app.domains.inventory.models import SpareStockMovement, SpareStockBalance, SpareMaster
 from sqlalchemy import select
 
 @pytest.fixture
@@ -15,7 +15,7 @@ async def sample_spare_part(db_session):
     db_session.add(part)
     await db_session.flush()
 
-    from app.modules.inventory.models import SparePartCode
+    from app.domains.inventory.models import SparePartCode
     code = SparePartCode(
         spare_id=part.spare_id,
         code="TEST-SPARE-001",

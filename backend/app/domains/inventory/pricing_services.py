@@ -4,7 +4,7 @@ from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
 from decimal import Decimal
 
-from app.modules.inventory.models import (
+from app.domains.inventory.models import (
     PriceList,
     PriceListVersion,
     PriceListItem,

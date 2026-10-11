@@ -12,7 +12,7 @@ from app.db.base import Base
 from app.modules.sales.models import *  # noqa: F401, F403
 from app.domains.crm.models import *  # noqa: F401, F403
 from app.domains.procurement.models import *  # noqa: F401, F403
-from app.modules.inventory.models import *  # noqa: F401, F403
+from app.domains.inventory.models import *  # noqa: F401, F403
 from app.modules.finance.models import *  # noqa: F401, F403
 from app.modules.billing.models import *  # noqa: F401, F403
 from app.domains.service.models import *  # noqa: F401, F403
@@ -29,7 +29,7 @@ def init_models():
 
 def init_listeners():
     """Initialize all event bus listeners."""
-    from app.modules.inventory.listeners import register_inventory_listeners
+    from app.domains.inventory.listeners import register_inventory_listeners
     from app.domains.crm.listeners import register_crm_listeners
     from app.domains.master.listeners import register_master_listeners
     from app.modules.billing.listeners import register_billing_listeners

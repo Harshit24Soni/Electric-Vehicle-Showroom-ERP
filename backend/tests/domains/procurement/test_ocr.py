@@ -15,7 +15,7 @@ async def vendor(db_session):
 
 @pytest.fixture
 async def spare(db_session):
-    from app.modules.inventory.models import SpareMaster, SparePartCode
+    from app.domains.inventory.models import SpareMaster, SparePartCode
     s = SpareMaster(spare_name="Mysterious Part", tracking_mode="QUANTITY", status="ACTIVE")
     db_session.add(s)
     await db_session.flush()

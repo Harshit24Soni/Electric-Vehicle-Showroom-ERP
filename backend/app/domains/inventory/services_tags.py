@@ -8,7 +8,7 @@ import qrcode
 import base64
 import io
 
-from app.modules.inventory.models import (
+from app.domains.inventory.models import (
     InventoryTag, TagStatus, SpareMaster, SpareBatch, SpareSerial, SpareStockBalance, SparePartCode
 )
 from app.domains.inventory.schemas_tags import (

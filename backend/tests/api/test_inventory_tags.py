@@ -15,7 +15,7 @@ async def test_create_and_scan_tag(admin_client, db_session):
     spare_id = resp.json()["spare_id"]
     
     # 2. Add some stock balance directly to DB for test
-    from app.modules.inventory.models import SpareStockBalance
+    from app.domains.inventory.models import SpareStockBalance
     balance = SpareStockBalance(spare_id=spare_id, location="MAIN_STORE", quantity=10)
     db_session.add(balance)
     await db_session.commit()
