@@ -23,7 +23,7 @@ export default defineConfig({
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
       use: {
-        storageState: { cookies: [], origins: [] },
+        storageState: undefined,
       },
     },
     {
