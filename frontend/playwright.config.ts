@@ -57,7 +57,8 @@ export default defineConfig({
       timeout: 120 * 1000,
     },
     {
-      command: 'cd ../backend && .\\venv\\Scripts\\python -m uvicorn app.main:app --port 8000',
+      command: 'python -m uvicorn app.main:app --port 8000',
+      cwd: '../backend',
       url: 'http://127.0.0.1:8000/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
