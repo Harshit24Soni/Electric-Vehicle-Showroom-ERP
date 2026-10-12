@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { X, AlertCircle } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -13,7 +13,7 @@ interface Props {
 export default function InventoryPostingModal({ purchase, onClose }: Props) {
   const queryClient = useQueryClient()
   const [location, setLocation] = useState('MAIN_WAREHOUSE')
-  const [itemData, setItemData] = useState<Record<number, any>>({})
+  const [userInputs, setUserInputs] = useState<Record<number, { batch_number?: string; expiry_date?: string; serial_numbers?: string[] }>>({})
   
   const { data: spares = [] } = useQuery({
     queryKey: ['spares-list'],
@@ -22,25 +22,23 @@ export default function InventoryPostingModal({ purchase, onClose }: Props) {
     }
   })
 
-  // Initialize item data based on tracking mode
-  useEffect(() => {
-    if (spares.length > 0 && purchase.items) {
-      const initialData: Record<number, any> = {}
-      purchase.items.forEach(item => {
-        const spare = spares.find((s: any) => s.spare_id === item.spare_id)
-        const mode = spare?.tracking_mode || (spare?.is_serialized ? 'SERIALIZED' : 'QUANTITY')
-        
-        initialData[item.purchase_item_id] = {
-          purchase_item_id: item.purchase_item_id,
-          tracking_mode: mode,
-          batch_number: '',
-          expiry_date: '',
-          serial_numbers: Array(item.quantity).fill('')
-        }
-      })
-      setItemData(initialData)
-    }
-  }, [spares, purchase.items])
+  // Derive item tracking data directly during render
+  const itemData: Record<number, any> = {}
+  if (purchase?.items) {
+    purchase.items.forEach((item: SparePurchaseItemResponse) => {
+      const spare = spares.find((s: any) => s.spare_id === item.spare_id)
+      const mode = spare?.tracking_mode || (spare?.is_serialized ? 'SERIALIZED' : 'QUANTITY')
+      const user = userInputs[item.purchase_item_id] || {}
+
+      itemData[item.purchase_item_id] = {
+        purchase_item_id: item.purchase_item_id,
+        tracking_mode: mode,
+        batch_number: user.batch_number ?? '',
+        expiry_date: user.expiry_date ?? '',
+        serial_numbers: user.serial_numbers ?? Array(item.quantity).fill('')
+      }
+    })
+  }
 
   const postMutation = useMutation({
     mutationFn: (payload: any) => procurementApi.postSparePurchaseToInventory(purchase.spare_purchase_id, payload),
@@ -105,19 +103,24 @@ export default function InventoryPostingModal({ purchase, onClose }: Props) {
   }
 
   const handleBatchChange = (itemId: number, field: string, value: string) => {
-    setItemData(prev => ({
+    setUserInputs(prev => ({
       ...prev,
       [itemId]: { ...prev[itemId], [field]: value }
     }))
   }
 
   const handleSerialChange = (itemId: number, index: number, value: string) => {
-    setItemData(prev => {
-      const current = { ...prev[itemId] }
-      const newSerials = [...current.serial_numbers]
+    setUserInputs(prev => {
+      const currentSerials = itemData[itemId]?.serial_numbers || []
+      const newSerials = [...currentSerials]
       newSerials[index] = value
-      current.serial_numbers = newSerials
-      return { ...prev, [itemId]: current }
+      return {
+        ...prev,
+        [itemId]: {
+          ...prev[itemId],
+          serial_numbers: newSerials
+        }
+      }
     })
   }
 

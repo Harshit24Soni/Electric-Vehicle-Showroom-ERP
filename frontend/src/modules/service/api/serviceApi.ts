@@ -8,16 +8,18 @@ export interface JobCardCreate {
 
 export interface JobCard {
   job_card_id: number
-  job_card_no: string
+  job_card_no?: string
   chassis_no: string
-  customer_id: number
-  in_datetime: string
+  customer_id?: number
+  in_datetime?: string
   out_datetime?: string
-  opening_km: number
+  opened_at?: string
+  closed_at?: string | null
+  opening_km?: number
   next_service_date?: string
   next_service_km?: number
   remarks?: string
-  created_at: string
+  created_at?: string
 }
 
 export interface SpareConsumeCreate {

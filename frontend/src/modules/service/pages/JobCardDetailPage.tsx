@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -61,6 +60,10 @@ export default function JobCardDetailPage() {
   if (loadingJob) return <div className="p-8">Loading Job Card...</div>
   if (!jobCard) return <div className="p-8">Job Card not found</div>
 
+  const inTime = jobCard.opened_at || jobCard.in_datetime
+  const outTime = jobCard.closed_at || jobCard.out_datetime
+  const isClosed = Boolean(outTime)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -72,8 +75,8 @@ export default function JobCardDetailPage() {
           <p className="text-gray-500">Chassis No: {jobCard.chassis_no}</p>
         </div>
         <div className="ml-auto">
-           <span className={`px-3 py-1 rounded-full text-sm font-medium ${jobCard.closed_at || jobCard.out_datetime ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-              {jobCard.closed_at || jobCard.out_datetime ? 'Closed' : 'Open'}
+           <span className={`px-3 py-1 rounded-full text-sm font-medium ${isClosed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+              {isClosed ? 'Closed' : 'Open'}
            </span>
         </div>
       </div>
@@ -84,7 +87,7 @@ export default function JobCardDetailPage() {
             <div className="space-y-2 text-sm">
                <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">In Time</span>
-                  <span className="font-medium">{(jobCard.opened_at || jobCard.in_datetime) ? formatDateTime(jobCard.opened_at || jobCard.in_datetime) : '-'}</span>
+                  <span className="font-medium">{inTime ? formatDateTime(inTime) : '-'}</span>
                </div>
                <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">Opening KM</span>
@@ -97,10 +100,10 @@ export default function JobCardDetailPage() {
             </div>
          </div>
          <div className="card flex flex-col items-center justify-center text-center">
-            {(jobCard.closed_at || jobCard.out_datetime) ? (
+            {outTime ? (
                 <div>
                    <h3 className="font-semibold text-lg text-green-700">Service Completed</h3>
-                   <p className="text-sm text-gray-500 mt-1">Out Time: {formatDateTime(jobCard.closed_at || jobCard.out_datetime)}</p>
+                   <p className="text-sm text-gray-500 mt-1">Out Time: {formatDateTime(outTime)}</p>
                 </div>
             ) : (
                 <div>
@@ -114,7 +117,7 @@ export default function JobCardDetailPage() {
       <div className="card">
          <div className="flex justify-between items-center mb-6">
             <h3 className="font-semibold text-lg">Spare Parts Consumption</h3>
-            {!(jobCard.closed_at || jobCard.out_datetime) && (
+            {!isClosed && (
                 <button onClick={() => setShowAddSpare(true)} className="btn btn-primary flex items-center gap-2">
                    <Plus className="w-4 h-4" /> Add Spare
                 </button>
@@ -135,7 +138,7 @@ export default function JobCardDetailPage() {
                         <th>Tracking</th>
                         <th>Quantity</th>
                         <th>Status</th>
-                        {!(jobCard.closed_at || jobCard.out_datetime) && <th className="text-right">Actions</th>}
+                        {!isClosed && <th className="text-right">Actions</th>}
                      </tr>
                   </thead>
                   <tbody>
@@ -158,7 +161,7 @@ export default function JobCardDetailPage() {
                                   {spare.status}
                                </span>
                             </td>
-                            {!(jobCard.closed_at || jobCard.out_datetime) && (
+                            {!isClosed && (
                                 <td className="text-right">
                                    <div className="flex items-center justify-end gap-2">
                                       {spare.status === 'DRAFT' && (

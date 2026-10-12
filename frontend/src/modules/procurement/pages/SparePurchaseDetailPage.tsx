@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { procurementApi, SparePurchaseResponse, SparePurchaseItemResponse } from '../api/procurementApi'
+import { procurementApi, SparePurchaseItemResponse } from '../api/procurementApi'
 import { inventoryApi } from '../../inventory/api/inventoryApi'
 import { ArrowLeft, CheckCircle, AlertTriangle, Info, FileText, Check, Save, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -26,19 +26,17 @@ export default function SparePurchaseDetailPage() {
         queryFn: () => inventoryApi.getSpares(),
     })
 
-    // Local state for editable items during verification
-    const [editedItems, setEditedItems] = useState<SparePurchaseItemResponse[]>([])
+    // Local state for editable items override during verification
+    const [userEditedItems, setUserEditedItems] = useState<SparePurchaseItemResponse[] | null>(null)
     
-    useEffect(() => {
-        if (purchase) {
-            setEditedItems(JSON.parse(JSON.stringify(purchase.items))) // Deep copy
-        }
-    }, [purchase])
+    // Derive editable items directly during render from purchase or user edits
+    const editedItems: SparePurchaseItemResponse[] = userEditedItems ?? (purchase?.items ? JSON.parse(JSON.stringify(purchase.items)) : [])
 
     const verifyMutation = useMutation({
         mutationFn: (payload: any) => procurementApi.verifySparePurchase(purchaseId, payload),
         onSuccess: () => {
             toast.success('Invoice verified successfully')
+            setUserEditedItems(null)
             queryClient.invalidateQueries({ queryKey: ['spare-purchase', purchaseId] })
         },
         onError: (error: any) => {
@@ -66,9 +64,11 @@ export default function SparePurchaseDetailPage() {
     const isFinal = ['APPROVED', 'POSTED'].includes(purchase.status || '')
 
     const handleItemChange = (index: number, field: keyof SparePurchaseItemResponse, value: any) => {
-        const newItems = [...editedItems]
-        // @ts-ignore
-        newItems[index][field] = value
+        const newItems: SparePurchaseItemResponse[] = JSON.parse(JSON.stringify(editedItems))
+        newItems[index] = {
+            ...newItems[index],
+            [field]: value
+        }
         
         // Auto mark as confirmed if user edits the mapping
         if (field === 'spare_id') {
@@ -81,7 +81,7 @@ export default function SparePurchaseDetailPage() {
             }
         }
         
-        setEditedItems(newItems)
+        setUserEditedItems(newItems)
     }
 
     const handleVerify = () => {
