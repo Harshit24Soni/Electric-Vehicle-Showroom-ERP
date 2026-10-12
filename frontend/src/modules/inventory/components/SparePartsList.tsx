@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Search, Settings2, PackageSearch } from 'lucide-react'
+import { AxiosError } from 'axios'
 import { inventoryApi } from '../api/inventoryApi'
 import { SkeletonTable } from '@/components/ui/SkeletonTable'
 import { SpareMasterItem, SpareMasterCreate } from '../api/inventoryApi'
@@ -28,8 +29,9 @@ export function SparePartsList() {
       toast.success('Spare part added successfully')
       setIsAdding(false)
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to add spare part')
+    onError: (error: unknown) => {
+      const axiosErr = error as AxiosError<{ detail?: string }>;
+      toast.error(axiosErr?.response?.data?.detail || 'Failed to add spare part')
     }
   })
 

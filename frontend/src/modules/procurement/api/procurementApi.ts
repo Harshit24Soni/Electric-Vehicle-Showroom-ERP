@@ -95,6 +95,47 @@ export interface TemporaryItem {
     is_temporary: boolean
 }
 
+// ==================== Post Purchase Types ====================
+
+export interface PostPurchaseItemData {
+    purchase_item_id: number
+    location?: string
+    batch_number?: string
+    expiry_date?: string
+    serial_numbers?: string[]
+}
+
+export interface PostPurchaseReceiptRequest {
+    location?: string
+    items: PostPurchaseItemData[]
+}
+
+export interface SparePurchaseVerifyItem {
+    spare_id: number
+    part_code?: string
+    part_description?: string
+    quantity: number
+    unit_cost: number
+    discount?: number
+    tax_amount?: number
+    gst_percentage?: number
+    verification_status?: string
+}
+
+export interface SparePurchaseVerifyPayload {
+    vendor_id: number
+    vendor_invoice_no?: string
+    vendor_invoice_date?: string
+    purchase_date: string
+    remarks?: string
+    include_in_accounting: boolean
+    status?: string
+    subtotal?: number
+    tax_total?: number
+    landed_cost_total?: number
+    items: SparePurchaseVerifyItem[]
+}
+
 // ==================== Vehicle Intake Types ====================
 
 export interface VehicleIntakeItem {
@@ -135,7 +176,7 @@ export const procurementApi = {
         })
     },
 
-    verifySparePurchase: async (id: number, data: any) => {
+    verifySparePurchase: async (id: number, data: SparePurchaseVerifyPayload) => {
         return api.put<SparePurchaseResponse>(`/procurement/purchases/spares/${id}/verify`, data)
     },
 
@@ -143,7 +184,7 @@ export const procurementApi = {
         return api.post<SparePurchaseResponse>(`/procurement/purchases/spares/${id}/approve`)
     },
 
-    postSparePurchaseToInventory: async (id: number, data: any) => {
+    postSparePurchaseToInventory: async (id: number, data: PostPurchaseReceiptRequest) => {
         return api.post<SparePurchaseResponse>(`/procurement/purchases/spares/${id}/post`, data)
     },
 

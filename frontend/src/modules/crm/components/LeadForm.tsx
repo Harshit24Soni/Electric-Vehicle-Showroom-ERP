@@ -1,3 +1,12 @@
+interface LeadStatusOption {
+  status_id: number
+  status_name: string
+}
+interface StaffOption {
+  staff_id: number
+  full_name: string
+  designation: string
+}
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -5,7 +14,7 @@ import { X } from 'lucide-react'
 import { LeadCreate } from '../api/leads'
 import { useMasterStore } from '@/store/masterStore'
 import { useQuery } from '@tanstack/react-query'
-import { masterApi } from '../../master/api/masterApi'
+import { masterApi, VehicleModel } from '../../master/api/masterApi'
 import { useAuthStore } from '../../../store/authStore'
 import { api } from '@/lib/api'
 
@@ -143,8 +152,7 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
               <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Model *</label>
               <select {...register('vehicle_model_id', { valueAsNumber: true })} className="input">
                 <option value="">Select model</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                {models.map((model: any) => (
+	{models.map((model: VehicleModel) => (
                   <option key={model.vehicle_model_id} value={model.vehicle_model_id}>
                     {model.brand} {model.model_name}
                   </option>
@@ -170,8 +178,7 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select {...register('lead_status_id', { valueAsNumber: true })} className="input">
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                {leadStatuses.map((status: any) => (
+	{leadStatuses.map((status: LeadStatusOption) => (
                   <option key={status.status_id} value={status.status_id}>
                     {status.status_name}
                   </option>
@@ -190,8 +197,7 @@ export default function LeadForm({ onSubmit, onClose, isLoading }: LeadFormProps
               <label className="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
               <select {...register('owner_staff_id', { valueAsNumber: true })} className="input">
                 <option value="">-- Auto Assign to Me --</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                {staffList.map((staff: any) => (
+	{staffList.map((staff: StaffOption) => (
                   <option key={staff.staff_id} value={staff.staff_id}>
                     {staff.full_name} ({staff.designation})
                   </option>

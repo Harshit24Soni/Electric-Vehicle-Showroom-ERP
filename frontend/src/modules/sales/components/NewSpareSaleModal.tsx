@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Form, Input, Button, Table, InputNumber, Select, message, Popconfirm, Typography } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Modal, Form, Button, Table, InputNumber, Select, message, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, ScanOutlined } from '@ant-design/icons';
+import { AxiosError } from 'axios';
 import { spareSalesApi, SpareSaleItemPayload } from '../api/spareSalesApi';
-import { inventoryApi, StockItem, SpareMasterItem } from '../../inventory/api/inventoryApi';
-import { masterApi } from '../../master/api/masterApi'; // Assuming there's a masterApi for customers
+import { inventoryApi, StockItem } from '../../inventory/api/inventoryApi';
+import { Customer } from '../../master/api/masterApi';
 import { api } from '@/lib/api';
 import ScannerModal, { TagScanResult } from '@/components/common/ScannerModal';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 interface NewSpareSaleModalProps {
   visible: boolean;
@@ -18,9 +20,8 @@ interface NewSpareSaleModalProps {
 const NewSpareSaleModal: React.FC<NewSpareSaleModalProps> = ({ visible, onCancel, onSuccess }) => {
   const [form] = Form.useForm();
   const [cart, setCart] = useState<SpareSaleItemPayload[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
@@ -31,13 +32,13 @@ const NewSpareSaleModal: React.FC<NewSpareSaleModalProps> = ({ visible, onCancel
       fetchCustomers();
       fetchStock();
     }
-  }, [visible]);
+  }, [visible, form]);
 
   const fetchCustomers = async () => {
     try {
-      const res = await api.get<any>('/master/customers');
+      const res = await api.get<Customer[]>('/master/customers');
       setCustomers(res);
-    } catch (error) {
+    } catch {
       message.error('Failed to load customers');
     }
   };
@@ -46,7 +47,7 @@ const NewSpareSaleModal: React.FC<NewSpareSaleModalProps> = ({ visible, onCancel
     try {
       const res = await inventoryApi.getStock(undefined, 'MAIN');
       setStockItems(res.items);
-    } catch (error) {
+    } catch {
       message.error('Failed to load stock');
     }
   };
@@ -117,9 +118,10 @@ const NewSpareSaleModal: React.FC<NewSpareSaleModalProps> = ({ visible, onCancel
       });
       message.success('Draft sale created successfully!');
       onSuccess();
-    } catch (error: any) {
-      if (error.response?.data?.detail) {
-         message.error(error.response.data.detail);
+    } catch (error: unknown) {
+      const axiosErr = error as AxiosError<{ detail?: string }>;
+      if (axiosErr.response?.data?.detail) {
+         message.error(axiosErr.response.data.detail);
       }
     } finally {
       setSubmitting(false);
@@ -128,7 +130,7 @@ const NewSpareSaleModal: React.FC<NewSpareSaleModalProps> = ({ visible, onCancel
 
   const totalAmount = cart.reduce((sum, item) => sum + (item.quantity * item.unit_selling_price), 0);
 
-  const columns = [
+  const columns: ColumnsType<SpareSaleItemPayload> = [
     {
       title: 'Part Code',
       dataIndex: 'part_code',
@@ -137,7 +139,7 @@ const NewSpareSaleModal: React.FC<NewSpareSaleModalProps> = ({ visible, onCancel
     {
       title: 'Spare Name',
       key: 'spare_name',
-      render: (_: any, record: any) => {
+      render: (_: unknown, record: SpareSaleItemPayload) => {
         const item = stockItems.find(i => i.spare_id === record.spare_id);
         return item?.spare_name || 'Unknown';
       }
@@ -146,7 +148,7 @@ const NewSpareSaleModal: React.FC<NewSpareSaleModalProps> = ({ visible, onCancel
       title: 'Unit Price',
       dataIndex: 'unit_selling_price',
       key: 'unit_selling_price',
-      render: (val: number, record: any) => (
+      render: (val: number, record: SpareSaleItemPayload) => (
         <InputNumber 
           value={val} 
           onChange={(v) => setCart(cart.map(c => c.spare_id === record.spare_id ? { ...c, unit_selling_price: v || 0 } : c))} 
@@ -159,7 +161,7 @@ const NewSpareSaleModal: React.FC<NewSpareSaleModalProps> = ({ visible, onCancel
       title: 'Quantity',
       dataIndex: 'quantity',
       key: 'quantity',
-      render: (val: number, record: any) => (
+      render: (val: number, record: SpareSaleItemPayload) => (
         <InputNumber 
           value={val} 
           onChange={(v) => updateCartQuantity(record.spare_id, v)} 
@@ -170,12 +172,12 @@ const NewSpareSaleModal: React.FC<NewSpareSaleModalProps> = ({ visible, onCancel
     {
       title: 'Total',
       key: 'total',
-      render: (_: any, record: any) => (record.quantity * record.unit_selling_price).toFixed(2),
+      render: (_: unknown, record: SpareSaleItemPayload) => (record.quantity * record.unit_selling_price).toFixed(2),
     },
     {
       title: 'Action',
       key: 'action',
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: SpareSaleItemPayload) => (
         <Button danger type="text" icon={<DeleteOutlined />} onClick={() => removeFromCart(record.spare_id)} />
       )
     }

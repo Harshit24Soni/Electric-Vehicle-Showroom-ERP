@@ -260,8 +260,7 @@ export default function SaleDetailPage() {
     if (docType === 'schedule' && sale.service_schedules?.length) {
       extra = `<table style="width:100%;border-collapse:collapse;margin-top:24px;font-size:14px;">
         <tr style="background:#f3f4f6;"><th style="padding:8px;text-align:left;">Service #</th><th style="padding:8px;text-align:left;">Type</th><th style="padding:8px;text-align:left;">Due Date</th><th style="padding:8px;text-align:left;">Status</th></tr>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-        ${sale.service_schedules.map((s: any) => `<tr><td style="padding:8px;">${s.service_number}</td><td style="padding:8px;">${s.service_type}</td><td style="padding:8px;">${s.due_date}</td><td style="padding:8px;">${s.status}</td></tr>`).join('')}
+	${sale.service_schedules.map((s: { service_number: number; service_type: string; due_date: string; status: string }) => `<tr><td style="padding:8px;">${s.service_number}</td><td style="padding:8px;">${s.service_type}</td><td style="padding:8px;">${s.due_date}</td><td style="padding:8px;">${s.status}</td></tr>`).join('')}
       </table>`
     }
     const html = buildDocumentHtml(titleMap[docType] || docType, numberMap[docType], sale, extra)
@@ -286,8 +285,7 @@ export default function SaleDetailPage() {
     if (docType === 'schedule' && sale.service_schedules?.length) {
       extra = `<table style="width:100%;border-collapse:collapse;margin-top:24px;font-size:14px;">
         <tr style="background:#f3f4f6;"><th style="padding:8px;text-align:left;">Service #</th><th style="padding:8px;text-align:left;">Type</th><th style="padding:8px;text-align:left;">Due Date</th><th style="padding:8px;text-align:left;">Status</th></tr>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-        ${sale.service_schedules.map((s: any) => `<tr><td style="padding:8px;">${s.service_number}</td><td style="padding:8px;">${s.service_type}</td><td style="padding:8px;">${s.due_date}</td><td style="padding:8px;">${s.status}</td></tr>`).join('')}
+	${sale.service_schedules.map((s: { service_number: number; service_type: string; due_date: string; status: string }) => `<tr><td style="padding:8px;">${s.service_number}</td><td style="padding:8px;">${s.service_type}</td><td style="padding:8px;">${s.due_date}</td><td style="padding:8px;">${s.status}</td></tr>`).join('')}
       </table>`
     }
     const html = buildDocumentHtml(titleMap[docType] || docType, numberMap[docType], sale, extra)

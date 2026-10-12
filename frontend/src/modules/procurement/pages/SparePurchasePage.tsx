@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { masterApi } from '../../master/api/masterApi'
+import { AxiosError } from 'axios'
+import { masterApi, Vendor } from '../../master/api/masterApi'
 import { procurementApi } from '../api/procurementApi'
 import { ArrowLeft, Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -19,8 +20,7 @@ export default function SparePurchasePage() {
     })
 
     const activeVendors = vendors.filter(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-        (v: any) => !v.is_deleted && v.is_active !== false
+        (v: Vendor) => !v.is_deleted && v.is_active !== false
     )
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,10 +81,11 @@ export default function SparePurchasePage() {
                 navigate(`/procurement/spares/${response.spare_purchase_id}`)
             }, 1000)
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('OCR Upload error', error)
             setOcrState('idle')
-            toast.error(error.response?.data?.detail || 'Failed to process invoice')
+            const axiosError = error as AxiosError<{ detail?: string }>;
+            toast.error(axiosError.response?.data?.detail || 'Failed to process invoice')
         } finally {
             setIsUploading(false)
         }
@@ -112,8 +113,7 @@ export default function SparePurchasePage() {
                         disabled={isUploading}
                     >
                         <option value="">Select Vendor</option>
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                        {activeVendors.map((v: any) => (
+                        {activeVendors.map((v: Vendor) => (
                             <option key={v.vendor_id} value={v.vendor_id}>{v.vendor_name}</option>
                         ))}
                     </select>

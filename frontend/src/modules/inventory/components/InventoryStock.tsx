@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { inventoryApi } from '../api/inventoryApi'
+import { inventoryApi, StockLocationStat, StockItem } from '../api/inventoryApi'
 import { Search, MapPin } from 'lucide-react'
 import { SkeletonTable } from '@/components/ui/SkeletonTable'
 import { useAuthStore } from '@/store/authStore'
@@ -13,7 +13,7 @@ export default function InventoryStock() {
   const { data: locations = [] } = useQuery({
     queryKey: ['inventory-stock-locations'],
     queryFn: () => inventoryApi.getStockByLocation(),
-    select: (data: any) => data.map((l: any) => l.location)
+    select: (data: StockLocationStat[]) => data.map((l: StockLocationStat) => l.location)
   })
 
   const { data: stockResponse, isLoading } = useQuery({
@@ -25,7 +25,7 @@ export default function InventoryStock() {
 
   const items = stockResponse?.items || []
   
-  const filteredItems = items.filter((item: any) => 
+  const filteredItems = items.filter((item: StockItem) => 
     item.spare_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.part_code && item.part_code.toLowerCase().includes(searchTerm.toLowerCase()))
   )
@@ -81,7 +81,7 @@ export default function InventoryStock() {
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map((item: any, idx: number) => (
+              {filteredItems.map((item: StockItem, idx: number) => (
                 <tr key={`${item.spare_id}-${item.location}-${idx}`}>
                   <td className="font-medium text-gray-900">{item.spare_name}</td>
                   <td className="text-gray-500">{item.part_code || '-'}</td>

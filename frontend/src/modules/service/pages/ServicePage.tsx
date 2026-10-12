@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { serviceApi, JobCardCreate } from '../api/serviceApi'
+import { serviceApi, JobCardCreate, JobCard } from '../api/serviceApi'
 import { Plus, Search, CheckCircle, Wrench, Trash2, ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils'
 import JobCardForm from '../components/JobCardForm'
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
@@ -11,7 +11,7 @@ export default function ServicePage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all')
   const [showForm, setShowForm] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<JobCard | null>(null)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
@@ -51,10 +51,10 @@ export default function ServicePage() {
   }
 
   // Status counts
-  const openCount = jobCards.filter((j: any) => !(j.closed_at || j.out_datetime)).length
-  const closedCount = jobCards.filter((j: any) => (j.closed_at || j.out_datetime)).length
+  const openCount = jobCards.filter((j: JobCard) => !(j.closed_at || j.out_datetime)).length
+  const closedCount = jobCards.filter((j: JobCard) => (j.closed_at || j.out_datetime)).length
 
-  const filteredJobCards = jobCards.filter((job: any) => {
+  const filteredJobCards = jobCards.filter((job: JobCard) => {
     const jobNo = job.job_card_no || `JC-${String(job.job_card_id).padStart(4, '0')}`;
     const matchesSearch =
       jobNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -154,12 +154,12 @@ export default function ServicePage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredJobCards.map((job: any) => (
+                {filteredJobCards.map((job: JobCard) => (
                   <tr key={job.job_card_id}>
                     <td className="font-medium">{job.job_card_no || `JC-${String(job.job_card_id).padStart(4, '0')}`}</td>
                     <td className="font-mono text-sm">{job.chassis_no}</td>
-                    <td>{(job.opened_at || job.in_datetime) ? formatDateTime(job.opened_at || job.in_datetime) : '-'}</td>
-                    <td>{job.closed_at || job.out_datetime ? formatDateTime(job.closed_at || job.out_datetime) : '-'}</td>
+                    <td>{(job.opened_at || job.in_datetime) ? formatDateTime((job.opened_at || job.in_datetime) as string) : '-'}</td>
+                    <td>{job.closed_at || job.out_datetime ? formatDateTime((job.closed_at || job.out_datetime) as string) : '-'}</td>
                     <td>{job.opening_km || '-'}</td>
                     <td>
                       <span className={`px-2 py-1 text-xs rounded-full ${job.closed_at || job.out_datetime

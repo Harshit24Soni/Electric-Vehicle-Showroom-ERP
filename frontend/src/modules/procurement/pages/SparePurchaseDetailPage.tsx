@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { procurementApi, SparePurchaseItemResponse } from '../api/procurementApi'
-import { inventoryApi } from '../../inventory/api/inventoryApi'
-import { ArrowLeft, CheckCircle, AlertTriangle, Info, FileText, Check, Save, Package } from 'lucide-react'
+import { AxiosError } from 'axios'
+import { procurementApi, SparePurchaseItemResponse, SparePurchaseVerifyPayload } from '../api/procurementApi'
+import { inventoryApi, SpareMasterItem } from '../../inventory/api/inventoryApi'
+import { ArrowLeft, CheckCircle, AlertTriangle, Info, FileText, Check, Save, Package, LucideIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../../../store/authStore'
 import InventoryPostingModal from '../components/InventoryPostingModal'
@@ -33,13 +34,13 @@ export default function SparePurchaseDetailPage() {
     const editedItems: SparePurchaseItemResponse[] = userEditedItems ?? (purchase?.items ? JSON.parse(JSON.stringify(purchase.items)) : [])
 
     const verifyMutation = useMutation({
-        mutationFn: (payload: any) => procurementApi.verifySparePurchase(purchaseId, payload),
+        mutationFn: (payload: SparePurchaseVerifyPayload) => procurementApi.verifySparePurchase(purchaseId, payload),
         onSuccess: () => {
             toast.success('Invoice verified successfully')
             setUserEditedItems(null)
             queryClient.invalidateQueries({ queryKey: ['spare-purchase', purchaseId] })
         },
-        onError: (error: any) => {
+        onError: (error: AxiosError<{ detail?: string }>) => {
             toast.error(error.response?.data?.detail || 'Failed to verify invoice')
         }
     })
@@ -51,7 +52,7 @@ export default function SparePurchaseDetailPage() {
             queryClient.invalidateQueries({ queryKey: ['spare-purchase', purchaseId] })
             queryClient.invalidateQueries({ queryKey: ['spare-purchases'] })
         },
-        onError: (error: any) => {
+        onError: (error: AxiosError<{ detail?: string }>) => {
             toast.error(error.response?.data?.detail || 'Failed to approve receipt')
         }
     })
@@ -61,9 +62,8 @@ export default function SparePurchaseDetailPage() {
 
     const isVerifiable = ['DRAFT', 'OCR_PROCESSED', 'PENDING_VERIFICATION'].includes(purchase.status || '')
     const isApprovable = purchase.status === 'VERIFIED'
-    const isFinal = ['APPROVED', 'POSTED'].includes(purchase.status || '')
 
-    const handleItemChange = (index: number, field: keyof SparePurchaseItemResponse, value: any) => {
+    const handleItemChange = (index: number, field: keyof SparePurchaseItemResponse, value: string | number) => {
         const newItems: SparePurchaseItemResponse[] = JSON.parse(JSON.stringify(editedItems))
         newItems[index] = {
             ...newItems[index],
@@ -75,7 +75,7 @@ export default function SparePurchaseDetailPage() {
             newItems[index].verification_status = 'CONFIRMED'
             
             // Look up the name to keep UI consistent
-            const spare = spares.find((s: any) => s.spare_id === Number(value))
+            const spare = (spares as SpareMasterItem[]).find(s => s.spare_id === Number(value))
             if (spare) {
                 newItems[index].spare_name = spare.spare_name
             }
@@ -267,8 +267,7 @@ export default function SparePurchaseDetailPage() {
                                                     className={`input text-sm ${!item.spare_id ? 'border-red-300 focus:border-red-500' : ''}`}
                                                 >
                                                     <option value="">-- Unmapped Part Code --</option>
-                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                                    {spares.map((s: any) => (
+                                                    {spares.map((s: SpareMasterItem) => (
                                                         <option key={s.spare_id} value={s.spare_id}>
                                                             {s.spare_code} - {s.spare_name}
                                                         </option>
@@ -363,7 +362,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function ItemVerificationBadge({ status }: { status: string }) {
-    const configs: Record<string, { icon: any, text: string, classes: string }> = {
+    const configs: Record<string, { icon: LucideIcon, text: string, classes: string }> = {
         'EXTRACTED': { icon: Info, text: 'Extracted by OCR', classes: 'bg-blue-50 text-blue-700 border-blue-200' },
         'UNKNOWN_CODE': { icon: AlertTriangle, text: 'Unknown part code — Action required', classes: 'bg-red-50 text-red-700 border-red-200' },
         'LOW_CONFIDENCE': { icon: AlertTriangle, text: 'Low confidence — Review', classes: 'bg-amber-50 text-amber-700 border-amber-200' },

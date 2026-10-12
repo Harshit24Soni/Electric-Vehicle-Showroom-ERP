@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Table, Tag, Button, Spin, Modal, message } from 'antd';
+import { Typography, Table, Tag, Button, message } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined } from '@ant-design/icons';
-import { spareSalesApi } from '../api/spareSalesApi';
+import { AxiosError } from 'axios';
+import { spareSalesApi, SpareSaleResponse } from '../api/spareSalesApi';
 import NewSpareSaleModal from '../components/NewSpareSaleModal';
 
 const { Title } = Typography;
 
 const SpareSalesPage: React.FC = () => {
-  const [sales, setSales] = useState<any[]>([]);
+  const [sales, setSales] = useState<SpareSaleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
@@ -16,8 +18,9 @@ const SpareSalesPage: React.FC = () => {
     try {
       const data = await spareSalesApi.getSales();
       setSales(data);
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to fetch sales');
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError<{ detail?: string }>;
+      message.error(axiosError.response?.data?.detail || 'Failed to fetch sales');
     } finally {
       setLoading(false);
     }
@@ -32,8 +35,9 @@ const SpareSalesPage: React.FC = () => {
       await spareSalesApi.confirmSale(saleId);
       message.success('Sale confirmed and stock updated');
       fetchSales();
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to confirm sale');
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError<{ detail?: string }>;
+      message.error(axiosError.response?.data?.detail || 'Failed to confirm sale');
     }
   };
 
@@ -42,12 +46,13 @@ const SpareSalesPage: React.FC = () => {
       await spareSalesApi.cancelSale(saleId);
       message.success('Sale cancelled');
       fetchSales();
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to cancel sale');
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError<{ detail?: string }>;
+      message.error(axiosError.response?.data?.detail || 'Failed to cancel sale');
     }
   };
 
-  const columns = [
+  const columns: ColumnsType<SpareSaleResponse> = [
     {
       title: 'Sale ID',
       dataIndex: 'sale_id',
@@ -78,7 +83,7 @@ const SpareSalesPage: React.FC = () => {
     {
       title: 'Action',
       key: 'action',
-      render: (_: any, record: any) => {
+      render: (_: unknown, record: SpareSaleResponse) => {
         if (record.status === 'DRAFT') {
           return (
             <div>

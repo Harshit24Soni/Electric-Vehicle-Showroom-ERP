@@ -2,6 +2,7 @@ import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import InventoryPostingModal from './InventoryPostingModal'
+import { SparePurchaseResponse } from '../api/procurementApi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('@/store/authStore', () => ({
@@ -10,12 +11,13 @@ vi.mock('@/store/authStore', () => ({
 
 const queryClient = new QueryClient()
 
-const mockPurchase = {
+const mockPurchase: SparePurchaseResponse = {
   spare_purchase_id: 1,
   vendor_id: 1,
   vendor_name: 'Vendor A',
-  invoice_number: 'INV-123',
-  invoice_date: '2023-10-01',
+  purchase_date: '2023-10-01',
+  is_deleted: false,
+  created_at: '2023-10-01T00:00:00Z',
   status: 'APPROVED',
   items: [
     {
@@ -32,7 +34,7 @@ describe('InventoryPostingModal', () => {
   it('renders correctly', () => {
     render(
       <QueryClientProvider client={queryClient}>
-        <InventoryPostingModal purchase={mockPurchase as any} onClose={vi.fn()} />
+        <InventoryPostingModal purchase={mockPurchase} onClose={vi.fn()} />
       </QueryClientProvider>
     )
     

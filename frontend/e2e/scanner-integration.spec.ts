@@ -59,7 +59,7 @@ test.describe('Observable Scanner Integration E2E', () => {
     await expect(page.locator('text="Spare added as draft"').first()).toBeVisible({ timeout: 15000 });
   });
 
-  test('Scanner rejects Revoked, Retired, and Unknown tags in Direct Sale', async ({ page, isMobile }) => {
+  test('Scanner rejects Revoked, Retired, and Unknown tags in Direct Sale', async ({ page }) => {
     console.log('--- Navigate to Spare Sales ---');
     await page.goto('/spare-sales');
     await expect(page.locator('h2', { hasText: 'Spare Parts Sales' })).toBeVisible();

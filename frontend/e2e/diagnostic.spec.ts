@@ -14,7 +14,7 @@ test.describe('Diagnostic Focus', () => {
           console.log('\n=== API RESPONSE INTERCEPTED (/api/inventory/stock) ===');
           console.log(JSON.stringify(json, null, 2));
           console.log('======================================================\n');
-        } catch (e) {
+        } catch {
           console.log('Failed to parse API response');
         }
       }

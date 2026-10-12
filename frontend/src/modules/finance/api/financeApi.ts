@@ -23,6 +23,7 @@ export interface FinanceResponse {
   down_payment: number
   finance_status: string
   reference_number?: string
+  created_at?: string
 }
 
 export const financeApi = {

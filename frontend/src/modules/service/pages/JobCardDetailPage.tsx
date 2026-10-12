@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import { serviceApi, SpareConsumption } from '../api/serviceApi'
 import { ArrowLeft, Plus, CheckCircle, Undo, Trash2 } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
@@ -33,7 +34,7 @@ export default function JobCardDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['job-card-spares', id] })
       toast.success('Spare consumed successfully')
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ detail?: string }>) => {
       toast.error(err.response?.data?.detail || 'Failed to consume spare')
     }
   })
@@ -44,7 +45,7 @@ export default function JobCardDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['job-card-spares', id] })
       toast.success('Spare reversed successfully')
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<{ detail?: string }>) => {
       toast.error(err.response?.data?.detail || 'Failed to reverse spare')
     }
   })

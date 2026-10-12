@@ -6,6 +6,8 @@ import { X } from 'lucide-react'
 import { VehicleSaleCreate } from '../api/salesApi'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
+import { Lead } from '../../crm/api/leads'
+import { Customer, Vehicle } from '../../master/api/masterApi'
 
 const saleSchema = z.object({
   is_direct_sale: z.boolean().default(false),
@@ -137,8 +139,7 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
               <label className="block text-sm font-medium text-gray-700 mb-2">Lead *</label>
               <select {...register('lead_id', { valueAsNumber: true })} className="input">
                 <option value="">Select a lead</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                {leads.map((lead: any) => (
+	{leads.map((lead: Lead) => (
                   <option key={lead.lead_id} value={lead.lead_id}>
                     {lead.name} — {lead.phone} — {lead.lead_status || 'WARM'}
                   </option>
@@ -154,8 +155,7 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
               <label className="block text-sm font-medium text-gray-700 mb-2">Customer *</label>
               <select {...register('customer_id', { valueAsNumber: true })} className="input">
                 <option value="">Select a customer</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                {customers.map((c: any) => (
+	{customers.map((c: Customer) => (
                   <option key={c.customer_id} value={c.customer_id}>
                     {c.name} — {c.primary_phone}
                   </option>
@@ -169,8 +169,7 @@ export default function SaleForm({ onSubmit, onClose, isLoading }: SaleFormProps
             <label className="block text-sm font-medium text-gray-700 mb-2">Available Vehicle (Chassis) *</label>
             <select {...register('chassis_no')} className="input">
               <option value="">Select a vehicle</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-              {vehicles.filter((v: any) => v.current_status === 'IN_STOCK' || v.current_status === 'AVAILABLE').map((v: any) => (
+	{vehicles.filter((v: Vehicle) => v.current_status === 'IN_STOCK' || v.current_status === 'AVAILABLE').map((v: Vehicle) => (
                 <option key={v.chassis_no} value={v.chassis_no}>
                   {v.chassis_no} ({v.model?.model_name || 'Vehicle'})
                 </option>

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Inventory Tags E2E (Fullstack)', () => {
   // We'll create a spare part in the DB for our tests first, or use the UI
-  test.beforeEach(async ({ page, request }) => {
+  test.beforeEach(async ({ page }) => {
     // Navigate to Inventory page
     await page.goto('/inventory')
   })

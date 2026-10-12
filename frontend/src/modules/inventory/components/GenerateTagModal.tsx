@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
+import { BatchItem, SerialItem, BatchListResponse, SerialListResponse } from '../api/inventoryApi'
 import { api } from '@/lib/api'
 import { X, QrCode } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -39,25 +41,26 @@ export default function GenerateTagModal({ onClose, defaultSpareId, defaultBatch
   
   const { data: batches } = useQuery({
     queryKey: ['batches', spareId],
-    queryFn: () => api.get<any>(`/inventory/batches?spare_id=${spareId}`),
+    queryFn: () => api.get<BatchListResponse>(`/inventory/batches?spare_id=${spareId}`),
     enabled: selectedSpare?.tracking_mode === 'BATCH'
   })
 
   const { data: serials } = useQuery({
     queryKey: ['serials', spareId],
-    queryFn: () => api.get<any>(`/inventory/serials?spare_id=${spareId}`),
+    queryFn: () => api.get<SerialListResponse>(`/inventory/serials?spare_id=${spareId}`),
     enabled: selectedSpare?.tracking_mode === 'SERIALIZED'
   })
 
   const generateMutation = useMutation({
-    mutationFn: (data: any) => api.post('/inventory/tags/bulk', data),
-    onSuccess: (res: any) => {
+    mutationFn: (data: unknown) => api.post<{ tag_id: number }[]>('/inventory/tags/bulk', data),
+    onSuccess: (res: { tag_id: number }[]) => {
       toast.success(`Successfully generated ${res.length} tag(s)`)
       queryClient.invalidateQueries({ queryKey: ['inventory-tags'] })
       onClose()
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || 'Failed to generate tags')
+    onError: (err: unknown) => {
+      const axiosErr = err as AxiosError<{ detail?: string }>;
+      toast.error(axiosErr.response?.data?.detail || 'Failed to generate tags')
     }
   })
 
@@ -124,8 +127,8 @@ export default function GenerateTagModal({ onClose, defaultSpareId, defaultBatch
                 disabled={!!defaultBatchId}
               >
                 <option value="">Select a batch</option>
-                {(batches as any)?.items?.map((b: any) => (
-                  <option key={b.batch_id} value={b.batch_id}>{b.batch_number} (Qty: {b.available_quantity})</option>
+                {batches?.items?.map((b: BatchItem) => (
+                  <option key={b.batch_id} value={b.batch_id}>{b.batch_number} (Qty: {b.quantity})</option>
                 ))}
               </select>
             </div>
@@ -142,7 +145,7 @@ export default function GenerateTagModal({ onClose, defaultSpareId, defaultBatch
                 disabled={!!defaultSerialId}
               >
                 <option value="">Select a serial</option>
-                {(serials as any)?.items?.filter((s: any) => s.status === 'IN_STOCK').map((s: any) => (
+                {serials?.items?.filter((s: SerialItem) => s.status === 'IN_STOCK').map((s: SerialItem) => (
                   <option key={s.serial_id} value={s.serial_id}>{s.serial_number}</option>
                 ))}
               </select>

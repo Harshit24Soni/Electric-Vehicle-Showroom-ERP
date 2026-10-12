@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { X, DollarSign } from 'lucide-react'
 import { salesApi, SaleCreatePayload } from '../api/salesApi'
-import { masterApi } from '../../master/api/masterApi'
+import { masterApi, Customer, Vehicle } from '../../master/api/masterApi'
 
 interface NewSaleModalProps {
     onClose: () => void
@@ -37,8 +37,7 @@ export default function NewSaleModal({ onClose }: NewSaleModalProps) {
 
     // Filter vehicles to only AVAILABLE / IN_STOCK
     const availableVehicles = useMemo(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-        () => allVehicles.filter((v: any) => v.current_status === 'IN_STOCK' || v.current_status === 'AVAILABLE'),
+	() => allVehicles.filter((v: Vehicle) => v.current_status === 'IN_STOCK' || v.current_status === 'AVAILABLE'),
         [allVehicles]
     )
 
@@ -134,8 +133,7 @@ export default function NewSaleModal({ onClose }: NewSaleModalProps) {
                                     className="input"
                                 >
                                     <option value="">Select customer</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                    {customers.map((c: any) => (
+	{customers.map((c: Customer) => (
                                         <option key={c.customer_id} value={c.customer_id}>
                                             {c.name} — {c.primary_phone}
                                         </option>
@@ -153,8 +151,7 @@ export default function NewSaleModal({ onClose }: NewSaleModalProps) {
                                     className="input"
                                 >
                                     <option value="">Select vehicle</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                    {availableVehicles.map((v: any) => (
+	{availableVehicles.map((v: Vehicle) => (
                                         <option key={v.chassis_no} value={v.chassis_no}>
                                             {v.model?.model_name || 'Vehicle'} — {v.chassis_no} ({v.color || 'N/A'})
                                         </option>

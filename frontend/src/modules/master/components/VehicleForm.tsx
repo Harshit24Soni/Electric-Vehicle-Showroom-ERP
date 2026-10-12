@@ -2,7 +2,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { X } from 'lucide-react'
-import { VehicleCreate } from '../api/masterApi'
+import { VehicleCreate, VehicleModel } from '../api/masterApi'
 import { useQuery } from '@tanstack/react-query'
 import { masterApi } from '../api/masterApi'
 
@@ -73,9 +73,9 @@ export default function VehicleForm({ onSubmit, onClose, isLoading }: VehicleFor
             <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Model *</label>
             <select {...register('vehicle_model_id', { valueAsNumber: true })} className="input">
               <option value="">Select a vehicle model</option>
-              {models.map((model: any) => (
+              {models.map((model: VehicleModel) => (
                 <option key={model.vehicle_model_id} value={model.vehicle_model_id}>
-                  {model.brand} {model.model_name} - {model.colour}
+                  {model.brand || model.brand_name} {model.model_name} - {model.colour}
                 </option>
               ))}
             </select>

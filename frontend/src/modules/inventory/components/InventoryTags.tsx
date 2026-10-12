@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -38,8 +39,9 @@ export default function InventoryTags() {
       toast.success('Tag revoked successfully')
       queryClient.invalidateQueries({ queryKey: ['inventory-tags'] })
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to revoke tag')
+    onError: (error: unknown) => {
+      const axiosErr = error as AxiosError<{ detail?: string }>;
+      toast.error(axiosErr.response?.data?.detail || 'Failed to revoke tag')
     }
   })
 

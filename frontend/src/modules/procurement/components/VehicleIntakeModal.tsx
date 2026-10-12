@@ -1,9 +1,8 @@
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { X, Plus, Trash2, Truck } from 'lucide-react'
 import { procurementApi, VehicleIntakePayload, VehicleIntakeItem } from '../api/procurementApi'
-import { masterApi } from '../../master/api/masterApi'
+import { masterApi, Vendor, VehicleModel } from '../../master/api/masterApi'
 
 interface VehicleIntakeModalProps {
     onClose: () => void
@@ -46,8 +45,7 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
     })
 
     const oemVendors = allVendors.filter(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-        (v: any) => v.vendor_type === 'OEM' && !v.is_deleted && v.is_active !== false
+        (v: Vendor) => v.vendor_type === 'OEM' && !v.is_deleted && v.is_active !== false
     )
 
     const { data: models = [] } = useQuery({
@@ -57,8 +55,7 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
 
     // Only show active, non-deleted models
     const activeModels = models.filter(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-        (m: any) => !m.is_deleted && m.is_active !== false
+        (m: VehicleModel) => !m.is_deleted && m.is_active !== false
     )
 
     const addRow = () => setVehicles([...vehicles, emptyRow()])
@@ -200,18 +197,17 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
                                     value={vendorId}
                                     onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : '')}
                                     className="input"
-                                >
-                                    <option value="">Select OEM vendor</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                    {oemVendors.map((v: any) => (
-                                        <option key={v.vendor_id} value={v.vendor_id}>
-                                            {v.vendor_name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {oemVendors.length === 0 && (
-                                    <p className="text-xs text-amber-600 mt-1">No OEM vendors found. Add one in Master → Vendors first.</p>
-                                )}
+                                 >
+                                     <option value="">Select OEM vendor</option>
+                                     {oemVendors.map((v: Vendor) => (
+                                         <option key={v.vendor_id} value={v.vendor_id}>
+                                             {v.vendor_name}
+                                         </option>
+                                     ))}
+                                 </select>
+                                 {oemVendors.length === 0 && (
+                                     <p className="text-xs text-amber-600 mt-1">No OEM vendors found. Add one in Master → Vendors first.</p>
+                                 )}
                             </div>
                         </div>
                     </fieldset>
@@ -273,8 +269,7 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
                                                 className="input text-sm"
                                             >
                                                 <option value="">Select</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                                {activeModels.map((m: any) => (
+                                                {activeModels.map((m: VehicleModel) => (
                                                     <option key={m.vehicle_model_id} value={m.vehicle_model_id}>
                                                         {m.brand_name ? `${m.brand_name} — ${m.model_name}` : m.model_name}
                                                     </option>

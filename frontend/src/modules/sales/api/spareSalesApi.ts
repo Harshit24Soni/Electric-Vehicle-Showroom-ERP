@@ -14,26 +14,55 @@ export interface CreateSpareSalePayload {
   items: SpareSaleItemPayload[];
 }
 
+export interface SpareSaleItemResponse {
+  sale_item_id: number;
+  sale_id: number;
+  spare_id: number;
+  part_code: string;
+  spare_name: string;
+  tracking_mode: string;
+  batch_id?: number;
+  serial_id?: number;
+  quantity: number;
+  unit_selling_price: number;
+  discount: number;
+  tax: number;
+  line_total: number;
+}
+
+export interface SpareSaleResponse {
+  sale_id: number;
+  customer_id: number;
+  remarks?: string;
+  sale_date: string;
+  status: string;
+  subtotal: number;
+  discount: number;
+  tax: number;
+  grand_total: number;
+  invoice_number?: string;
+  created_by_staff_id: number;
+  items: SpareSaleItemResponse[];
+}
+
 export const spareSalesApi = {
   createDraftSale: async (payload: CreateSpareSalePayload) => {
-    return api.post<any>('/sales/spares', payload);
+    return api.post<SpareSaleResponse>('/sales/spares', payload);
   },
   
   confirmSale: async (saleId: number) => {
-    return api.post<any>(`/sales/spares/${saleId}/confirm`);
+    return api.post<SpareSaleResponse>(`/sales/spares/${saleId}/confirm`);
   },
   
   cancelSale: async (saleId: number) => {
-    return api.post<any>(`/sales/spares/${saleId}/cancel`);
+    return api.post<SpareSaleResponse>(`/sales/spares/${saleId}/cancel`);
   },
   
-  // You might want an endpoint to list sales.
-  // We didn't explicitly implement `GET /sales/spares` in the backend, but if it exists we can call it.
   getSales: async () => {
-    return api.get<any>('/sales/spares');
+    return api.get<SpareSaleResponse[]>('/sales/spares');
   },
   
   getSale: async (saleId: number) => {
-    return api.get<any>(`/sales/spares/${saleId}`);
+    return api.get<SpareSaleResponse>(`/sales/spares/${saleId}`);
   }
 };

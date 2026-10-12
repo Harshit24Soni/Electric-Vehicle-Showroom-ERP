@@ -1,8 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, UserRole } from '@/store/authStore'
 import {
   LayoutDashboard,
-  Users,
   Car,
   ShoppingCart,
   Wrench,
@@ -13,6 +12,7 @@ import {
   LogOut,
   ChevronDown,
   CalendarCheck,
+  LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -20,9 +20,9 @@ import { useState } from 'react'
 interface MenuItem {
   path: string
   label: string
-  icon: any
-  roles: string[]
-  children?: { path: string; label: string; roles: string[] }[]
+  icon: LucideIcon
+  roles: UserRole[]
+  children?: { path: string; label: string; roles: UserRole[] }[]
 }
 
 const menuItems: MenuItem[] = [
@@ -60,7 +60,7 @@ export function Sidebar({ onItemClick }: { onItemClick?: () => void } = {}) {
     )
   }
 
-  const filteredItems = menuItems.filter((item) => hasRole(item.roles as any))
+  const filteredItems = menuItems.filter((item) => hasRole(item.roles))
 
   return (
     <div className="w-64 bg-gray-900 text-white min-h-screen flex flex-col">
@@ -75,7 +75,7 @@ export function Sidebar({ onItemClick }: { onItemClick?: () => void } = {}) {
           const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/')
           const hasChildren = item.children && item.children.length > 0
           const isExpanded = expandedMenus.includes(item.path)
-          const filteredChildren = item.children?.filter(child => hasRole(child.roles as any))
+          const filteredChildren = item.children?.filter(child => hasRole(child.roles))
 
           if (hasChildren) {
             return (

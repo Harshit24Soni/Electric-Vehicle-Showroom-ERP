@@ -40,7 +40,7 @@ export default function CrmPage() {
   useEffect(() => {
     fetchMasterData()
     fetchLeads()
-  }, [])
+  }, [fetchMasterData, fetchLeads])
 
   // Auto-open form when navigated with ?action=new
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function CrmPage() {
       setShowForm(true)
       setSearchParams({}, { replace: true })
     }
-  }, [searchParams])
+  }, [searchParams, setSearchParams])
 
   const createMutation = useMutation({
     mutationFn: (data: LeadCreate) => leadsApi.create(data),

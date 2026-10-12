@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { leadsApi } from '../api/leads'
+import { Lead } from '../api/leads'
+import { Vehicle } from '../../master/api/masterApi'
 import { api } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { Calendar, Plus, Bike, MessageCircle } from 'lucide-react'
@@ -87,8 +89,7 @@ export default function TestRideList() {
                         className="input max-w-xs"
                     >
                         <option value="">Select a lead</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                        {leads.map((lead: any) => (
+	{leads.map((lead: Lead) => (
                             <option key={lead.lead_id} value={lead.lead_id}>
                                 {lead.name} — {lead.phone}
                             </option>
@@ -115,8 +116,7 @@ export default function TestRideList() {
                                     className="input"
                                 >
                                     <option value="">Select lead</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                    {leads.map((lead: any) => (
+	{leads.map((lead: Lead) => (
                                         <option key={lead.lead_id} value={lead.lead_id}>
                                             {lead.name} — {lead.phone}
                                         </option>
@@ -132,8 +132,7 @@ export default function TestRideList() {
                                     disabled={!formData.lead_id}
                                 >
                                     <option value="">Select vehicle</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                    {((vehicles as any)?.data || vehicles || []).map((v: any) => (
+	{((vehicles as { data?: Vehicle[] })?.data || (vehicles as Vehicle[]) || []).map((v: Vehicle) => (
                                         <option key={v.chassis_no} value={v.chassis_no}>
                                             {v.chassis_no} ({v.current_status})
                                         </option>

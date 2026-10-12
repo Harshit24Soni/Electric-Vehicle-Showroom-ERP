@@ -2,12 +2,21 @@ import React, { useState } from 'react'
 import { X, AlertCircle } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { procurementApi, SparePurchaseResponse, SparePurchaseItemResponse } from '../api/procurementApi'
-import { inventoryApi } from '../../inventory/api/inventoryApi'
+import { AxiosError } from 'axios'
+import { procurementApi, SparePurchaseResponse, SparePurchaseItemResponse, PostPurchaseReceiptRequest, PostPurchaseItemData } from '../api/procurementApi'
+import { inventoryApi, SpareMasterItem } from '../../inventory/api/inventoryApi'
 
 interface Props {
   purchase: SparePurchaseResponse
   onClose: () => void
+}
+
+interface ItemPostingData {
+  purchase_item_id: number
+  tracking_mode: string
+  batch_number: string
+  expiry_date: string
+  serial_numbers: string[]
 }
 
 export default function InventoryPostingModal({ purchase, onClose }: Props) {
@@ -23,10 +32,10 @@ export default function InventoryPostingModal({ purchase, onClose }: Props) {
   })
 
   // Derive item tracking data directly during render
-  const itemData: Record<number, any> = {}
+  const itemData: Record<number, ItemPostingData> = {}
   if (purchase?.items) {
     purchase.items.forEach((item: SparePurchaseItemResponse) => {
-      const spare = spares.find((s: any) => s.spare_id === item.spare_id)
+      const spare = (spares as SpareMasterItem[]).find(s => s.spare_id === item.spare_id)
       const mode = spare?.tracking_mode || (spare?.is_serialized ? 'SERIALIZED' : 'QUANTITY')
       const user = userInputs[item.purchase_item_id] || {}
 
@@ -41,7 +50,7 @@ export default function InventoryPostingModal({ purchase, onClose }: Props) {
   }
 
   const postMutation = useMutation({
-    mutationFn: (payload: any) => procurementApi.postSparePurchaseToInventory(purchase.spare_purchase_id, payload),
+    mutationFn: (payload: PostPurchaseReceiptRequest) => procurementApi.postSparePurchaseToInventory(purchase.spare_purchase_id, payload),
     onSuccess: () => {
       toast.success('Successfully posted to inventory')
       queryClient.invalidateQueries({ queryKey: ['spare-purchase', purchase.spare_purchase_id] })
@@ -52,7 +61,7 @@ export default function InventoryPostingModal({ purchase, onClose }: Props) {
       queryClient.invalidateQueries({ queryKey: ['inventory-movements'] })
       onClose()
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ detail?: string }>) => {
       toast.error(error.response?.data?.detail || 'Failed to post to inventory')
     }
   })
@@ -64,12 +73,12 @@ export default function InventoryPostingModal({ purchase, onClose }: Props) {
       return
     }
 
-    const payloadItems = []
+    const payloadItems: PostPurchaseItemData[] = []
     for (const item of purchase.items) {
       const data = itemData[item.purchase_item_id]
       if (!data) continue
 
-      const payloadItem: any = {
+      const payloadItem: PostPurchaseItemData = {
         purchase_item_id: item.purchase_item_id
       }
 

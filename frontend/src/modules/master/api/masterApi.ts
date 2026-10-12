@@ -39,6 +39,7 @@ export interface VehicleModel {
   vehicle_model_id: number
   brand_id: number
   brand_name: string
+  brand?: string
   model_name: string
   material_number: string
   colour: string
@@ -81,8 +82,10 @@ export interface Vehicle {
   controller_serial_no?: string
   battery_serial_no?: string
   date_of_manufacture?: string
-  current_status: 'IN_STOCK' | 'SOLD' | 'SERVICE'
+  current_status: 'IN_STOCK' | 'SOLD' | 'SERVICE' | string
   created_at: string
+  model?: { model_name?: string }
+  color?: string
 }
 
 export interface VehicleCreate {

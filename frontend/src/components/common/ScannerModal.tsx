@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { X, Keyboard, Camera, Loader2, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
+import { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
 
 export interface TagScanResult {
@@ -33,8 +34,59 @@ export default function ScannerModal({ isOpen, onClose, onScanSuccess, title = "
   const [mode, setMode] = useState<'hardware' | 'camera'>('hardware');
   const [hardwareInput, setHardwareInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const isProcessingRef = useRef(false);
   const [errorMsg, setErrorMsg] = useState('');
   const scanInputRef = useRef<HTMLInputElement>(null);
+
+  const handleScan = useCallback(async (identifier: string) => {
+    if (isProcessingRef.current) return; // Prevent duplicate concurrent processing
+    
+    const code = identifier.trim();
+    if (!code) return;
+
+    isProcessingRef.current = true;
+    setIsProcessing(true);
+    setErrorMsg('');
+
+    try {
+      // Call existing Phase 5 API
+      const res = await api.get<TagScanResult>(`/inventory/tags/scan/${code}`);
+      
+      // Handle tag status rules explicitly
+      if (res.status === 'REVOKED') {
+        setErrorMsg('This inventory tag has been revoked.');
+        return;
+      }
+      
+      if (res.status === 'RETIRED') {
+        setErrorMsg('This inventory tag is retired.');
+        return;
+      }
+      
+      // Proceed on ACTIVE
+      toast.success(`Tag Scanned: ${res.tag_identifier}`);
+      onScanSuccess(res);
+      // Close modal on success (or let parent close it)
+      onClose();
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError<{ detail?: string }>;
+      if (axiosError.response?.status === 404) {
+        setErrorMsg('Inventory tag not found.');
+      } else if (axiosError.response?.status === 403) {
+        setErrorMsg('You do not have permission to access this tag.');
+      } else {
+        setErrorMsg(axiosError.response?.data?.detail || 'An error occurred during scan.');
+      }
+      // On error, we re-focus the input
+      if (mode === 'hardware') {
+        setTimeout(() => scanInputRef.current?.focus(), 100);
+      }
+    } finally {
+      isProcessingRef.current = false;
+      setIsProcessing(false);
+      setHardwareInput(''); // Clear input for next scan
+    }
+  }, [mode, onClose, onScanSuccess]);
 
   useEffect(() => {
     if (isOpen && mode === 'hardware') {
@@ -59,7 +111,7 @@ export default function ScannerModal({ isOpen, onClose, onScanSuccess, title = "
           (decodedText) => {
             handleScan(decodedText);
           },
-          (errorMessage) => {
+          () => {
             // Camera scanner continuously emits errors when no QR is found.
             // We ignore them.
           }
@@ -73,56 +125,7 @@ export default function ScannerModal({ isOpen, onClose, onScanSuccess, title = "
         }
       };
     }
-  }, [isOpen, mode]);
-
-  const handleScan = async (identifier: string) => {
-    if (isProcessing) return; // Prevent duplicate concurrent processing
-    
-    const code = identifier.trim();
-    if (!code) return;
-
-    setIsProcessing(true);
-    setErrorMsg('');
-
-    try {
-      // Call existing Phase 5 API
-      const res = await api.get<TagScanResult>(`/inventory/tags/scan/${code}`);
-      
-      // Handle tag status rules explicitly
-      if (res.status === 'REVOKED') {
-        setErrorMsg('This inventory tag has been revoked.');
-        setIsProcessing(false);
-        return;
-      }
-      
-      if (res.status === 'RETIRED') {
-        setErrorMsg('This inventory tag is retired.');
-        setIsProcessing(false);
-        return;
-      }
-      
-      // Proceed on ACTIVE
-      toast.success(`Tag Scanned: ${res.tag_identifier}`);
-      onScanSuccess(res);
-      // Close modal on success (or let parent close it)
-      onClose();
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        setErrorMsg('Inventory tag not found.');
-      } else if (error.response?.status === 403) {
-        setErrorMsg('You do not have permission to access this tag.');
-      } else {
-        setErrorMsg(error.response?.data?.detail || 'An error occurred during scan.');
-      }
-      // On error, we re-focus the input
-      if (mode === 'hardware') {
-        setTimeout(() => scanInputRef.current?.focus(), 100);
-      }
-    } finally {
-      setIsProcessing(false);
-      setHardwareInput(''); // Clear input for next scan
-    }
-  };
+  }, [isOpen, mode, handleScan]);
 
   const handleHardwareKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {

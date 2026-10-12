@@ -1,3 +1,16 @@
+interface PastFollowupItem {
+  lead_followup_id: number
+  outcome_status: string
+  followup_date: string
+  remarks: string
+}
+interface PastTestRideItem {
+  test_ride_id: number
+  chassis_no: string
+  test_ride_date: string
+  customer_feedback?: string
+}
+import { Vehicle } from '../../master/api/masterApi'
 import { useState } from 'react'
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
 import { X, Calendar, Plus, MessageSquare, Car, FileCheck } from 'lucide-react'
@@ -216,8 +229,7 @@ export default function LeadDetailsModal({ leadId, onClose }: LeadDetailsModalPr
 
                             <div className="space-y-3">
                                 <h3 className="font-medium text-gray-700">Past Follow-ups</h3>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                {followupsLoading ? <p className="text-sm text-gray-500">Loading...</p> : followups.length === 0 ? <p className="text-sm text-gray-500">No follow-ups recorded.</p> : followups.map((f: any) => (
+	{followupsLoading ? <p className="text-sm text-gray-500">Loading...</p> : followups.length === 0 ? <p className="text-sm text-gray-500">No follow-ups recorded.</p> : followups.map((f: PastFollowupItem) => (
                                     <div key={f.lead_followup_id} className="bg-white p-3 rounded-lg shadow-sm text-sm border-l-4 border-blue-500">
                                         <div className="flex justify-between items-start mb-1">
                                             <span className="font-medium text-blue-800">{f.outcome_status}</span>
@@ -238,8 +250,7 @@ export default function LeadDetailsModal({ leadId, onClose }: LeadDetailsModalPr
                                     <label className="block text-xs text-gray-500 mb-1">Select Physical Vehicle (Chassis) *</label>
                                     <select value={chassisNo} onChange={e => setChassisNo(e.target.value)} className="input text-sm">
                                         <option value="">-- Choose a vehicle --</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                        {(vehicles?.data || vehicles).map((v: any) => (
+	{(vehicles?.data || vehicles).map((v: Vehicle) => (
                                             <option key={v.chassis_no} value={v.chassis_no}>
                                                 {v.chassis_no} ({v.current_status})
                                             </option>
@@ -265,8 +276,7 @@ export default function LeadDetailsModal({ leadId, onClose }: LeadDetailsModalPr
 
                             <div className="space-y-3">
                                 <h3 className="font-medium text-gray-700">Past Test Rides</h3>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                {testRidesLoading ? <p className="text-sm text-gray-500">Loading...</p> : testRides.length === 0 ? <p className="text-sm text-gray-500">No test rides recorded.</p> : testRides.map((tr: any) => (
+	{testRidesLoading ? <p className="text-sm text-gray-500">Loading...</p> : testRides.length === 0 ? <p className="text-sm text-gray-500">No test rides recorded.</p> : testRides.map((tr: PastTestRideItem) => (
                                     <div key={tr.test_ride_id} className="bg-white p-3 rounded-lg shadow-sm text-sm border-l-4 border-green-500">
                                         <div className="flex justify-between items-start mb-1">
                                             <span className="font-medium text-green-800">Chassis: {tr.chassis_no}</span>

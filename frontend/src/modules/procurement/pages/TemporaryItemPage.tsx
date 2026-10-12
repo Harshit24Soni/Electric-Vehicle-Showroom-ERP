@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { procurementApi, TemporaryItemCreate } from '../api/procurementApi'
+import { procurementApi, TemporaryItemCreate, TemporaryItem } from '../api/procurementApi'
 import { useAuthStore } from '../../../store/authStore'
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
-import { Plus, Check, Loader } from 'lucide-react'
+import { Plus, Check } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 
 export default function TemporaryItemPage() {
@@ -27,8 +26,7 @@ export default function TemporaryItemPage() {
             queryClient.invalidateQueries({ queryKey: ["temporary-items"] })
             alert('Temporary item requested.')
         },
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
-        onError: (err) => alert('Failed to create item')
+        onError: () => alert('Failed to create item')
     })
 
     const approveMutation = useMutation({
@@ -110,8 +108,7 @@ export default function TemporaryItemPage() {
                                 </tr>
                             </thead>
                             <tbody>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                                {items.map((item: any) => (
+                                {items.map((item: TemporaryItem) => (
                                     <tr key={item.spare_id}>
                                         <td>{item.spare_code}</td>
                                         <td>{item.spare_name}</td>

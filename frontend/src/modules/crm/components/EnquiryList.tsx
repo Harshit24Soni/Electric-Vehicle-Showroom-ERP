@@ -1,3 +1,9 @@
+interface EnquiryItem {
+  enquiry_id: number
+  enquiry_source: string
+  enquiry_status_id: number
+  created_at: string
+}
 import { useEffect } from 'react'
 import { useCrmStore } from '@/store/crmStore'
 import { formatDate } from '@/lib/utils'
@@ -31,8 +37,7 @@ export default function EnquiryList() {
                             </tr>
                         </thead>
                         <tbody>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                            {enquiries.map((e: any) => (
+	{enquiries.map((e: EnquiryItem) => (
                                 <tr key={e.enquiry_id}>
                                     <td>{e.enquiry_id}</td>
                                     <td>{e.enquiry_source}</td>

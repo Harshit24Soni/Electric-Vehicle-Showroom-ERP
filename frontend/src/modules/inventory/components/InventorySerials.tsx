@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { inventoryApi } from '../api/inventoryApi'
+import { inventoryApi, SerialItem } from '../api/inventoryApi'
 import { Search, MapPin } from 'lucide-react'
 import { SkeletonTable } from '@/components/ui/SkeletonTable'
 import { useAuthStore } from '@/store/authStore'
@@ -18,7 +18,7 @@ export default function InventorySerials() {
 
   const items = serialResponse?.items || []
   
-  const filteredItems = items.filter((item: any) => 
+  const filteredItems = items.filter((item: SerialItem) => 
     item.spare_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.serial_number.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -68,7 +68,7 @@ export default function InventorySerials() {
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map((item: any) => (
+              {filteredItems.map((item: SerialItem) => (
                 <tr key={item.serial_id}>
                   <td className="font-mono font-medium text-blue-600">{item.serial_number}</td>
                   <td className="font-medium text-gray-900">{item.spare_name}</td>

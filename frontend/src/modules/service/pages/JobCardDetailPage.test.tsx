@@ -3,8 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import JobCardDetailPage from './JobCardDetailPage'
-import { serviceApi } from '../api/serviceApi'
-import { toast } from 'react-hot-toast'
+import { serviceApi, JobCard, SpareConsumption } from '../api/serviceApi'
 
 vi.mock('../api/serviceApi', () => ({
   serviceApi: {
@@ -52,16 +51,14 @@ describe('JobCardDetailPage', () => {
   })
 
   it('renders job card details when loaded', async () => {
-    const mockJobCard = {
+    const mockJobCard: JobCard = {
       job_card_id: 1,
       job_card_no: 'JC-1001',
       chassis_no: 'CH123',
       in_datetime: '2023-10-01T10:00:00Z',
       opening_km: 1500,
-      status: 'OPEN',
-      spares: []
     }
-    vi.mocked(serviceApi.getJobCardById).mockResolvedValue(mockJobCard as any)
+    vi.mocked(serviceApi.getJobCardById).mockResolvedValue(mockJobCard)
     vi.mocked(serviceApi.listSpares).mockResolvedValue([])
 
     renderComponent()
@@ -75,16 +72,15 @@ describe('JobCardDetailPage', () => {
   })
 
   it('shows closed status if out_datetime is present', async () => {
-    const mockJobCard = {
+    const mockJobCard: JobCard = {
       job_card_id: 1,
       job_card_no: 'JC-1001',
       chassis_no: 'CH123',
       in_datetime: '2023-10-01T10:00:00Z',
       out_datetime: '2023-10-02T10:00:00Z',
       opening_km: 1500,
-      status: 'CLOSED',
     }
-    vi.mocked(serviceApi.getJobCardById).mockResolvedValue(mockJobCard as any)
+    vi.mocked(serviceApi.getJobCardById).mockResolvedValue(mockJobCard)
     vi.mocked(serviceApi.listSpares).mockResolvedValue([])
 
     renderComponent()
@@ -96,35 +92,40 @@ describe('JobCardDetailPage', () => {
   })
 
   it('renders spares list and handles actions', async () => {
-    const mockJobCard = {
+    const mockJobCard: JobCard = {
       job_card_id: 1,
       job_card_no: 'JC-1001',
       chassis_no: 'CH123',
       in_datetime: '2023-10-01T10:00:00Z',
       opening_km: 1500,
-      status: 'OPEN',
     }
-    const mockSpares = [
+    const mockSpares: SpareConsumption[] = [
       {
         consumption_id: 101,
+        job_card_id: 1,
+        spare_id: 10,
         part_code_snapshot: 'P001',
         description_snapshot: 'Part 1',
         tracking_mode: 'QUANTITY',
         quantity: 2,
-        status: 'DRAFT'
+        status: 'DRAFT',
+        created_at: '2023-10-01T10:00:00Z',
       },
       {
         consumption_id: 102,
+        job_card_id: 1,
+        spare_id: 20,
         part_code_snapshot: 'P002',
         description_snapshot: 'Part 2',
         tracking_mode: 'BATCH',
         quantity: 1,
-        status: 'CONSUMED'
+        status: 'CONSUMED',
+        created_at: '2023-10-01T10:00:00Z',
       }
     ]
 
-    vi.mocked(serviceApi.getJobCardById).mockResolvedValue(mockJobCard as any)
-    vi.mocked(serviceApi.listSpares).mockResolvedValue(mockSpares as any)
+    vi.mocked(serviceApi.getJobCardById).mockResolvedValue(mockJobCard)
+    vi.mocked(serviceApi.listSpares).mockResolvedValue(mockSpares)
 
     renderComponent()
 
@@ -136,7 +137,7 @@ describe('JobCardDetailPage', () => {
     expect(screen.getByText('CONSUMED')).toBeInTheDocument()
 
     // Test Consume action for DRAFT
-    vi.mocked(serviceApi.consumeSpare).mockResolvedValue({} as any)
+    vi.mocked(serviceApi.consumeSpare).mockResolvedValue(mockSpares[0])
     const consumeButtons = screen.getAllByTitle('Confirm Consumption')
     fireEvent.click(consumeButtons[0])
 
@@ -145,7 +146,7 @@ describe('JobCardDetailPage', () => {
     })
 
     // Test Reverse action for CONSUMED
-    vi.mocked(serviceApi.reverseSpare).mockResolvedValue({} as any)
+    vi.mocked(serviceApi.reverseSpare).mockResolvedValue(mockSpares[1])
     const reverseButtons = screen.getAllByTitle('Reverse Consumption')
     fireEvent.click(reverseButtons[0])
 
@@ -154,7 +155,7 @@ describe('JobCardDetailPage', () => {
     })
 
     // Test Remove Draft action
-    vi.mocked(serviceApi.removeDraftSpare).mockResolvedValue({} as any)
+    vi.mocked(serviceApi.removeDraftSpare).mockResolvedValue(undefined)
     const removeButtons = screen.getAllByTitle('Remove Draft')
     fireEvent.click(removeButtons[0])
 

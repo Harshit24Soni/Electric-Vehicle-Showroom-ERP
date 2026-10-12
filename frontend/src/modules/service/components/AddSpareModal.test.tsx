@@ -2,8 +2,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AddSpareModal from './AddSpareModal'
-import { serviceApi } from '../api/serviceApi'
-import { inventoryApi } from '../../inventory/api/inventoryApi'
+import { serviceApi, SpareConsumption } from '../api/serviceApi'
+import { inventoryApi, StockListResponse } from '../../inventory/api/inventoryApi'
 import { toast } from 'react-hot-toast'
 
 vi.mock('../api/serviceApi', () => ({
@@ -43,13 +43,23 @@ describe('AddSpareModal', () => {
     )
   }
 
+  const mockStock: StockListResponse = {
+    items: [
+      {
+        spare_id: 1,
+        part_code: 'P001',
+        spare_name: 'Part 1',
+        quantity: 10,
+        tracking_mode: 'QUANTITY',
+        location: 'MAIN',
+        unit_cost: 100,
+        total_value: 1000,
+      }
+    ]
+  }
+
   it('renders modal and loads stock items', async () => {
-    const mockStock = {
-      items: [
-        { spare_id: 1, part_code: 'P001', spare_name: 'Part 1', quantity: 10 }
-      ]
-    }
-    vi.mocked(inventoryApi.getStock).mockResolvedValue(mockStock as any)
+    vi.mocked(inventoryApi.getStock).mockResolvedValue(mockStock)
 
     renderComponent()
 
@@ -57,12 +67,7 @@ describe('AddSpareModal', () => {
   })
 
   it('handles scanning a valid part code', async () => {
-    const mockStock = {
-      items: [
-        { spare_id: 1, part_code: 'P001', spare_name: 'Part 1', quantity: 10 }
-      ]
-    }
-    vi.mocked(inventoryApi.getStock).mockResolvedValue(mockStock as any)
+    vi.mocked(inventoryApi.getStock).mockResolvedValue(mockStock)
 
     renderComponent()
 
@@ -79,12 +84,7 @@ describe('AddSpareModal', () => {
   })
 
   it('handles scanning an invalid part code', async () => {
-    const mockStock = {
-      items: [
-        { spare_id: 1, part_code: 'P001', spare_name: 'Part 1', quantity: 10 }
-      ]
-    }
-    vi.mocked(inventoryApi.getStock).mockResolvedValue(mockStock as any)
+    vi.mocked(inventoryApi.getStock).mockResolvedValue(mockStock)
 
     renderComponent()
 
@@ -100,13 +100,8 @@ describe('AddSpareModal', () => {
   })
 
   it('handles adding a spare to job card successfully', async () => {
-    const mockStock = {
-      items: [
-        { spare_id: 1, part_code: 'P001', spare_name: 'Part 1', quantity: 10 }
-      ]
-    }
-    vi.mocked(inventoryApi.getStock).mockResolvedValue(mockStock as any)
-    vi.mocked(serviceApi.draftSpare).mockResolvedValue({} as any)
+    vi.mocked(inventoryApi.getStock).mockResolvedValue(mockStock)
+    vi.mocked(serviceApi.draftSpare).mockResolvedValue({} as unknown as SpareConsumption)
 
     const onSuccess = vi.fn()
     renderComponent(vi.fn(), onSuccess)

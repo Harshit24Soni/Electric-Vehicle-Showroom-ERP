@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import { serviceApi } from '../api/serviceApi'
 import { inventoryApi, StockItem } from '../../inventory/api/inventoryApi'
 import { X, Scan, QrCode } from 'lucide-react'
@@ -18,7 +19,7 @@ export default function AddSpareModal({ jobCardId, onClose, onSuccess }: AddSpar
   const [scannedTag, setScannedTag] = useState<TagScanResult | null>(null)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
 
-  const { data: stockItems = [], isLoading: loadingStock } = useQuery({
+  const { data: stockItems = [] } = useQuery({
     queryKey: ['inventory-stock', 'MAIN'],
     queryFn: () => inventoryApi.getStock(undefined, 'MAIN').then(r => r.items),
   })
@@ -30,8 +31,9 @@ export default function AddSpareModal({ jobCardId, onClose, onSuccess }: AddSpar
       toast.success('Spare added as draft')
       onSuccess()
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || 'Failed to add spare')
+    onError: (err: unknown) => {
+      const axiosErr = err as AxiosError<{ detail?: string }>;
+      toast.error(axiosErr.response?.data?.detail || 'Failed to add spare')
     }
   })
 

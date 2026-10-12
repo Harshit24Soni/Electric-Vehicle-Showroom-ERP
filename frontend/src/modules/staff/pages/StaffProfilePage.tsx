@@ -7,15 +7,43 @@ import { toast } from 'react-hot-toast'
 import { useState, useEffect } from 'react'
 import Enable2FAModal from '../components/Enable2FAModal'
 
+export interface StaffProfile {
+  staff_id: number
+  full_name: string
+  mobile_no: string
+  email?: string
+  designation: 'ADMIN' | 'STAFF' | 'DEALER'
+  is_active: boolean
+  joined_date?: string
+  created_at: string
+  totp_enabled: boolean
+  dealer_id?: number
+  address_line1?: string
+  address_line2?: string
+  city?: string
+  state?: string
+  pincode?: string
+  upi_id?: string
+  bank_account_no?: string
+  bank_name?: string
+  ifsc_code?: string
+  emergency_contact_name?: string
+  emergency_contact_no?: string
+  aadhaar_no?: string
+  pan_no?: string
+}
+
+export type StaffProfileUpdate = Partial<StaffProfile>
+
 export default function StaffProfilePage() {
   const [show2FAModal, setShow2FAModal] = useState(false)
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
-  const { register, handleSubmit, reset } = useForm()
+  const { register, handleSubmit, reset } = useForm<StaffProfileUpdate>()
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['staff-profile'],
-    queryFn: () => api.get('/staff/me'),
+    queryFn: () => api.get<StaffProfile>('/staff/me'),
     enabled: !!user,
   })
 
@@ -26,20 +54,17 @@ export default function StaffProfilePage() {
   }, [profile, reset])
 
   const updateProfileMutation = useMutation({
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-    mutationFn: (data: any) => api.put('/staff/me', data),
+    mutationFn: (data: StaffProfileUpdate) => api.put('/staff/me', data),
     onSuccess: () => {
       toast.success('Profile updated successfully')
       queryClient.invalidateQueries({ queryKey: ['staff-profile'] })
     },
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to update profile')
     }
   })
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: StaffProfileUpdate) => {
     // Filter out read-only fields if necessary, or backend handles it
     updateProfileMutation.mutate(data)
   }
@@ -67,8 +92,7 @@ export default function StaffProfilePage() {
               <p className="text-gray-500">{user?.designation}</p>
               <div className="mt-4 w-full">
                 <div className="text-sm text-gray-500">Staff ID: {user?.staff_id}</div>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                {(profile as any)?.dealer_id && <div className="text-sm text-gray-500">Dealer ID: {(profile as any).dealer_id}</div>}
+                {profile?.dealer_id && <div className="text-sm text-gray-500">Dealer ID: {profile.dealer_id}</div>}
               </div>
             </div>
           </div>
@@ -81,12 +105,10 @@ export default function StaffProfilePage() {
                 <div>
                   <p className="text-sm font-medium text-gray-700">Two-Factor Auth</p>
                   <p className="text-xs text-gray-500">
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                    {(profile as any)?.totp_enabled ? 'Enabled' : 'Disabled'}
+                    {profile?.totp_enabled ? 'Enabled' : 'Disabled'}
                   </p>
                 </div>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                {(profile as any)?.totp_enabled ? (
+                {profile?.totp_enabled ? (
                   <span className="text-green-600 bg-green-50 px-2 py-1 rounded text-xs font-medium border border-green-200">Active</span>
                 ) : (
                   <button

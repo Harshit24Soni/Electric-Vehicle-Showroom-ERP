@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { inventoryApi } from '../api/inventoryApi'
+import { inventoryApi, MovementHistoryItem } from '../api/inventoryApi'
 import { SkeletonTable } from '@/components/ui/SkeletonTable'
 import { useAuthStore } from '@/store/authStore'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -51,7 +51,7 @@ export default function InventoryMovements() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((m: any) => (
+                {items.map((m: MovementHistoryItem) => (
                   <tr key={m.movement_id}>
                     <td className="whitespace-nowrap text-gray-600">
                       {new Date(m.movement_datetime).toLocaleString()}

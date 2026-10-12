@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { inventoryApi } from '../api/inventoryApi'
+import { inventoryApi, BatchItem } from '../api/inventoryApi'
 import { Search, MapPin, Calendar } from 'lucide-react'
 import { SkeletonTable } from '@/components/ui/SkeletonTable'
 import { useAuthStore } from '@/store/authStore'
@@ -18,7 +18,7 @@ export default function InventoryBatches() {
 
   const items = batchResponse?.items || []
   
-  const filteredItems = items.filter((item: any) => 
+  const filteredItems = items.filter((item: BatchItem) => 
     item.spare_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.batch_number.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -61,7 +61,7 @@ export default function InventoryBatches() {
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map((item: any) => (
+              {filteredItems.map((item: BatchItem) => (
                 <tr key={`${item.batch_id}-${item.location}`}>
                   <td className="font-mono font-medium text-blue-600">{item.batch_number}</td>
                   <td className="font-medium text-gray-900">{item.spare_name}</td>

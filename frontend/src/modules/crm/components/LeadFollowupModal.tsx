@@ -1,3 +1,7 @@
+interface LeadStatusItem {
+  status_id: number
+  status_name: string
+}
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
@@ -99,8 +103,7 @@ export default function LeadFollowupModal({ leadId, leadName, onClose }: LeadFol
                             className="input w-full"
                         >
                             <option value="">Select outcome</option>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                            {leadStatuses.map((status: any) => (
+	{leadStatuses.map((status: LeadStatusItem) => (
                                 <option key={status.status_id} value={status.status_name}>
                                     {status.status_name}
                                 </option>

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { financeApi, FinanceCreate } from '../api/financeApi'
+import { financeApi, FinanceCreate, FinanceResponse } from '../api/financeApi'
 import { DollarSign, X, Trash2, Search } from 'lucide-react'
 import { salesApi } from '@/modules/sales/api/salesApi'
 import { formatDate, formatCurrency } from '@/lib/utils'
@@ -11,8 +11,7 @@ import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function FinancePage() {
   const [showForm, setShowForm] = useState(false)
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-  const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
+	const [deleteTarget, setDeleteTarget] = useState<FinanceResponse | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const queryClient = useQueryClient()
 
@@ -112,15 +111,14 @@ export default function FinancePage() {
                 </tr>
               </thead>
               <tbody>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
-                {filteredRecords.map((r: any) => (
+	{filteredRecords.map((r: FinanceResponse) => (
                   <tr key={r.finance_id}>
                     <td>#{r.finance_id}</td>
                     <td className="font-medium">Sale #{r.sale_id}</td>
                     <td>{r.financer_name}</td>
                     <td className="font-semibold text-primary-700">{formatCurrency(r.loan_amount)}</td>
                     <td>{formatCurrency(r.down_payment)}</td>
-                    <td>{formatDate(r.created_at)}</td>
+                    <td>{r.created_at ? formatDate(r.created_at) : '-'}</td>
                     <td>
                       <button
                         onClick={() => setDeleteTarget(r)}
