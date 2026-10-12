@@ -3,11 +3,11 @@ from httpx import AsyncClient
 from decimal import Decimal
 from datetime import datetime
 
-from app.domains.procurement.models import SparePurchase, SparePurchaseItem
+from app.modules.procurement.models import SparePurchase, SparePurchaseItem
 
 @pytest.fixture
 async def vendor(db_session):
-    from app.domains.master.models import Vendor
+    from app.modules.master.models import Vendor
     v = Vendor(vendor_name="Test Supplier", vendor_type="OEM", gstin="29GGGGG1314R9Z6", pan_no="GGGGG1314R")
     db_session.add(v)
     await db_session.flush()
@@ -15,7 +15,7 @@ async def vendor(db_session):
 
 @pytest.fixture
 async def spare(db_session):
-    from app.domains.inventory.models import SpareMaster, SparePartCode
+    from app.modules.inventory.models import SpareMaster, SparePartCode
     s = SpareMaster(spare_name="Mysterious Part", tracking_mode="QUANTITY", status="ACTIVE")
     db_session.add(s)
     await db_session.flush()

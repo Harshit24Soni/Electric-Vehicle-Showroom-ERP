@@ -1,0 +1,23 @@
+# Environment configuration (secrets, credentials)
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log

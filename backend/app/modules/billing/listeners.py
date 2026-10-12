@@ -4,7 +4,7 @@ from datetime import datetime
 from app.core.event_bus import event_bus, SaleTransactionCompletedEvent
 from app.modules.billing.models import SalesInvoice
 
-async def on_sale_transaction_completed_billing(event: SaleTransactionCompletedEvent, db: AsyncSession):
+async def on_sale_transaction_completed_billing(event: SaleTransactionCompletedEvent, db: AsyncSession | None = None):
     """Generate invoice document when a sale transaction is completed."""
     try:
         year = datetime.now().year
@@ -24,8 +24,14 @@ async def on_sale_transaction_completed_billing(event: SaleTransactionCompletedE
             total_amount=total,
             is_final=True
         )
-        db.add(invoice)
-        await db.commit()
+        if db is not None:
+            db.add(invoice)
+            await db.commit()
+        else:
+            from app.db.session import AsyncSessionLocal
+            async with AsyncSessionLocal() as session:
+                session.add(invoice)
+                await session.commit()
     except Exception as e:
         logging.error(f"Error generating billing invoice for sale {event.sale_id}: {str(e)}")
 

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.event_bus import event_bus, SaleTransactionCompletedEvent
 from app.modules.finance.models import VehicleFinance
 
-async def on_sale_transaction_completed_finance(event: SaleTransactionCompletedEvent, db: AsyncSession):
+async def on_sale_transaction_completed_finance(event: SaleTransactionCompletedEvent, db: AsyncSession | None = None):
     """Initialize finance ledger if the sale involves financing."""
     try:
         if event.payment_mode == 'FINANCE' and event.financier_name:
@@ -14,8 +14,14 @@ async def on_sale_transaction_completed_finance(event: SaleTransactionCompletedE
                 down_payment=event.down_payment_amount or 0.0,
                 finance_status='INITIATED'
             )
-            db.add(finance)
-            await db.commit()
+            if db is not None:
+                db.add(finance)
+                await db.commit()
+            else:
+                from app.db.session import AsyncSessionLocal
+                async with AsyncSessionLocal() as session:
+                    session.add(finance)
+                    await session.commit()
     except Exception as e:
         logging.error(f"Error generating finance ledger for sale {event.sale_id}: {str(e)}")
 

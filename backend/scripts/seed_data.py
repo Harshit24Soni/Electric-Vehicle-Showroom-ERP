@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from app.auth.pin_utils import hash_pin
 from app.db.session import AsyncSessionLocal
-from app.domains.master.models import Staff
+from app.modules.master.models import Staff
 
 LOGIN_USERS = [
     {

@@ -3,8 +3,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.domains.inventory.models import SpareMaster, SparePartCode, SparePartVehicleCompatibility
-from app.domains.master.models import VehicleModel
+from app.modules.inventory.models import SpareMaster, SparePartCode, SparePartVehicleCompatibility
+from app.modules.master.models import VehicleModel
 
 pytestmark = pytest.mark.asyncio
 
@@ -89,7 +89,7 @@ async def test_add_retire_part_code(admin_client: AsyncClient, db_session: Async
 
 async def test_compatibility(admin_client: AsyncClient, db_session: AsyncSession):
     # Setup vehicle model
-    from app.domains.master.models import Brand
+    from app.modules.master.models import Brand
     brand = Brand(brand_name="Test Brand")
     db_session.add(brand)
     await db_session.flush()

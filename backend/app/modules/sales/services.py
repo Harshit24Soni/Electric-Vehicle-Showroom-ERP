@@ -7,9 +7,7 @@ from fastapi import HTTPException
 
 from app.modules.sales import models
 from app.modules.sales import schemas as sales_schemas
-from app.domains.master import models as master_models
-from app.domains.crm import models as crm_models
-from app.core.event_bus import event_bus, VehicleDeliveredEvent
+from app.core.event_bus import event_bus, VehicleDeliveredEvent, SaleCompleted, SaleCompletedEvent
 
 class SalesError(Exception):
     pass
@@ -21,13 +19,13 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
 
     # Verify Lead (if not direct sale)
     if not is_direct:
-        from app.domains.crm.contracts import verify_lead_exists
+        from app.modules.crm.contracts import verify_lead_exists
         lead_exists = await verify_lead_exists(db, payload.lead_id)
         if not lead_exists:
             raise SalesError("Lead not found")
         
     # Verify Customer
-    from app.domains.master.contracts import verify_customer_exists, verify_vehicle_available
+    from app.modules.master.contracts import verify_customer_exists, verify_vehicle_available
     customer_exists = await verify_customer_exists(db, payload.customer_id)
     if not customer_exists:
         raise SalesError("Customer not found")
@@ -40,7 +38,7 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
         raise SalesError("Vehicle not found")
         
     # Margin Validation
-    from app.domains.procurement.contracts import get_vehicle_cost_price
+    from app.modules.procurement.contracts import get_vehicle_cost_price
     cost_price = await get_vehicle_cost_price(db, payload.chassis_no)
     
     if float(payload.total_amount) < cost_price:
@@ -123,7 +121,7 @@ async def create_sale_transaction(
     staff_id = current_user["staff_id"]
 
     # (a) Verify vehicle
-    from app.domains.master.contracts import verify_customer_exists, verify_vehicle_available
+    from app.modules.master.contracts import verify_customer_exists, verify_vehicle_available
     vehicle_available, current_status = await verify_vehicle_available(db, payload.chassis_no)
     if not vehicle_available:
         if current_status:
@@ -141,7 +139,7 @@ async def create_sale_transaction(
     is_direct = getattr(payload, "is_direct_sale", True) or payload.lead_id is None
 
     # Margin Validation
-    from app.domains.procurement.contracts import get_vehicle_cost_price
+    from app.modules.procurement.contracts import get_vehicle_cost_price
     cost_price = await get_vehicle_cost_price(db, payload.chassis_no)
     
     if float(payload.total_amount) < cost_price:
@@ -207,6 +205,15 @@ async def create_sale_transaction(
         db.add(payment)
 
     # (f) Outward stock movement (Asynchronous via Event Bus)
+    await event_bus.publish(
+        SaleCompleted(
+            sale_id=sale.sale_id,
+            chassis_no=payload.chassis_no,
+            customer_id=payload.customer_id,
+            invoice_no=inv_number,
+            total_amount=float(payload.total_amount),
+        )
+    )
     await event_bus.publish(
         VehicleDeliveredEvent(
             chassis_no=payload.chassis_no,
@@ -481,6 +488,26 @@ async def advance_sale_stage(
     }
     if payload.to_stage in stage_status_map:
         sale.sale_status = stage_status_map[payload.to_stage]
+
+    # Emit domain event when a sale is finalized/delivered to decouple inventory movements
+    if payload.to_stage in ("DELIVERY", "COMPLETED"):
+        inv_no = sale.invoice_number or f"INV-{sale.sale_id:04d}"
+        await event_bus.publish(
+            SaleCompleted(
+                sale_id=sale.sale_id,
+                chassis_no=sale.chassis_no,
+                customer_id=sale.customer_id,
+                invoice_no=inv_no,
+                total_amount=float(sale.total_amount),
+            )
+        )
+        await event_bus.publish(
+            VehicleDeliveredEvent(
+                chassis_no=sale.chassis_no,
+                sale_id=sale.sale_id,
+                invoice_no=inv_no,
+            )
+        )
 
     await db.flush()
     return sale

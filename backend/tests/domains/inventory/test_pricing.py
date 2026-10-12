@@ -2,8 +2,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone, timedelta
-from app.domains.inventory import pricing_services, services
-from app.domains.inventory.models import SpareMaster, SparePartCode, PriceList, SpareSellingPriceHistory, SpareCostHistory
+from app.modules.inventory import pricing_services, services
+from app.modules.inventory.models import SpareMaster, SparePartCode, PriceList, SpareSellingPriceHistory, SpareCostHistory
 from decimal import Decimal
 
 @pytest.mark.asyncio

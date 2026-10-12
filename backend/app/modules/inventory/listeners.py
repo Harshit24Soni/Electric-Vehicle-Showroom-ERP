@@ -7,11 +7,18 @@ from app.core.event_bus import (
     SpareConsumedEvent, 
     VehicleIntakeEvent, 
     VehicleDeliveredEvent,
+    SaleCompletedEvent,
     DefectiveSpareReturnedEvent,
     WarrantyReplacementIssuedEvent,
     SparePriceUpdatedEvent
 )
-from app.modules.inventory.services import add_spare_movement, add_vehicle_movement, create_temporary_spare
+from app.modules.inventory.services import (
+    add_spare_movement, 
+    add_vehicle_movement, 
+    create_temporary_spare,
+    get_latest_vehicle_movement,
+)
+from app.db.session import AsyncSessionLocal
 
 # Decoupling Strategy (DDD Phase 1 & 4):
 # Listeners subscribe to cross-module events on the global Event Bus. 
@@ -23,12 +30,13 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def get_async_session():
-    """
-    Mock async session generator for the background listener tasks.
-    In a real application, you would import your SessionLocal or async_sessionmaker 
-    from app.db.session.
-    """
-    yield None  # Mock yield for this example
+    """Async session generator for the background listener tasks."""
+    try:
+        async with AsyncSessionLocal() as session:
+            yield session
+    except Exception as e:
+        logger.error(f"Error obtaining session in inventory listener: {e}")
+        yield None
 
 async def handle_spare_purchased(event: SparePurchasedEvent) -> None:
     logger.info(f"Inventory module handling SparePurchasedEvent for spare {event.spare_id}")
@@ -77,6 +85,9 @@ async def handle_vehicle_delivered(event: VehicleDeliveredEvent) -> None:
     logger.info(f"Inventory module handling VehicleDeliveredEvent for chassis {event.chassis_no}")
     async with get_async_session() as db:
         if db is not None:
+            last = await get_latest_vehicle_movement(db, event.chassis_no)
+            if last and last.movement_type == "DELIVERED":
+                return
             await add_vehicle_movement(
                 db,
                 chassis_no=event.chassis_no,
@@ -86,6 +97,25 @@ async def handle_vehicle_delivered(event: VehicleDeliveredEvent) -> None:
                 reference_type="SALE",
                 reference_id=event.sale_id,
                 remarks=f"Sale #{event.sale_id} — {event.invoice_no}"
+            )
+            await db.commit()
+
+async def handle_sale_completed(event: SaleCompletedEvent) -> None:
+    logger.info(f"Inventory module handling SaleCompletedEvent for chassis {event.chassis_no}")
+    async with get_async_session() as db:
+        if db is not None:
+            last = await get_latest_vehicle_movement(db, event.chassis_no)
+            if last and last.movement_type == "DELIVERED":
+                return
+            await add_vehicle_movement(
+                db,
+                chassis_no=event.chassis_no,
+                movement_type="DELIVERED",
+                from_location="SHOWROOM",
+                to_location="CUSTOMER",
+                reference_type="SALE",
+                reference_id=event.sale_id,
+                remarks=f"Sale #{event.sale_id} — {event.invoice_no or 'Completed'}"
             )
             await db.commit()
 
@@ -134,6 +164,7 @@ def register_inventory_listeners():
     event_bus.subscribe(SpareConsumedEvent, handle_spare_consumed)
     event_bus.subscribe(VehicleIntakeEvent, handle_vehicle_intake)
     event_bus.subscribe(VehicleDeliveredEvent, handle_vehicle_delivered)
+    event_bus.subscribe(SaleCompletedEvent, handle_sale_completed)
     event_bus.subscribe(DefectiveSpareReturnedEvent, handle_defective_returned)
     event_bus.subscribe(WarrantyReplacementIssuedEvent, handle_warranty_issued)
     event_bus.subscribe(SparePriceUpdatedEvent, handle_spare_price_updated)

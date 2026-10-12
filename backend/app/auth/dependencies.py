@@ -7,12 +7,12 @@ from jose import jwt, JWTError
 
 from app.db.session import get_db
 
-load_dotenv()
+from app.core.config import settings
 
 security = HTTPBearer()
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-ALGORITHM = os.getenv("JWT_ALGORITHM")
+SECRET_KEY = settings.JWT_SECRET_KEY
+ALGORITHM = settings.JWT_ALGORITHM
 
 
 async def get_current_staff(
@@ -47,7 +47,7 @@ async def get_current_staff(
             detail="Invalid or expired token"
         )
 
-    from app.domains.master.models import Staff
+    from app.modules.master.models import Staff
     from sqlalchemy import select
     
     # 🔒 ERP-grade check: ensure staff still exists & is active

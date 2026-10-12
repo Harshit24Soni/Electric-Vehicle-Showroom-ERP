@@ -1,25 +1,34 @@
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Early environment initialization before Pydantic loads
+_env_file = Path(".env") if Path(".env").is_file() else Path("backend/.env")
+if _env_file.is_file():
+    load_dotenv(dotenv_path=_env_file)
+else:
+    load_dotenv(".env")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth.routes import router as auth_router
-from app.domains.admin.routes import router as admin_staff_router
-from app.domains.staff.routes import router as staff_router
-from app.domains.inventory.routes import router as inventory_router
+from app.modules.admin.routes import router as admin_staff_router
+from app.modules.staff.routes import router as staff_router
+from app.modules.inventory.routes import router as inventory_router
 from app.modules.billing.routes import router as billing_router
 from app.modules.finance.routes import router as finance_router
-from app.domains.master.routes import router as master_router
-from app.domains.reports.routes import router as reports_router
+from app.modules.master.routes import router as master_router
+from app.modules.reports.routes import router as reports_router
 from app.modules.sales.routes import router as sales_router
 from app.modules.sales.routes_spare import router as spare_sales_router
-from app.domains.service.routes import router as service_router
-from app.domains.crm.routes import router as crm_router
-from app.domains.insurance.routes import router as insurance_router
-from app.domains.warranty.routes import router as warranty_router
-from app.domains.procurement.routes import router as procurement_router
-from app.domains.followup.routes import router as followup_router
-from app.domains.setup.routes import router as setup_router
+from app.modules.service.routes import router as service_router
+from app.modules.crm.routes import router as crm_router
+from app.modules.insurance.routes import router as insurance_router
+from app.modules.warranty.routes import router as warranty_router
+from app.modules.procurement.routes import router as procurement_router
+from app.modules.followup.routes import router as followup_router
+from app.modules.setup.routes import router as setup_router
 from app.bootstrap import init_models, init_listeners
 from app.core.config import settings
 
@@ -28,16 +37,10 @@ init_models()
 init_listeners()
 app = FastAPI(title="EV Showroom ERP Backend")
 
-# Initialize all models on startup
-init_models()
-
-# CORS — read allowed origins from env
+# CORS — read allowed origins from settings
 allowed_origins = [
     origin.strip()
-    for origin in os.getenv(
-        "ALLOWED_ORIGINS",
-        "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173",
-    ).split(",")
+    for origin in settings.ALLOWED_ORIGINS.split(",")
 ]
 
 app.add_middleware(

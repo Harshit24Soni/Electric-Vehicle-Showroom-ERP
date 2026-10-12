@@ -9,8 +9,8 @@ if ROOT_DIR not in sys.path:
 
 from sqlalchemy import select
 from app.db.session import AsyncSessionLocal
-from app.domains.master.models import Customer, Vehicle, Brand, VehicleModel
-from app.domains.service.models import ServiceJobCard
+from app.modules.master.models import Customer, Vehicle, Brand, VehicleModel
+from app.modules.service.models import ServiceJobCard
 from app.modules.inventory.models import (
     SpareMaster, SparePartCode, SpareBatch, SpareSerial, 
     SpareStockBalance, SpareSellingPriceHistory

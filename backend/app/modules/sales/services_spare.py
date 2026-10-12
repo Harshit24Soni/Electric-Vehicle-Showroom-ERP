@@ -5,11 +5,11 @@ from sqlalchemy import select, and_, func
 from sqlalchemy.orm import joinedload
 from app.modules.sales.models import SpareSale, SpareSaleItem
 from app.modules.sales.schemas_spare import SpareSaleCreate, SpareSaleItemCreate
-from app.domains.inventory.models import (
+from app.modules.inventory.models import (
     SpareMaster, SpareStockBalance, SpareBatch, SpareSerial, 
     SpareStockMovement
 )
-from app.domains.inventory.services import add_spare_movement
+from app.modules.inventory.services import add_spare_movement
 from typing import List
 
 class SpareSaleError(Exception):

@@ -1,17 +1,13 @@
 import redis
-import os
 import json
+from app.core.config import settings
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# Redis Configuration with Authentication
-REDIS_URL = os.getenv("REDIS_URL", None)
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-REDIS_DB = int(os.getenv("REDIS_DB", 0))
+# Redis Configuration with Authentication (loaded strictly from settings)
+REDIS_URL = settings.REDIS_URL
+REDIS_PASSWORD = settings.REDIS_PASSWORD
+REDIS_HOST = settings.REDIS_HOST
+REDIS_PORT = settings.REDIS_PORT
+REDIS_DB = settings.REDIS_DB
 
 if REDIS_URL:
     # Use full URL if provided (includes password, SSL, etc.)

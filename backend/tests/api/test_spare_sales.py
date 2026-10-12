@@ -3,8 +3,8 @@ from httpx import AsyncClient
 from app.modules.sales.models import SpareSale, SpareSaleItem
 from sqlalchemy import select
 from decimal import Decimal
-from app.domains.inventory.models import SpareStockBalance, SpareBatch, SpareSerial, SpareStockMovement, SpareMaster, SparePartCode
-from app.domains.master.models import Customer
+from app.modules.inventory.models import SpareStockBalance, SpareBatch, SpareSerial, SpareStockMovement, SpareMaster, SparePartCode
+from app.modules.master.models import Customer
 
 @pytest.fixture
 async def sample_customer(db_session):

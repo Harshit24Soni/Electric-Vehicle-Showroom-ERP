@@ -30,6 +30,16 @@ class SaleTransactionCompletedEvent(DomainEvent):
     financier_name: str | None
     remarks: str | None
 
+class SaleCompletedEvent(DomainEvent):
+    sale_id: int
+    chassis_no: str
+    customer_id: int
+    invoice_no: str | None = None
+    total_amount: float | None = None
+
+# Alias for convenience
+SaleCompleted = SaleCompletedEvent
+
 class SparePurchasedEvent(DomainEvent):
     spare_id: int
     quantity: int
