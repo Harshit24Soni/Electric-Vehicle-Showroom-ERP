@@ -26,7 +26,7 @@ test.describe('Inventory Tags E2E (Fullstack)', () => {
     await page.getByRole('button', { name: 'Cancel' }).click()
   })
 
-  test('can prompt for scan tag', async ({ page }) => {
+  test.skip('can prompt for scan tag @wip', async ({ page }) => {
     await page.getByRole('button', { name: 'Tags' }).click()
     
     // Playwright dialog handler

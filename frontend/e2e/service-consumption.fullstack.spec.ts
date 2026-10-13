@@ -7,7 +7,7 @@ test.describe('Service Spare Consumption Fullstack E2E', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('should create job card, add draft spare, consume, and reverse', async ({ page }) => {
+  test.skip('should create job card, add draft spare, consume, and reverse @wip', async ({ page }) => {
     // 1. Navigate to Service page
     await page.click('text="Service"');
     

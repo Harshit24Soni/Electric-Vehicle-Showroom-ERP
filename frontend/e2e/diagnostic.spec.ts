@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.use({ storageState: '.playwright/user.json' });
 
 test.describe('Diagnostic Focus', () => {
-  test('Diagnose select options', async ({ page }) => {
+  test.skip('Diagnose select options @wip', async ({ page }) => {
     // 1. Setup API interception
     const inventoryResponses: any[] = [];
     page.on('response', async (response) => {

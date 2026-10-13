@@ -84,3 +84,13 @@ async def test_ocr_upload(admin_client: AsyncClient, db_session, vendor, spare):
     approve_res = await admin_client.post(f"/procurement/purchases/spares/{purchase_id}/approve")
     assert approve_res.status_code == 200
     assert approve_res.json()["status"] == "APPROVED"
+
+    # GET existing purchase
+    get_res = await admin_client.get(f"/procurement/purchases/spares/{purchase_id}")
+    assert get_res.status_code == 200
+    assert get_res.json()["spare_purchase_id"] == purchase_id
+
+    # GET non-existent purchase (must return 404 gracefully instead of 500 ResponseValidationError)
+    not_found_res = await admin_client.get("/procurement/purchases/spares/9999999")
+    assert not_found_res.status_code == 404
+    assert not_found_res.json()["detail"] == "Spare purchase not found"

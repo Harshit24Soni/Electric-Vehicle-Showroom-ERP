@@ -10,7 +10,7 @@ from sqlalchemy import (
 	ForeignKey,
 	Numeric,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 from datetime import datetime, date
 
 from app.db.base import Base
@@ -71,6 +71,12 @@ class Staff(Base, SoftDeleteMixin, AuditMixin):
 	email: Mapped[str | None] = mapped_column(String(150), unique=True)
 	mobile_no: Mapped[str] = mapped_column(String(15), unique=True, nullable=False)
 	designation: Mapped[str] = mapped_column(String(50), nullable=False)
+
+	# Synonyms for unified attribute access (id, phone, role)
+	id = synonym("staff_id")
+	phone = synonym("mobile_no")
+	role = synonym("designation")
+
 	pin_hash: Mapped[str | None] = mapped_column(String(255))
 	is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 	failed_attempts: Mapped[int] = mapped_column(BigInteger, default=0)

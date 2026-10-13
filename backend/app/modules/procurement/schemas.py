@@ -92,17 +92,17 @@ class TemporaryItemResponse(BaseModel):
 
 class SparePurchaseItemResponse(BaseModel):
     purchase_item_id: int
-    spare_id: Optional[int]
+    spare_id: Optional[int] = None
     spare_name: Optional[str] = None
     part_code: Optional[str] = None
     part_description: Optional[str] = None
-    quantity: int
-    unit_cost: Decimal
+    quantity: int = 0
+    unit_cost: Optional[Decimal] = None
     discount: Optional[Decimal] = None
     tax_amount: Optional[Decimal] = None
     gst_percentage: Optional[Decimal] = None
     total_cost: Optional[Decimal] = None
-    verification_status: str
+    verification_status: Optional[str] = "EXTRACTED"
     confidence_score: Optional[Decimal] = None
     variance_amount: Optional[Decimal] = None
 
@@ -111,17 +111,17 @@ class SparePurchaseItemResponse(BaseModel):
 
 class SparePurchaseResponse(BaseModel):
     spare_purchase_id: int
-    vendor_id: int
+    vendor_id: Optional[int] = None
     vendor_name: Optional[str] = None
-    vendor_invoice_no: Optional[str]
-    vendor_invoice_date: Optional[date]
-    purchase_date: date
-    remarks: Optional[str]
+    vendor_invoice_no: Optional[str] = None
+    vendor_invoice_date: Optional[date] = None
+    purchase_date: Optional[date] = None
+    remarks: Optional[str] = None
     is_deleted: bool = False
-    created_at: datetime
+    created_at: Optional[datetime] = None
     
     # Phase 3 Fields
-    status: str
+    status: Optional[str] = "DRAFT"
     docket_reference: Optional[str] = None
     subtotal: Optional[Decimal] = None
     tax_total: Optional[Decimal] = None

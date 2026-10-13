@@ -174,7 +174,7 @@ test.describe('Observable Scanner Integration E2E', () => {
     await expect(qrReader).toBeVisible();
     
     // Verify text
-    await expect(page.locator('text="Allow camera permissions"')).toBeVisible();
+    await expect(page.getByText('Allow camera permissions')).toBeVisible();
 
     // Note: Actual WebRTC camera permission automation is complex in Playwright headless. 
     // We verify the component rendering and logic hooks up successfully.

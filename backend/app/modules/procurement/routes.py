@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,14 +91,17 @@ async def list_spare_purchases(
     """List Spare Purchases"""
     return await services.list_spare_purchases(db)
 
-@router.get("/purchases/spares/{spare_purchase_id}", response_model=schemas.SparePurchaseResponse)
+@router.get("/purchases/spares/{spare_purchase_id}", response_model=Optional[schemas.SparePurchaseResponse])
 async def get_spare_purchase(
     spare_purchase_id: int,
     db: AsyncSession = Depends(get_db),
     current_staff=Depends(require_roles("DEALER", "ADMIN"))
 ):
     """Get single Spare Purchase"""
-    return await services.get_spare_purchase(db, spare_purchase_id)
+    purchase = await services.get_spare_purchase(db, spare_purchase_id)
+    if not purchase:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spare purchase not found")
+    return purchase
 
 @router.get("/purchases/vehicles", response_model=list[schemas.VehiclePurchaseResponse])
 async def list_vehicle_purchases(

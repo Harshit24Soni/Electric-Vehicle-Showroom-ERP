@@ -23,6 +23,8 @@ AsyncSessionLocal = sessionmaker(
     autoflush=False,
 )
 
+async_session_maker = AsyncSessionLocal
+
 
 async def get_db():
     async with AsyncSessionLocal() as db:

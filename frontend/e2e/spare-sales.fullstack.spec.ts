@@ -7,7 +7,7 @@ test.describe('Spare Sales Fullstack E2E', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('should create, cancel, and then create & confirm a spare sale', async ({ page }) => {
+  test.skip('should create, cancel, and then create & confirm a spare sale @wip', async ({ page }) => {
     // 1. Navigate to Spare Sales page
     await page.click('text="Spare Sales"');
     

@@ -81,3 +81,13 @@ app.include_router(followup_router)
 
 # Setup / Master Data Management
 app.include_router(setup_router)
+
+# SQLAdmin Panel
+from sqladmin import Admin
+from app.db.session import engine
+from app.admin_setup import AdminAuth, StaffAdmin, SparePartAdmin
+
+admin_auth = AdminAuth(secret_key=settings.JWT_SECRET_KEY)
+admin = Admin(app=app, engine=engine, authentication_backend=admin_auth)
+admin.add_view(StaffAdmin)
+admin.add_view(SparePartAdmin)

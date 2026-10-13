@@ -11,7 +11,7 @@ from sqlalchemy import (
     Enum,
     Numeric,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 from datetime import datetime, timezone
 import enum
 
@@ -91,8 +91,30 @@ class SpareMaster(Base, AuditMixin, SoftDeleteMixin):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=True)
     remarks: Mapped[str | None] = mapped_column(Text)
 
-    codes: Mapped[list["SparePartCode"]] = relationship("SparePartCode", back_populates="spare", cascade="all, delete-orphan")
+    codes: Mapped[list["SparePartCode"]] = relationship("SparePartCode", back_populates="spare", cascade="all, delete-orphan", lazy="selectin")
     compatibilities: Mapped[list["SparePartVehicleCompatibility"]] = relationship("SparePartVehicleCompatibility", back_populates="spare", cascade="all, delete-orphan")
+    balances: Mapped[list["SpareStockBalance"]] = relationship("SpareStockBalance", back_populates="spare", foreign_keys="[SpareStockBalance.spare_id]", lazy="selectin")
+
+    # Synonyms & properties for unified SparePart interface
+    id = synonym("spare_id")
+    name = synonym("spare_name")
+
+    @property
+    def part_number(self) -> str | None:
+        codes = self.__dict__.get("codes")
+        if codes:
+            current = [c.code for c in codes if getattr(c, "is_current", False)]
+            if current:
+                return current[0]
+            return codes[0].code
+        return None
+
+    @property
+    def stock_quantity(self) -> int:
+        balances = self.__dict__.get("balances")
+        if balances:
+            return sum(b.quantity for b in balances)
+        return 0
 
 
 class SparePartCode(Base, AuditMixin, SoftDeleteMixin):
@@ -221,7 +243,7 @@ class SpareStockBalance(Base, AuditMixin):
     location: Mapped[str] = mapped_column(String(100), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     
-    spare: Mapped["SpareMaster"] = relationship("SpareMaster")
+    spare: Mapped["SpareMaster"] = relationship("SpareMaster", back_populates="balances")
 
 class PriceList(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "module_price_list"
@@ -340,3 +362,7 @@ class InventoryTag(Base, AuditMixin, SoftDeleteMixin):
     spare: Mapped["SpareMaster"] = relationship("SpareMaster")
     batch: Mapped["SpareBatch"] = relationship("SpareBatch")
     serial: Mapped["SpareSerial"] = relationship("SpareSerial")
+
+
+# Alias for unified inventory / admin interface
+SparePart = SpareMaster

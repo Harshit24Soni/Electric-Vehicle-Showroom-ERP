@@ -150,7 +150,7 @@ async def list_staff(
 
     return [StaffResponse.model_validate(s, from_attributes=True) for s in staff_list]
 
-@router.get("/{staff_id}", response_model=StaffResponse)
+@router.get("/{staff_id:int}", response_model=StaffResponse)
 async def get_staff(
     staff_id: int,
     db: AsyncSession = Depends(get_db),
@@ -171,7 +171,7 @@ async def get_staff(
 
     return StaffResponse.model_validate(staff, from_attributes=True)
 
-@router.put("/{staff_id}", response_model=StaffResponse)
+@router.put("/{staff_id:int}", response_model=StaffResponse)
 async def update_staff(
     staff_id: int,
     data: StaffUpdate,
@@ -240,7 +240,7 @@ async def update_staff(
 
     return StaffResponse.model_validate(staff, from_attributes=True)
 
-@router.delete("/{staff_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{staff_id:int}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_staff(
     staff_id: int,
     db: AsyncSession = Depends(get_db),
@@ -273,7 +273,7 @@ async def delete_staff(
     await db.commit()
     return None
 
-@router.post("/{staff_id}/restore", response_model=StaffResponse)
+@router.post("/{staff_id:int}/restore", response_model=StaffResponse)
 async def restore_staff(
     staff_id: int,
     db: AsyncSession = Depends(get_db),

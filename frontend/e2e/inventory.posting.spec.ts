@@ -3,11 +3,11 @@ import { test, expect } from '@playwright/test';
 test.describe('Purchase to Inventory Posting Workflow', () => {
   test('Mocked End-to-End: View Approved Purchase and Post to Inventory', async ({ page }) => {
     // 1. Mock API Responses
-    await page.route('**/api/v1/auth/me', async route => {
+    await page.route('**/auth/me', async route => {
       await route.fulfill({ json: { id: 1, email: 'admin@test.com', role: 'ADMIN' } });
     });
 
-    await page.route('**/api/v1/inventory/spares', async route => {
+    await page.route('**/inventory/spares**', async route => {
       await route.fulfill({
         json: [
           { spare_id: 1, spare_name: 'Engine Oil', spare_code: 'ENG01', tracking_mode: 'BATCH', is_serialized: false },
@@ -16,7 +16,7 @@ test.describe('Purchase to Inventory Posting Workflow', () => {
       });
     });
 
-    await page.route('**/api/v1/procurement/purchases/spares/1', async route => {
+    await page.route('**/procurement/purchases/spares/1', async route => {
       await route.fulfill({
         json: {
           spare_purchase_id: 1,
@@ -31,7 +31,7 @@ test.describe('Purchase to Inventory Posting Workflow', () => {
     });
 
     let postedPayload: any = null;
-    await page.route('**/api/v1/procurement/purchases/spares/1/post', async route => {
+    await page.route('**/procurement/purchases/spares/1/post', async route => {
       postedPayload = route.request().postDataJSON();
       await route.fulfill({
         json: { message: 'Successfully posted to inventory' }
