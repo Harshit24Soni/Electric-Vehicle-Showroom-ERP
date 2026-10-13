@@ -12,15 +12,10 @@ def _get_env_files() -> Tuple[str, ...]:
     In all other runtime modes (dev, staging, prod, migrations, seeds),
     the primary .env configuration is loaded.
     """
-    is_test = (
-        os.getenv("ENVIRONMENT") == "test"
-        or "pytest" in sys.modules
-        or bool(os.getenv("PYTEST_CURRENT_TEST"))
-    )
+    is_test = os.getenv("ENVIRONMENT") == "test" or "pytest" in sys.modules or bool(os.getenv("PYTEST_CURRENT_TEST"))
     if is_test:
         return (".env.test", "backend/.env.test")
     return (".env", "backend/.env")
-
 
 
 class Settings(BaseSettings):
