@@ -261,9 +261,7 @@ async def add_part_code(db: AsyncSession, spare_id: int, code: str, reason: str 
     if not spare:
         raise InventoryError("Spare part not found")
 
-    existing_code_stmt = select(SparePartCode).filter(
-        SparePartCode.code == code, SparePartCode.is_deleted.is_(False)
-    )
+    existing_code_stmt = select(SparePartCode).filter(SparePartCode.code == code, SparePartCode.is_deleted.is_(False))
     existing_code = await db.execute(existing_code_stmt)
     if existing_code.scalars().first():
         raise InventoryError(f"Part code {code} already exists.")

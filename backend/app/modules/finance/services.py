@@ -69,7 +69,9 @@ async def get_finance(db: AsyncSession, finance_id: int) -> Optional[VehicleFina
 
 async def list_finances(db: AsyncSession) -> List[VehicleFinance]:
     """List all finance records (excludes soft-deleted)."""
-    stmt = select(VehicleFinance).filter(VehicleFinance.is_deleted.is_(False)).order_by(VehicleFinance.finance_id.desc())
+    stmt = (
+        select(VehicleFinance).filter(VehicleFinance.is_deleted.is_(False)).order_by(VehicleFinance.finance_id.desc())
+    )
     result = await db.execute(stmt)
     return list(result.scalars().all())
 

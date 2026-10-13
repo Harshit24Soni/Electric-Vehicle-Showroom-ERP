@@ -70,9 +70,7 @@ async def get_job_card(db: AsyncSession, job_card_id: int) -> Optional[ServiceJo
 
 async def list_job_cards(db: AsyncSession) -> List[ServiceJobCard]:
     """List all job cards (excludes soft-deleted)."""
-    stmt = select(ServiceJobCard).filter(
-        ServiceJobCard.is_deleted.is_(False)
-    ).order_by(ServiceJobCard.opened_at.desc())
+    stmt = select(ServiceJobCard).filter(ServiceJobCard.is_deleted.is_(False)).order_by(ServiceJobCard.opened_at.desc())
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
