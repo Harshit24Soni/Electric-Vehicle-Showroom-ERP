@@ -1,6 +1,26 @@
-from typing import Any, List, Literal, Optional
+import os
+import sys
+from typing import Any, List, Literal, Optional, Tuple
 from pydantic import field_validator, model_validator, ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _get_env_files() -> Tuple[str, ...]:
+    """
+    Determine the appropriate environment files to load.
+    Test files (.env.test) must only be loaded during automated testing.
+    In all other runtime modes (dev, staging, prod, migrations, seeds),
+    the primary .env configuration is loaded.
+    """
+    is_test = (
+        os.getenv("ENVIRONMENT") == "test"
+        or "pytest" in sys.modules
+        or bool(os.getenv("PYTEST_CURRENT_TEST"))
+    )
+    if is_test:
+        return (".env.test", "backend/.env.test")
+    return (".env", "backend/.env")
+
 
 
 class Settings(BaseSettings):
@@ -74,11 +94,15 @@ class Settings(BaseSettings):
             raise ValueError("REDIS_URL is strictly required and cannot be empty or a placeholder.")
 
         clean_url = v.strip()
+        is_tls = "--tls" in clean_url or clean_url.startswith("rediss://")
         # Strip accidental redis-cli command copy-paste prefixes
         if "redis://" in clean_url:
             clean_url = "redis://" + clean_url.split("redis://", 1)[1]
         elif "rediss://" in clean_url:
             clean_url = "rediss://" + clean_url.split("rediss://", 1)[1]
+
+        if is_tls and clean_url.startswith("redis://"):
+            clean_url = clean_url.replace("redis://", "rediss://", 1)
 
         if not (clean_url.startswith("redis://") or clean_url.startswith("rediss://")):
             raise ValueError(f"REDIS_URL must begin with 'redis://' or 'rediss://', received: {clean_url[:15]}...")
@@ -149,7 +173,7 @@ class Settings(BaseSettings):
         return self
 
     model_config = SettingsConfigDict(
-        env_file=(".env", "backend/.env", ".env.test", "backend/.env.test"),
+        env_file=_get_env_files(),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
