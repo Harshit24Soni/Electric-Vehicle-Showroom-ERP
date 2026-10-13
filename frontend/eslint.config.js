@@ -42,7 +42,7 @@ export default [
     ignores: ['dist', 'eslint.config.js', 'lint_report.json'],
   },
   {
-    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    files: ['e2e/**/*.ts', 'playwright.config.ts', 'vite.config.ts'],
     languageOptions: {
       parser: tsParser,
       globals: {
