@@ -19,12 +19,18 @@ export default async function globalSetup() {
   
   try {
     // Cross-platform python command execution
+    const pythonEnv = {
+      ...process.env,
+      ENVIRONMENT: 'test',
+      PYTHONPATH: backendDir,
+    };
+
     // First, ensure we reset the test database
     console.log('Resetting DB schemas...');
     execSync(`${pythonCmd} scripts/db_reset.py --env test`, { 
       cwd: backendDir, 
       stdio: 'inherit',
-      env: { ...process.env, ENVIRONMENT: 'test' }
+      env: pythonEnv,
     });
     
     // Then seed test data
@@ -32,14 +38,14 @@ export default async function globalSetup() {
     execSync(`${pythonCmd} scripts/seed_data.py`, { 
       cwd: backendDir, 
       stdio: 'inherit',
-      env: { ...process.env, ENVIRONMENT: 'test' }
+      env: pythonEnv,
     });
     
     console.log('Seeding E2E specific test data...');
     execSync(`${pythonCmd} scripts/seed_e2e.py`, { 
       cwd: backendDir, 
       stdio: 'inherit',
-      env: { ...process.env, ENVIRONMENT: 'test' }
+      env: pythonEnv,
     });
     
     console.log('Database setup complete.');

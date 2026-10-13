@@ -4,6 +4,11 @@ import argparse
 import asyncio
 import subprocess
 
+# Add project root to sys.path so we can import app
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
 # Parse args before loading settings
 parser = argparse.ArgumentParser(description="Reset Database")
 parser.add_argument("--env", type=str, required=True, choices=["development", "test"], help="Environment to reset")
