@@ -66,6 +66,20 @@ async def seed_e2e() -> None:
             db.add(veh)
             await db.flush()
 
+        # 3b. Vehicle CH123 (required for Service Consumption E2E tests)
+        ch123_result = await db.execute(select(Vehicle).where(Vehicle.chassis_no == "CH123"))
+        ch123_veh = ch123_result.scalars().first()
+        if not ch123_veh:
+            ch123_veh = Vehicle(
+                chassis_no="CH123",
+                vehicle_model_id=vmodel.vehicle_model_id,
+                battery_serial_no="BAT-CH123",
+                motor_serial_no="MOT-CH123",
+                current_status="SOLD"
+            )
+            db.add(ch123_veh)
+            await db.flush()
+
         # 4. Job Card
         jc = ServiceJobCard(
             chassis_no=veh.chassis_no,
