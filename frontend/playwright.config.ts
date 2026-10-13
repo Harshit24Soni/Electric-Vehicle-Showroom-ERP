@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000';
+const backendURL = process.env.PLAYWRIGHT_BACKEND_URL || 'http://localhost:8000/health';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +11,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -52,19 +55,20 @@ export default defineConfig({
   webServer: [
     {
       command: 'npm run dev',
-      url: 'http://127.0.0.1:3000',
+      url: baseURL,
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
     },
     {
       command: 'python -m uvicorn app.main:app --port 8000',
       cwd: '../backend',
-      url: 'http://127.0.0.1:8000/health',
+      url: backendURL,
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
       env: {
-        ENV: 'test'
-      }
-    }
+        ENVIRONMENT: 'test',
+      },
+    },
   ],
 });
+

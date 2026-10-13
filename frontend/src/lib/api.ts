@@ -1,8 +1,8 @@
 import axios, { AxiosError, AxiosInstance } from 'axios'
 
-// Use /api prefix which will be proxied by Vite to http://localhost:8000
-// Or set VITE_API_URL=http://localhost:8000 in .env to call backend directly
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+// Uses VITE_API_BASE_URL when configured, or delegates to /api proxy
+// Or configure VITE_API_BASE_URL in the environment to connect directly
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '/api'
 
 // Helper to get token from Zustand's persisted auth-storage
 function getAuthToken(): string | null {

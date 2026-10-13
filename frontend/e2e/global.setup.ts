@@ -14,34 +14,32 @@ export default async function globalSetup() {
   const backendDir = path.resolve(__dirname, '../../backend');
   
   // Set environment variable to use test DB
-  process.env.ENV = 'test';
+  process.env.ENVIRONMENT = 'test';
+  const pythonCmd = process.env.PYTHON_BIN || 'python';
   
   try {
-    // We execute Python commands directly
-    // Using Windows paths since we're in powershell/cmd typically here, 
-    // but cross-platform node is safer
-    
+    // Cross-platform python command execution
     // First, ensure we reset the test database
     console.log('Resetting DB schemas...');
-    execSync('.\\venv\\Scripts\\python scripts/db_reset.py --env test', { 
+    execSync(`${pythonCmd} scripts/db_reset.py --env test`, { 
       cwd: backendDir, 
       stdio: 'inherit',
-      env: { ...process.env, ENV: 'test' }
+      env: { ...process.env, ENVIRONMENT: 'test' }
     });
     
     // Then seed test data
     console.log('Seeding test data...');
-    execSync('.\\venv\\Scripts\\python scripts/seed_data.py', { 
+    execSync(`${pythonCmd} scripts/seed_data.py`, { 
       cwd: backendDir, 
       stdio: 'inherit',
-      env: { ...process.env, ENV: 'test' }
+      env: { ...process.env, ENVIRONMENT: 'test' }
     });
     
     console.log('Seeding E2E specific test data...');
-    execSync('.\\venv\\Scripts\\python scripts/seed_e2e.py', { 
+    execSync(`${pythonCmd} scripts/seed_e2e.py`, { 
       cwd: backendDir, 
       stdio: 'inherit',
-      env: { ...process.env, ENV: 'test' }
+      env: { ...process.env, ENVIRONMENT: 'test' }
     });
     
     console.log('Database setup complete.');

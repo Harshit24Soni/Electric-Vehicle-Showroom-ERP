@@ -4,12 +4,14 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 
-# Create Async Engine
-# We use str(settings.DATABASE_URL) to ensure it's a string, even if Pydantic returns a DSN object
+# Create Async Engine dynamically reading from validated config.DATABASE_URL
+# Includes production-grade connection pool limits
 engine = create_async_engine(
     str(settings.DATABASE_URL),
-    echo=False,
-    pool_pre_ping=True
+    echo=settings.DEBUG,
+    pool_pre_ping=True,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
 )
 
 # Create Async Session Factory

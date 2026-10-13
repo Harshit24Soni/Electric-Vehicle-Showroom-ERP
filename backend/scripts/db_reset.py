@@ -11,7 +11,12 @@ args = parser.parse_args()
 
 if args.env == "test":
     os.environ["ENVIRONMENT"] = "test"
-    os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:admin@localhost:5432/ev_erp_test"
+    from pathlib import Path
+    from dotenv import load_dotenv
+    for candidate in [Path(".env.test"), Path("backend/.env.test")]:
+        if candidate.is_file():
+            load_dotenv(dotenv_path=candidate, override=True)
+            break
 
 # Now import settings
 from app.core.config import settings

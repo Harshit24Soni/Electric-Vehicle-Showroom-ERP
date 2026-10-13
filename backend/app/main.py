@@ -2,12 +2,12 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Early environment initialization before Pydantic loads
-_env_file = Path(".env") if Path(".env").is_file() else Path("backend/.env")
-if _env_file.is_file():
-    load_dotenv(dotenv_path=_env_file)
-else:
-    load_dotenv(".env")
+# Optional local environment initialization for development
+# Cloud orchestrators (Kubernetes, AWS ECS) inject environment variables directly into memory
+for env_candidate in [Path(".env"), Path("backend/.env")]:
+    if env_candidate.is_file():
+        load_dotenv(dotenv_path=env_candidate)
+        break
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

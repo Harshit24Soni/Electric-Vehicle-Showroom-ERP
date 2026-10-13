@@ -5,10 +5,17 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+from pathlib import Path
+from dotenv import load_dotenv
+
 # Force test environment BEFORE loading app
 os.environ["ENVIRONMENT"] = "test"
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:admin@localhost:5432/ev_erp_test"
-os.environ["JWT_SECRET_KEY"] = "super-secret-test-key"
+
+# Load environment configuration dynamically without hardcoded credentials
+for env_candidate in [Path(".env.test"), Path("backend/.env.test"), Path(".env"), Path("backend/.env")]:
+    if env_candidate.is_file():
+        load_dotenv(dotenv_path=env_candidate, override=False)
+        break
 
 from app.main import app
 from app.db.session import get_db, engine

@@ -12,7 +12,7 @@ REDIS_DB = settings.REDIS_DB
 if REDIS_URL:
     # Use full URL if provided (includes password, SSL, etc.)
     pool = redis.ConnectionPool.from_url(
-        REDIS_URL,
+        str(REDIS_URL),
         decode_responses=True,
     )
 else:

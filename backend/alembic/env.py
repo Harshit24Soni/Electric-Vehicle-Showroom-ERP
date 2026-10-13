@@ -24,7 +24,7 @@ from app.bootstrap import init_models
 from app.core.config import settings
 
 target_metadata = init_models()
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", str(settings.DATABASE_URL))
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

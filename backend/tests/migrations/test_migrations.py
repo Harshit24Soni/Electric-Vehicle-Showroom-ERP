@@ -38,8 +38,9 @@ async def test_database_migrations():
     assert result.returncode == 0, f"Alembic failed: {result.stderr}"
     
     # 3. Verify schema usable by querying a table
+    from app.core.config import settings
     from app.db.session import create_async_engine
-    new_engine = create_async_engine(os.environ["DATABASE_URL"])
+    new_engine = create_async_engine(str(settings.DATABASE_URL))
     async with new_engine.connect() as conn:
         res = await conn.execute(text("SELECT COUNT(*) FROM staff"))
         count = res.scalar()
