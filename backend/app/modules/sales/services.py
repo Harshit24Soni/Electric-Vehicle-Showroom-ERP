@@ -1,104 +1,115 @@
+import logging
+from datetime import datetime, timezone
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
-from datetime import datetime
-from typing import Optional
 from fastapi import HTTPException
 
 from app.modules.sales import models
 from app.modules.sales import schemas as sales_schemas
 from app.core.event_bus import event_bus, VehicleDeliveredEvent, SaleCompleted, SaleCompletedEvent
 
+logger = logging.getLogger(__name__)
+
+
+def _utc_now_naive() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class SalesError(Exception):
     pass
 
 async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> models.Sale:
-    """Create a new sale — supports direct sales (no lead required)"""
-    
-    is_direct = getattr(payload, 'is_direct_sale', False) or payload.lead_id is None
+    """Create a new sale — supports direct sales (no lead required) with transactional rollback protection."""
+    try:
+        is_direct = getattr(payload, 'is_direct_sale', False) or payload.lead_id is None
 
-    # Verify Lead (if not direct sale)
-    if not is_direct:
-        from app.modules.crm.contracts import verify_lead_exists
-        lead_exists = await verify_lead_exists(db, payload.lead_id)
-        if not lead_exists:
-            raise SalesError("Lead not found")
+        # Verify Lead (if not direct sale)
+        if not is_direct:
+            from app.modules.crm.contracts import verify_lead_exists
+            lead_exists = await verify_lead_exists(db, payload.lead_id)
+            if not lead_exists:
+                raise SalesError("Lead not found")
+            
+        # Verify Customer
+        from app.modules.master.contracts import verify_customer_exists, verify_vehicle_available
+        customer_exists = await verify_customer_exists(db, payload.customer_id)
+        if not customer_exists:
+            raise SalesError("Customer not found")
+            
+        # Verify Vehicle
+        vehicle_available, current_status = await verify_vehicle_available(db, payload.chassis_no)
+        if not vehicle_available:
+            if current_status:
+                raise SalesError(f"Vehicle is not available (Status: {current_status})")
+            raise SalesError("Vehicle not found")
+            
+        # Margin Validation
+        from app.modules.procurement.contracts import get_vehicle_cost_price
+        cost_price = await get_vehicle_cost_price(db, payload.chassis_no)
         
-    # Verify Customer
-    from app.modules.master.contracts import verify_customer_exists, verify_vehicle_available
-    customer_exists = await verify_customer_exists(db, payload.customer_id)
-    if not customer_exists:
-        raise SalesError("Customer not found")
-        
-    # Verify Vehicle
-    vehicle_available, current_status = await verify_vehicle_available(db, payload.chassis_no)
-    if not vehicle_available:
-        if current_status:
-            raise SalesError(f"Vehicle is not available (Status: {current_status})")
-        raise SalesError("Vehicle not found")
-        
-    # Margin Validation
-    from app.modules.procurement.contracts import get_vehicle_cost_price
-    cost_price = await get_vehicle_cost_price(db, payload.chassis_no)
-    
-    if float(payload.total_amount) < cost_price:
-        raise HTTPException(status_code=400, detail="Cannot sell below procurement cost")
-        
-    # Create Sale
-    sale = models.Sale(
-        lead_id=payload.lead_id if not is_direct else None,
-        customer_id=payload.customer_id,
-        chassis_no=payload.chassis_no,
-        sale_date=payload.sale_date,
-        total_amount=payload.total_amount,
-        sale_status="PENDING",
-        remarks=payload.remarks,
-        created_by_staff_id=current_staff_id,
-        created_at=datetime.utcnow(),
-        # New workflow fields
-        sale_stage=models.SaleStage.ENQUIRY.value,
-        stage_updated_at=datetime.utcnow(),
-        is_direct_sale=is_direct,
-    )
-    db.add(sale)
-    
-    # Create Empty Checklist
-    checklist = models.DeliveryChecklist(sale=sale)
-    db.add(checklist)
-    
-    # Update Vehicle Status (Now handled by event listener)
-    pass
-    await db.flush()
-
-    from app.core.event_bus import event_bus, SaleCreatedEvent
-    await event_bus.publish(
-        SaleCreatedEvent(
-            sale_id=sale.sale_id,
+        if float(payload.total_amount) < cost_price:
+            raise HTTPException(status_code=400, detail="Cannot sell below procurement cost")
+            
+        # Create Sale
+        sale = models.Sale(
             lead_id=payload.lead_id if not is_direct else None,
             customer_id=payload.customer_id,
             chassis_no=payload.chassis_no,
-            status='BOOKED'
+            sale_date=payload.sale_date,
+            total_amount=payload.total_amount,
+            sale_status="PENDING",
+            remarks=payload.remarks,
+            created_by_staff_id=current_staff_id,
+            created_at=_utc_now_naive(),
+            # New workflow fields
+            sale_stage=models.SaleStage.ENQUIRY.value,
+            stage_updated_at=_utc_now_naive(),
+            is_direct_sale=is_direct,
         )
-    )
+        db.add(sale)
+        
+        # Create Empty Checklist
+        checklist = models.DeliveryChecklist(sale=sale)
+        db.add(checklist)
+        
+        await db.flush()
 
-    # Create initial portal tracking
-    portal = models.SalePortalTracking(
-        sale_id=sale.sale_id,
-    )
-    db.add(portal)
+        from app.core.event_bus import event_bus, SaleCreatedEvent
+        await event_bus.publish(
+            SaleCreatedEvent(
+                sale_id=sale.sale_id,
+                lead_id=payload.lead_id if not is_direct else None,
+                customer_id=payload.customer_id,
+                chassis_no=payload.chassis_no,
+                status='BOOKED'
+            )
+        )
 
-    # Record initial stage history
-    history = models.SaleStageHistory(
-        sale_id=sale.sale_id,
-        from_stage=None,
-        to_stage=models.SaleStage.ENQUIRY.value,
-        changed_by_staff_id=current_staff_id,
-        remarks="Sale created",
-    )
-    db.add(history)
-    await db.flush()
+        # Create initial portal tracking
+        portal = models.SalePortalTracking(
+            sale_id=sale.sale_id,
+        )
+        db.add(portal)
 
-    return sale
+        # Record initial stage history
+        history = models.SaleStageHistory(
+            sale_id=sale.sale_id,
+            from_stage=None,
+            to_stage=models.SaleStage.ENQUIRY.value,
+            changed_by_staff_id=current_staff_id,
+            remarks="Sale created",
+        )
+        db.add(history)
+        await db.flush()
+
+        return sale
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to create sale for chassis %s: %s", getattr(payload, "chassis_no", "unknown"), exc, exc_info=True)
+        raise
+
 
 
 async def create_sale_transaction(
@@ -118,146 +129,157 @@ async def create_sale_transaction(
       g. Initialize SalePortalTracking.
       h. Commit atomically.
     """
-    staff_id = current_user["staff_id"]
+    events_to_publish = []
+    try:
+        staff_id = current_user["staff_id"]
 
-    # (a) Verify vehicle
-    from app.modules.master.contracts import verify_customer_exists, verify_vehicle_available
-    vehicle_available, current_status = await verify_vehicle_available(db, payload.chassis_no)
-    if not vehicle_available:
-        if current_status:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Vehicle not available for sale (current status: {current_status}).",
-            )
-        raise HTTPException(status_code=400, detail="Vehicle not found.")
+        # (a) Verify vehicle
+        from app.modules.master.contracts import verify_customer_exists, verify_vehicle_available
+        vehicle_available, current_status = await verify_vehicle_available(db, payload.chassis_no)
+        if not vehicle_available:
+            if current_status:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Vehicle not available for sale (current status: {current_status}).",
+                )
+            raise HTTPException(status_code=400, detail="Vehicle not found.")
 
-    # Verify customer exists
-    customer_exists = await verify_customer_exists(db, payload.customer_id)
-    if not customer_exists:
-        raise HTTPException(status_code=400, detail="Customer not found.")
+        # Verify customer exists
+        customer_exists = await verify_customer_exists(db, payload.customer_id)
+        if not customer_exists:
+            raise HTTPException(status_code=400, detail="Customer not found.")
 
-    is_direct = getattr(payload, "is_direct_sale", True) or payload.lead_id is None
+        is_direct = getattr(payload, "is_direct_sale", True) or payload.lead_id is None
 
-    # Margin Validation
-    from app.modules.procurement.contracts import get_vehicle_cost_price
-    cost_price = await get_vehicle_cost_price(db, payload.chassis_no)
-    
-    if float(payload.total_amount) < cost_price:
-        raise HTTPException(status_code=400, detail="Cannot sell below procurement cost")
+        # Margin Validation
+        from app.modules.procurement.contracts import get_vehicle_cost_price
+        cost_price = await get_vehicle_cost_price(db, payload.chassis_no)
+        
+        if float(payload.total_amount) < cost_price:
+            raise HTTPException(status_code=400, detail="Cannot sell below procurement cost")
 
-    # (b) Create Sale
-    sale = models.Sale(
-        lead_id=payload.lead_id if not is_direct else None,
-        customer_id=payload.customer_id,
-        chassis_no=payload.chassis_no,
-        sale_date=payload.sale_date,
-        total_amount=float(payload.total_amount),
-        sale_status="INVOICED",
-        remarks=payload.remarks,
-        created_by_staff_id=staff_id,
-        created_at=datetime.utcnow(),
-        sale_stage=models.SaleStage.PAYMENT.value,
-        stage_updated_at=datetime.utcnow(),
-        is_direct_sale=is_direct,
-        is_invoice_generated=True,
-        is_receipt_generated=True,
-    )
-    db.add(sale)
-    await db.flush()  # get sale_id
-
-    # (c) Mark vehicle SOLD + link customer (via Event Bus)
-    from app.core.event_bus import event_bus, SaleCreatedEvent
-    await event_bus.publish(
-        SaleCreatedEvent(
-            sale_id=sale.sale_id,
+        # (b) Create Sale
+        sale = models.Sale(
             lead_id=payload.lead_id if not is_direct else None,
             customer_id=payload.customer_id,
             chassis_no=payload.chassis_no,
-            status='SOLD'
-        )
-    )
-
-    # (d) Generate invoice document
-    year = datetime.now().year
-    inv_number = f"INV-{year}-{sale.sale_id:04d}"
-    sale.invoice_number = inv_number
-
-    invoice_doc = models.SaleDocument(
-        sale_id=sale.sale_id,
-        document_type="INVOICE",
-        document_number=inv_number,
-        generated_by_staff_id=staff_id,
-    )
-    db.add(invoice_doc)
-
-    # (e) Record down payment
-    if payload.down_payment_amount and float(payload.down_payment_amount) > 0:
-        payment = models.SalePayment(
-            sale_id=sale.sale_id,
-            payment_type="BOOKING",
-            payment_mode=payload.payment_mode,
-            amount=float(payload.down_payment_amount),
-            bank_name=payload.financier_name if payload.payment_mode == "FINANCE" else None,
-            remarks=f"Down payment at sale creation",
+            sale_date=payload.sale_date,
+            total_amount=float(payload.total_amount),
+            sale_status="INVOICED",
+            remarks=payload.remarks,
             created_by_staff_id=staff_id,
-            payment_date=datetime.utcnow(),
+            created_at=_utc_now_naive(),
+            sale_stage=models.SaleStage.PAYMENT.value,
+            stage_updated_at=_utc_now_naive(),
+            is_direct_sale=is_direct,
+            is_invoice_generated=True,
+            is_receipt_generated=True,
         )
-        db.add(payment)
+        db.add(sale)
+        await db.flush()  # get sale_id
 
-    # (f) Outward stock movement (Asynchronous via Event Bus)
-    await event_bus.publish(
-        SaleCompleted(
+        # (c) Mark vehicle SOLD + link customer (via Event Bus)
+        from app.core.event_bus import SaleCreatedEvent, SaleTransactionCompletedEvent
+        events_to_publish.append(
+            SaleCreatedEvent(
+                sale_id=sale.sale_id,
+                lead_id=payload.lead_id if not is_direct else None,
+                customer_id=payload.customer_id,
+                chassis_no=payload.chassis_no,
+                status='SOLD'
+            )
+        )
+
+        # (d) Generate invoice document
+        year = datetime.now().year
+        inv_number = f"INV-{year}-{sale.sale_id:04d}"
+        sale.invoice_number = inv_number
+
+        invoice_doc = models.SaleDocument(
             sale_id=sale.sale_id,
-            chassis_no=payload.chassis_no,
-            customer_id=payload.customer_id,
-            invoice_no=inv_number,
-            total_amount=float(payload.total_amount),
+            document_type="INVOICE",
+            document_number=inv_number,
+            generated_by_staff_id=staff_id,
         )
-    )
-    await event_bus.publish(
-        VehicleDeliveredEvent(
-            chassis_no=payload.chassis_no,
+        db.add(invoice_doc)
+
+        # (e) Record down payment
+        if payload.down_payment_amount and float(payload.down_payment_amount) > 0:
+            payment = models.SalePayment(
+                sale_id=sale.sale_id,
+                payment_type="BOOKING",
+                payment_mode=payload.payment_mode,
+                amount=float(payload.down_payment_amount),
+                bank_name=payload.financier_name if payload.payment_mode == "FINANCE" else None,
+                remarks=f"Down payment at sale creation",
+                created_by_staff_id=staff_id,
+                payment_date=_utc_now_naive(),
+            )
+            db.add(payment)
+
+        # (f) Outward stock movement events
+        events_to_publish.append(
+            SaleCompleted(
+                sale_id=sale.sale_id,
+                chassis_no=payload.chassis_no,
+                customer_id=payload.customer_id,
+                invoice_no=inv_number,
+                total_amount=float(payload.total_amount),
+            )
+        )
+        events_to_publish.append(
+            VehicleDeliveredEvent(
+                chassis_no=payload.chassis_no,
+                sale_id=sale.sale_id,
+                invoice_no=inv_number
+            )
+        )
+
+        # (g) Initialize portal tracking + delivery checklist
+        portal = models.SalePortalTracking(sale_id=sale.sale_id)
+        db.add(portal)
+
+        checklist = models.DeliveryChecklist(sale_id=sale.sale_id)
+        db.add(checklist)
+
+        # Stage history
+        history = models.SaleStageHistory(
             sale_id=sale.sale_id,
-            invoice_no=inv_number
+            from_stage=None,
+            to_stage=models.SaleStage.PAYMENT.value,
+            changed_by_staff_id=staff_id,
+            remarks="Sale created with billing",
         )
-    )
+        db.add(history)
 
-    # (g) Initialize portal tracking + delivery checklist
-    portal = models.SalePortalTracking(sale_id=sale.sale_id)
-    db.add(portal)
-
-    checklist = models.DeliveryChecklist(sale_id=sale.sale_id)
-    db.add(checklist)
-
-    # Stage history
-    history = models.SaleStageHistory(
-        sale_id=sale.sale_id,
-        from_stage=None,
-        to_stage=models.SaleStage.PAYMENT.value,
-        changed_by_staff_id=staff_id,
-        remarks="Sale created with billing",
-    )
-    db.add(history)
-
-    from app.core.event_bus import SaleTransactionCompletedEvent
-    await event_bus.publish(
-        SaleTransactionCompletedEvent(
-            sale_id=sale.sale_id,
-            staff_id=staff_id,
-            customer_id=payload.customer_id,
-            chassis_no=payload.chassis_no,
-            total_amount=float(payload.total_amount),
-            down_payment_amount=float(payload.down_payment_amount) if payload.down_payment_amount else None,
-            payment_mode=getattr(payload, 'payment_mode', None),
-            financier_name=getattr(payload, 'financier_name', None),
-            remarks=payload.remarks
+        events_to_publish.append(
+            SaleTransactionCompletedEvent(
+                sale_id=sale.sale_id,
+                staff_id=staff_id,
+                customer_id=payload.customer_id,
+                chassis_no=payload.chassis_no,
+                total_amount=float(payload.total_amount),
+                down_payment_amount=float(payload.down_payment_amount) if payload.down_payment_amount else None,
+                payment_mode=getattr(payload, 'payment_mode', None),
+                financier_name=getattr(payload, 'financier_name', None),
+                remarks=payload.remarks
+            )
         )
-    )
 
-    # (h) Commit atomically
-    await db.commit()
-    await db.refresh(sale)
-    return sale
+        # (h) Commit atomically
+        await db.commit()
+        await db.refresh(sale)
+
+        # Dispatch events after commit
+        for ev in events_to_publish:
+            await event_bus.publish(ev)
+
+        return sale
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to execute sale transaction for chassis %s: %s", getattr(payload, "chassis_no", "unknown"), exc, exc_info=True)
+        raise
+
 
 async def get_sale(db: AsyncSession, sale_id: int) -> models.Sale | None:
     """Get a sale by ID (excludes soft-deleted)"""
@@ -298,7 +320,7 @@ async def add_receipt(db: AsyncSession, payload, current_staff_id: int) -> model
         transaction_ref=payload.transaction_ref,
         receipt_date=payload.receipt_date,
         created_by_staff_id=current_staff_id,
-        created_at=datetime.utcnow()
+        created_at=_utc_now_naive()
     )
     db.add(receipt)
     
@@ -530,7 +552,7 @@ async def add_sale_payment(
         payment_mode=payload.payment_mode,
         amount=float(payload.amount),
         reference_number=payload.reference_number,
-        payment_date=payload.payment_date or datetime.utcnow(),
+        payment_date=payload.payment_date or _utc_now_naive(),
         bank_name=payload.bank_name,
         remarks=payload.remarks,
         created_by_staff_id=current_staff_id,
@@ -630,7 +652,7 @@ async def update_portal_tracking(
         if value is not None:
             setattr(portal, status_field, value)
             if value == "COMPLETED":
-                setattr(portal, date_field, datetime.utcnow())
+                setattr(portal, date_field, _utc_now_naive())
 
     if payload.insurance_policy_number is not None:
         portal.insurance_policy_number = payload.insurance_policy_number
@@ -647,7 +669,7 @@ async def update_portal_tracking(
     if payload.helmet_invoice_generated is not None:
         portal.helmet_invoice_generated = payload.helmet_invoice_generated
 
-    portal.updated_at = datetime.utcnow()
+    portal.updated_at = _utc_now_naive()
     portal.check_completion()
 
     await db.flush()
@@ -689,7 +711,7 @@ async def delete_sale(
         await db.delete(sale)
     else:
         sale.is_deleted = True
-        sale.deleted_at = datetime.utcnow()
+        sale.deleted_at = _utc_now_naive()
         sale.deleted_by = current_user["staff_id"]
 
     await db.flush()

@@ -66,37 +66,30 @@ describe('AddSpareModal', () => {
     expect(await screen.findByText(/P001 - Part 1/)).toBeInTheDocument()
   })
 
-  it('handles scanning a valid part code', async () => {
+  it('handles selecting a spare part from dropdown and displays stock details', async () => {
     vi.mocked(inventoryApi.getStock).mockResolvedValue(mockStock)
 
     renderComponent()
 
     expect(await screen.findByText(/P001 - Part 1/)).toBeInTheDocument()
 
-    const input = screen.getByPlaceholderText('Scan barcode and press Enter...')
-    fireEvent.change(input, { target: { value: 'P001' } })
-    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
+    const select = screen.getByRole('combobox')
+    fireEvent.change(select, { target: { value: '1' } })
 
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('Selected Part 1')
-    })
-    expect(screen.getByText('Available: 10')).toBeInTheDocument()
+    expect(await screen.findByText('Available in Stock: 10')).toBeInTheDocument()
+    expect(screen.getByText('Part 1')).toBeInTheDocument()
   })
 
-  it('handles scanning an invalid part code', async () => {
+  it('opens inventory tag scanner modal when Scan Inventory Tag button is clicked', async () => {
     vi.mocked(inventoryApi.getStock).mockResolvedValue(mockStock)
 
     renderComponent()
 
-    expect(await screen.findByText(/P001 - Part 1/)).toBeInTheDocument()
+    const scanBtn = await screen.findByRole('button', { name: /Scan Inventory Tag/i })
+    fireEvent.click(scanBtn)
 
-    const input = screen.getByPlaceholderText('Scan barcode and press Enter...')
-    fireEvent.change(input, { target: { value: 'P002' } })
-    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Part not found: P002')
-    })
+    expect(await screen.findByText('Scan Tag for Service')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Scan identifier...')).toBeInTheDocument()
   })
 
   it('handles adding a spare to job card successfully', async () => {

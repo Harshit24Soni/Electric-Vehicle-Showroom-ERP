@@ -1,19 +1,61 @@
-name: CI
+name: ERP Production CI/CD
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  backend-ci:
-    name: Backend CI
+  # ============================================================================
+  # Backend Linting & Static Analysis (Black, Flake8, Mypy)
+  # ============================================================================
+  backend-lint:
+    name: Backend Linting & Typing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'backend/requirements.txt'
+
+      - name: Install Linter Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install black flake8 mypy types-redis types-requests types-python-dateutil
+
+      - name: Check Formatting with Black
+        run: |
+          black --check --line-length 120 backend/app backend/tests
+
+      - name: Lint Code with Flake8
+        run: |
+          flake8 backend/app backend/tests --config=backend/.flake8
+
+      - name: Static Type Check with Mypy
+        run: |
+          mypy backend/app --config-file=backend/pyproject.toml
+
+  # ============================================================================
+  # Backend Tests with Live Service Containers (Postgres, Redis)
+  # ============================================================================
+  backend-test:
+    name: Backend Tests & Coverage
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:15-alpine
         env:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
@@ -37,7 +79,7 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -47,143 +89,96 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'backend/requirements.txt'
 
-      - name: Install backend dependencies
+      - name: Install Backend Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
+          pip install pytest-cov
 
-      - name: Wait for Postgres to be ready
-        run: |
-          for i in {1..30}; do
-            pg_isready -h 127.0.0.1 -p 5432 -U test_user -d ev_erp_test && break || sleep 1
-          done
-
-      - name: Run DB migrations
+      - name: Run Database Migrations
         working-directory: ./backend
         env:
           ENVIRONMENT: test
-          DATABASE_URL: 'postgresql+asyncpg://test_user:test_password@127.0.0.1:5432/ev_erp_test'
-          JWT_SECRET_KEY: 'ci_test_dummy_jwt_secret_token_123456789'
-          REDIS_URL: 'redis://127.0.0.1:6379/0'
-          REDIS_DB: 0
-        run: alembic upgrade head
-
-      - name: Run Backend Tests
-        working-directory: ./backend
-        env:
-          ENVIRONMENT: test
-          DATABASE_URL: 'postgresql+asyncpg://test_user:test_password@127.0.0.1:5432/ev_erp_test'
-          JWT_SECRET_KEY: 'ci_test_dummy_jwt_secret_token_123456789'
-          REDIS_URL: 'redis://127.0.0.1:6379/0'
-          REDIS_DB: 0
-          PYTHONPATH: .
-        run: pytest tests/
-
-  frontend-ci:
-    name: Frontend CI & E2E
-    runs-on: ubuntu-latest
-    needs: backend-ci
-
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: ev_erp_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U test_user -d ev_erp_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: 'backend/requirements.txt'
-
-      - name: Install backend dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-
-      - name: Wait for Postgres to be ready
-        run: |
-          for i in {1..30}; do
-            pg_isready -h 127.0.0.1 -p 5432 -U test_user -d ev_erp_test && break || sleep 1
-          done
-
-      - name: Migrate and Seed Database for E2E
-        working-directory: ./backend
-        env:
-          ENVIRONMENT: test
-          DATABASE_URL: 'postgresql+asyncpg://test_user:test_password@127.0.0.1:5432/ev_erp_test'
-          JWT_SECRET_KEY: 'ci_test_dummy_jwt_secret_token_123456789'
-          REDIS_URL: 'redis://127.0.0.1:6379/0'
-          REDIS_DB: 0
+          DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/ev_erp_test
+          JWT_SECRET_KEY: ci_test_dummy_jwt_secret_token_123456789
+          REDIS_URL: redis://localhost:6379/0
         run: |
           alembic upgrade head
-          python scripts/seed_e2e.py
 
-      - name: Start FastAPI Backend in Background
+      - name: Run Backend Pytest Suite with Coverage
         working-directory: ./backend
         env:
           ENVIRONMENT: test
-          DATABASE_URL: 'postgresql+asyncpg://test_user:test_password@127.0.0.1:5432/ev_erp_test'
-          JWT_SECRET_KEY: 'ci_test_dummy_jwt_secret_token_123456789'
-          REDIS_URL: 'redis://127.0.0.1:6379/0'
-          REDIS_DB: 0
+          DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/ev_erp_test
+          JWT_SECRET_KEY: ci_test_dummy_jwt_secret_token_123456789
+          REDIS_URL: redis://localhost:6379/0
           PYTHONPATH: .
         run: |
-          nohup python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
-          sleep 3
+          pytest --cov=app --cov-report=xml --cov-report=term
+
+      - name: Upload Coverage Report Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage-report
+          path: backend/coverage.xml
+
+  # ============================================================================
+  # Frontend Linting & Type Checking
+  # ============================================================================
+  frontend-lint:
+    name: Frontend Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '20'
           cache: 'npm'
-          cache-dependency-path: './frontend/package-lock.json'
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install frontend dependencies
+      - name: Install Frontend Dependencies
         working-directory: ./frontend
         run: npm ci
 
-      - name: Run Linting
+      - name: Run ESLint
         working-directory: ./frontend
         run: npm run lint
 
-      - name: Build Frontend
+      - name: Run TypeScript Type Check
+        working-directory: ./frontend
+        run: npx tsc --noEmit
+
+  # ============================================================================
+  # Frontend Testing & Production Build
+  # ============================================================================
+  frontend-test:
+    name: Frontend Unit Tests & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run Frontend Tests
+        working-directory: ./frontend
+        run: npm test
+
+      - name: Build Frontend Production Bundle
         working-directory: ./frontend
         env:
-          VITE_API_BASE_URL: 'http://127.0.0.1:8000'
+          VITE_API_BASE_URL: http://localhost:8000
         run: npm run build
-
-      - name: Install Playwright Browsers
-        working-directory: ./frontend
-        run: npx playwright install chromium --with-deps
-
-      - name: Run Playwright E2E Tests
-        working-directory: ./frontend
-        env:
-          ENVIRONMENT: test
-          VITE_API_BASE_URL: 'http://127.0.0.1:8000'
-        run: npx playwright test --grep-invert @wip

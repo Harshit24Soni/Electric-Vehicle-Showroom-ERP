@@ -1,7 +1,10 @@
+import logging
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
+
+logger = logging.getLogger(__name__)
 
 from app.modules.inventory.models import (
     VehicleStockMovement,
@@ -360,7 +363,7 @@ async def deactivate_spare(db: AsyncSession, spare_id: int) -> SpareMaster:
     return await get_spare(db, spare_id)
 
 
-async def post_purchase_receipt(
+async def _process_purchase_receipt_items(
     db: AsyncSession,
     purchase,
     payload
@@ -437,7 +440,7 @@ async def post_purchase_receipt(
                     serial_id=s_id,
                     batch_id=batch_id,
                     quantity=1,
-                    movement_type="PURCHASE_RECEIPT",
+                    movement_type="PURCHASE",
                     reference_type="PROCUREMENT",
                     reference_id=purchase.spare_purchase_id,
                     movement_datetime=datetime.now(timezone.utc).replace(tzinfo=None),
@@ -453,7 +456,7 @@ async def post_purchase_receipt(
                 serial_id=None,
                 batch_id=batch_id,
                 quantity=p_item.quantity,
-                movement_type="PURCHASE_RECEIPT",
+                movement_type="PURCHASE",
                 reference_type="PROCUREMENT",
                 reference_id=purchase.spare_purchase_id,
                 movement_datetime=datetime.now(timezone.utc).replace(tzinfo=None),
@@ -503,6 +506,25 @@ async def post_purchase_receipt(
         db.add(new_cost)
         
     await db.flush()
+
+
+async def post_purchase_receipt(
+    db: AsyncSession,
+    purchase,
+    payload
+):
+    """Post procurement purchase receipt to inventory stock balance, batches, serials and WAC with transaction rollback protection."""
+    try:
+        await _process_purchase_receipt_items(db, purchase, payload)
+    except Exception as exc:
+        await db.rollback()
+        logger.error(
+            "Failed to post purchase receipt %s: %s",
+            getattr(purchase, "spare_purchase_id", "unknown"),
+            exc,
+            exc_info=True
+        )
+        raise
 
 
 # ==================== CROSS-MODULE CONTRACT SERVICES & TEMPORARY SPARES ====================

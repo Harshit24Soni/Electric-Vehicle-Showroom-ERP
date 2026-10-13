@@ -1,13 +1,16 @@
-from sqlalchemy.orm import Session
+import logging
+from datetime import date, datetime, timedelta, timezone
+from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, extract, and_, or_
-from datetime import date, datetime, timedelta
 
 from app.modules.billing.models import SalesInvoice
 from app.modules.sales.models import Sale, ServiceSchedule
 from app.modules.crm.models import Lead
 from app.modules.master.models import Vehicle, VehicleModel
 from app.modules.insurance.models import Policy
+from app.modules.finance.models import VehicleFinance
+from app.modules.service.models import ServiceJobCard, ServiceSpareConsumption
 from app.modules.reports.schemas import (
     DashboardStatsResponse,
     DashboardAlertsResponse,
@@ -15,14 +18,22 @@ from app.modules.reports.schemas import (
     UpcomingRenewalAlert,
 )
 
-def sales_register(
-    db: Session,
+logger = logging.getLogger(__name__)
+
+
+def _utc_now_naive() -> datetime:
+    """Return current naive UTC datetime for standard TIMESTAMP storage."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+async def sales_register(
+    db: AsyncSession,
     *,
     from_date,
     to_date,
 ):
-    return (
-        db.query(
+    stmt = (
+        select(
             SalesInvoice.invoice_number,
             SalesInvoice.invoice_date,
             SalesInvoice.taxable_amount,
@@ -37,14 +48,14 @@ def sales_register(
             SalesInvoice.is_final.is_(True),
         )
         .order_by(SalesInvoice.invoice_date)
-        .all()
     )
+    result = await db.execute(stmt)
+    return result.all()
 
-from app.modules.finance.models import VehicleFinance
 
-def finance_register(db: Session):
-    return (
-        db.query(
+async def finance_register(db: AsyncSession):
+    stmt = (
+        select(
             VehicleFinance.sale_id,
             VehicleFinance.financer_name,
             VehicleFinance.loan_amount,
@@ -54,14 +65,14 @@ def finance_register(db: Session):
             VehicleFinance.updated_at,
         )
         .order_by(VehicleFinance.updated_at.desc())
-        .all()
     )
+    result = await db.execute(stmt)
+    return result.all()
 
-from app.modules.service.models import ServiceJobCard, ServiceSpareConsumption
 
-def service_register(db: Session):
-    return (
-        db.query(
+async def service_register(db: AsyncSession):
+    stmt = (
+        select(
             ServiceJobCard.job_card_id,
             ServiceJobCard.chassis_no,
             ServiceJobCard.is_free_service,
@@ -74,8 +85,10 @@ def service_register(db: Session):
             ServiceSpareConsumption,
             ServiceSpareConsumption.job_card_id == ServiceJobCard.job_card_id,
         )
-        .all()
     )
+    result = await db.execute(stmt)
+    return result.all()
+
 
 async def get_dashboard_stats(db: AsyncSession) -> DashboardStatsResponse:
     today = date.today()
@@ -129,6 +142,7 @@ async def get_dashboard_stats(db: AsyncSession) -> DashboardStatsResponse:
         in_stock_inventory=in_stock_inventory
     )
 
+
 async def get_dashboard_alerts(db: AsyncSession) -> DashboardAlertsResponse:
     today = date.today()
     thirty_days_later = today + timedelta(days=30)
@@ -144,8 +158,12 @@ async def get_dashboard_alerts(db: AsyncSession) -> DashboardAlertsResponse:
     aging_results = await db.execute(aging_query)
     aging_inventory = []
     
+    now_utc = _utc_now_naive()
     for vehicle, model_name in aging_results.all():
-        days_in_stock = (datetime.utcnow() - vehicle.created_at).days
+        v_created = vehicle.created_at
+        if v_created and v_created.tzinfo is not None:
+            v_created = v_created.replace(tzinfo=None)
+        days_in_stock = (now_utc - v_created).days if v_created else 0
         if days_in_stock > 60:
             aging_inventory.append(AgingInventoryAlert(
                 chassis_no=vehicle.chassis_no,
@@ -207,4 +225,3 @@ async def get_dashboard_alerts(db: AsyncSession) -> DashboardAlertsResponse:
         aging_inventory=aging_inventory[:10], # Limit to top 10
         upcoming_renewals=upcoming_renewals[:10]
     )
-

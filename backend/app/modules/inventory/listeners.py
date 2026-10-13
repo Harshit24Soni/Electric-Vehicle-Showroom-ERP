@@ -30,13 +30,14 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def get_async_session():
-    """Async session generator for the background listener tasks."""
-    try:
-        async with AsyncSessionLocal() as session:
+    """Async session generator for background listener tasks with rollback protection."""
+    async with AsyncSessionLocal() as session:
+        try:
             yield session
-    except Exception as e:
-        logger.error(f"Error obtaining session in inventory listener: {e}")
-        yield None
+        except Exception as e:
+            await session.rollback()
+            logger.error(f"Error in inventory listener transaction: {e}", exc_info=True)
+            raise
 
 async def handle_spare_purchased(event: SparePurchasedEvent) -> None:
     logger.info(f"Inventory module handling SparePurchasedEvent for spare {event.spare_id}")

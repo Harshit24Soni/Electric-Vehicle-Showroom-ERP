@@ -1,23 +1,27 @@
 import asyncio
-from typing import Callable, Dict, List, Type, Any
+import inspect
+import logging
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 from pydantic import BaseModel
 
-# Decoupling Strategy:
-# The EventBus serves as the asynchronous communication backbone between different
-# isolated domains (e.g., Sales -> Inventory). Instead of one module explicitly calling
-# another's service layer (which creates tight coupling), modules emit DomainEvents.
-# Interested domains subscribe to these events and react independently.
+logger = logging.getLogger(__name__)
 
+
+# ------------------------------------------------------------------------------
+# Decoupled Domain Event Definitions
+# ------------------------------------------------------------------------------
 class DomainEvent(BaseModel):
-    """Base class for all domain events."""
+    """Base class for all domain events across ERP business domains."""
     pass
+
 
 class SaleCreatedEvent(DomainEvent):
     sale_id: int
-    lead_id: int | None
+    lead_id: Optional[int] = None
     customer_id: int
     chassis_no: str
-    status: str # 'BOOKED' or 'SOLD'
+    status: str  # 'BOOKED' or 'SOLD'
+
 
 class SaleTransactionCompletedEvent(DomainEvent):
     sale_id: int
@@ -25,24 +29,28 @@ class SaleTransactionCompletedEvent(DomainEvent):
     customer_id: int
     chassis_no: str
     total_amount: float
-    down_payment_amount: float | None
-    payment_mode: str | None
-    financier_name: str | None
-    remarks: str | None
+    down_payment_amount: Optional[float] = None
+    payment_mode: Optional[str] = None
+    financier_name: Optional[str] = None
+    remarks: Optional[str] = None
+
 
 class SaleCompletedEvent(DomainEvent):
     sale_id: int
     chassis_no: str
     customer_id: int
-    invoice_no: str | None = None
-    total_amount: float | None = None
+    invoice_no: Optional[str] = None
+    total_amount: Optional[float] = None
 
-# Alias for convenience
+
+# Alias for backward compatibility
 SaleCompleted = SaleCompletedEvent
+
 
 class SparePurchasedEvent(DomainEvent):
     spare_id: int
     quantity: int
+
 
 class SpareConsumedEvent(DomainEvent):
     spare_id: int
@@ -50,97 +58,149 @@ class SpareConsumedEvent(DomainEvent):
     reference_type: str
     reference_id: int
 
+
 class VehicleIntakeEvent(DomainEvent):
     chassis_no: str
     reference_id: int
     invoice_no: str
+
 
 class VehicleDeliveredEvent(DomainEvent):
     chassis_no: str
     sale_id: int
     invoice_no: str
 
+
 class DefectiveSpareReturnedEvent(DomainEvent):
     spare_id: int
     serial_id: int
     job_card_id: int
+
 
 class WarrantyReplacementIssuedEvent(DomainEvent):
     spare_id: int
     serial_id: int
     job_card_id: int
 
+
 class SparePriceUpdatedEvent(DomainEvent):
     spare_id: int
     price: float
     margin: float
 
+
 class TemporarySpareCreatedEvent(DomainEvent):
     spare_code: str
     spare_name: str
-    category: str | None
-    remarks: str | None
+    category: Optional[str] = None
+    remarks: Optional[str] = None
 
-# Type alias for event handlers
+
+# Type alias for event handlers (can be async coroutine or sync function)
 EventHandler = Callable[[DomainEvent], Any]
 
+
+# ------------------------------------------------------------------------------
+# Asynchronous Enterprise Event Bus
+# ------------------------------------------------------------------------------
 class EventBus:
     """
-    An in-memory Pub/Sub Event Bus.
-    Routes events to their registered subscribers asynchronously.
+    Decoupled in-memory asynchronous pub/sub domain event bus.
+    Dispatches events to registered listeners concurrently using asyncio.gather
+    with strict exception isolation so listener failures never crash publishers.
     """
+
     def __init__(self):
         self._subscribers: Dict[Type[DomainEvent], List[EventHandler]] = {}
         self._queue: asyncio.Queue = asyncio.Queue()
-        self._task: asyncio.Task | None = None
+        self._worker_task: Optional[asyncio.Task] = None
+        self._is_running: bool = False
 
     def subscribe(self, event_type: Type[DomainEvent], handler: EventHandler) -> None:
-        """Subscribe a handler to a specific event type."""
+        """Register a subscriber handler for a specific domain event type."""
         if event_type not in self._subscribers:
             self._subscribers[event_type] = []
-        self._subscribers[event_type].append(handler)
+        if handler not in self._subscribers[event_type]:
+            self._subscribers[event_type].append(handler)
+            logger.debug(f"[EventBus] Registered handler '{handler.__name__}' for '{event_type.__name__}'")
+
+    def unsubscribe(self, event_type: Type[DomainEvent], handler: EventHandler) -> None:
+        """Remove a subscriber handler."""
+        if event_type in self._subscribers and handler in self._subscribers[event_type]:
+            self._subscribers[event_type].remove(handler)
+            logger.debug(f"[EventBus] Unregistered handler '{handler.__name__}' from '{event_type.__name__}'")
 
     async def publish(self, event: DomainEvent) -> None:
         """
-        Publish an event to the bus. 
-        Places the event in an async queue to be processed in the background,
-        ensuring the publisher is not blocked by subscriber logic.
+        Publish a domain event and dispatch to all registered listeners.
+        Executes all handlers concurrently via asyncio.gather with return_exceptions=True.
+        Listener failures are logged but isolated from the publishing domain logic.
         """
+        event_type = type(event)
+        handlers = list(self._subscribers.get(event_type, []))
+
+        # Also notify any generic DomainEvent listeners
+        if event_type is not DomainEvent and DomainEvent in self._subscribers:
+            handlers.extend(self._subscribers[DomainEvent])
+
+        if not handlers:
+            logger.debug(f"[EventBus] No registered handlers for '{event_type.__name__}'.")
+            return
+
+        tasks = []
+        handler_names = []
+        for handler in handlers:
+            handler_name = getattr(handler, "__name__", repr(handler))
+            handler_names.append(handler_name)
+            if inspect.iscoroutinefunction(handler):
+                tasks.append(handler(event))
+            else:
+                # Offload synchronous blocking functions to worker threadpool
+                tasks.append(asyncio.to_thread(handler, event))
+
+        logger.info(f"[EventBus] Dispatching '{event_type.__name__}' to {len(tasks)} listener(s).")
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for name, result in zip(handler_names, results):
+            if isinstance(result, Exception):
+                logger.error(
+                    f"[EventBus] Exception isolated in listener '{name}' handling '{event_type.__name__}': {result}",
+                    exc_info=result,
+                )
+
+    async def publish_async(self, event: DomainEvent) -> None:
+        """Queue event for background deferred asynchronous processing."""
         await self._queue.put(event)
 
-    async def _process_events(self) -> None:
-        """Background task to continuously process events from the queue."""
-        while True:
-            event = await self._queue.get()
-            event_type = type(event)
-            handlers = self._subscribers.get(event_type, [])
-            
-            # Execute handlers concurrently
-            tasks = []
-            for handler in handlers:
-                if asyncio.iscoroutinefunction(handler):
-                    tasks.append(asyncio.create_task(handler(event)))
-                else:
-                    # Run sync handlers in a threadpool to prevent blocking the event loop
-                    tasks.append(asyncio.to_thread(handler, event))
-            
-            if tasks:
-                # Use gather with return_exceptions=True so one failing handler 
-                # doesn't crash others processing the same event.
-                await asyncio.gather(*tasks, return_exceptions=True)
-                
-            self._queue.task_done()
+    async def _queue_worker(self) -> None:
+        """Background worker loop processing events from the queue."""
+        logger.info("[EventBus] Background worker task started.")
+        while self._is_running:
+            try:
+                event = await self._queue.get()
+                await self.publish(event)
+                self._queue.task_done()
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.error(f"[EventBus] Unexpected worker error: {exc}", exc_info=True)
 
     def start(self) -> None:
-        """Start the event bus background processing. Should be called on app startup."""
-        if self._task is None:
-            self._task = asyncio.create_task(self._process_events())
+        """Start background queue processing task if not already running."""
+        if not self._is_running:
+            self._is_running = True
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                self._worker_task = asyncio.create_task(self._queue_worker())
 
     def stop(self) -> None:
-        """Stop the event bus background processing. Should be called on app shutdown."""
-        if self._task:
-            self._task.cancel()
-            self._task = None
+        """Gracefully stop background queue worker task."""
+        self._is_running = False
+        if self._worker_task:
+            self._worker_task.cancel()
+            self._worker_task = None
+            logger.info("[EventBus] Background worker task stopped.")
 
-# Global event bus instance to be used across the application
+
+# Global singleton instance
 event_bus = EventBus()

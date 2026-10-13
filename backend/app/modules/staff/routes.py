@@ -76,6 +76,10 @@ async def update_my_profile(
     if data.emergency_contact_name is not None: staff.emergency_contact_name = data.emergency_contact_name
     if data.emergency_contact_no is not None: staff.emergency_contact_no = data.emergency_contact_no
     
-    await db.flush()
+    try:
+        await db.flush()
+    except Exception:
+        await db.rollback()
+        raise
     
     return StaffResponse.model_validate(staff, from_attributes=True)

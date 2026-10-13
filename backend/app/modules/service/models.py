@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 
 from app.db.base import Base
-from app.db.mixins import AuditMixin, SoftDeleteMixin
+from app.db.mixins import AuditMixin, SoftDeleteMixin, utc_now_naive
 
 class ServiceJobCard(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "job_card"
@@ -29,7 +29,7 @@ class ServiceJobCard(Base, AuditMixin, SoftDeleteMixin):
     )
 
     opened_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, default=datetime.utcnow
+        TIMESTAMP, default=utc_now_naive
     )
 
     closed_at: Mapped[datetime | None] = mapped_column(

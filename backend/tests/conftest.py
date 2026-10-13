@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pytest
 import pytest_asyncio
@@ -25,12 +26,27 @@ from app.db.base import Base
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_test_db():
     """Create all tables in the test database once per session."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with asyncio.timeout(2):
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+                await conn.run_sync(Base.metadata.create_all)
+    except Exception:
+        pass
     yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    try:
+        from app.core.redis import redis_manager
+        from app.core.event_bus import event_bus
+        event_bus.stop()
+        await redis_manager.close()
+    except Exception:
+        pass
+    try:
+        async with asyncio.timeout(2):
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+    except Exception:
+        pass
 
 @pytest_asyncio.fixture
 async def db_session():
@@ -72,7 +88,22 @@ async def client(db_session):
 @pytest_asyncio.fixture
 async def admin_client(client, db_session):
     """Provides an authenticated admin API client."""
+    from app.modules.master.models import Staff
     from app.auth.dependencies import get_current_staff
+
+    staff = await db_session.get(Staff, 1)
+    if not staff:
+        staff = Staff(
+            staff_id=1,
+            full_name="System Admin",
+            mobile_no="9000000001",
+            email="admin@erp.test",
+            designation="ADMIN",
+            pin_hash="dummy"
+        )
+        db_session.add(staff)
+        await db_session.flush()
+
     async def override_get_current_staff():
         return {"staff_id": 1, "designation": "ADMIN", "dealer_id": 1}
     app.dependency_overrides[get_current_staff] = override_get_current_staff

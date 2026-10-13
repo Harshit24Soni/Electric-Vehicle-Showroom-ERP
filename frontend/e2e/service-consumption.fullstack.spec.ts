@@ -43,11 +43,9 @@ test.describe('Service Spare Consumption Fullstack E2E', () => {
     await expect(page.locator('h2', { hasText: 'Add Spare to Job Card' })).toBeVisible();
 
     // Select spare from dropdown
-    await page.click('.input.w-full'); // select element for spares
-    await page.waitForTimeout(1000);
-    // Since it's a native select, we can use selectOption
-    const select = page.locator('select').nth(0);
-    // Select the second option (first real option after "-- Select Spare --")
+    const select = page.locator('select.input.w-full').first();
+    await expect(select).toBeVisible();
+    await expect(select.locator('option')).not.toHaveCount(0);
     await select.selectOption({ index: 1 });
 
     // Click Add to Job Card

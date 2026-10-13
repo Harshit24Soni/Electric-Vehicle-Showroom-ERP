@@ -29,6 +29,6 @@ describe('SaleForm', () => {
     // A more thorough test would mock api.get. For now, just a minimal smoke test.
     expect(screen.getByText(/Create New Sale/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/Enter total sale amount/i)).toBeInTheDocument()
-    expect(screen.getByPlaceholderText(/Enter amount paid at booking/i)).toBeInTheDocument()
+    expect(screen.getByText(/Customer \*/i)).toBeInTheDocument()
   })
 })

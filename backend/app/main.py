@@ -1,10 +1,11 @@
+import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from dotenv import load_dotenv
 
 # Optional local environment initialization for development
-# Cloud orchestrators (Kubernetes, AWS ECS) inject environment variables directly into memory
-for env_candidate in [Path(".env"), Path("backend/.env")]:
+for env_candidate in [Path(".env"), Path("backend/.env"), Path(".env.test"), Path("backend/.env.test")]:
     if env_candidate.is_file():
         load_dotenv(dotenv_path=env_candidate)
         break
@@ -31,30 +32,47 @@ from app.modules.followup.routes import router as followup_router
 from app.modules.setup.routes import router as setup_router
 from app.bootstrap import init_models, init_listeners
 from app.core.config import settings
+from app.core.redis import redis_manager
+from app.core.event_bus import event_bus
+from app.db.session import engine, dispose_engine
 
-# Initialize database models and event listeners
+logger = logging.getLogger(__name__)
+
+# Initialize database models and event listeners at module load for Alembic / Admin compatibility
 init_models()
 init_listeners()
-app = FastAPI(title="EV Showroom ERP Backend")
 
-# CORS Configuration
-allowed_origins = [
-    "https://electric-vehicle-showroom-erp.vercel.app",
-    "http://localhost:5173",
-    "http://localhost:3000",
-]
 
-# Merge any additional origins configured via environment settings
-if getattr(settings, "ALLOWED_ORIGINS", None):
-    for origin in settings.ALLOWED_ORIGINS.split(","):
-        origin_clean = origin.strip()
-        if origin_clean and origin_clean not in allowed_origins:
-            allowed_origins.append(origin_clean)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifespan manager managing async Redis connections,
+    in-memory event bus background workers, and database connection pools.
+    """
+    logger.info("Starting up Electric Vehicle Showroom ERP backend...")
+    event_bus.start()
+    try:
+        await redis_manager.init_redis()
+    except Exception as exc:
+        logger.warning(f"Redis initialization warning on application startup: {exc}")
+
+    yield
+
+    logger.info("Shutting down Electric Vehicle Showroom ERP backend...")
+    event_bus.stop()
+    await redis_manager.close()
+    await dispose_engine()
+
+
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+
+# CORS Configuration - Dynamically ingested from settings
+cors_origins = list(settings.cors_origins) if settings.cors_origins else ["http://localhost:3000"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_origin_regex=r"https:\/\/electric-vehicle-showroom-erp.*\.vercel\.app",
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https:\/\/electric-vehicle-showroom-erp.*\.vercel\.app" if settings.ENVIRONMENT != "production" else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,7 +81,11 @@ app.add_middleware(
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    """Service health probe endpoint."""
+    return {
+        "status": "ok",
+        "environment": settings.ENVIRONMENT,
+    }
 
 
 # Authentication
@@ -93,7 +115,6 @@ app.include_router(setup_router)
 
 # SQLAdmin Panel
 from sqladmin import Admin
-from app.db.session import engine
 from app.admin_setup import AdminAuth, StaffAdmin, SparePartAdmin
 
 admin_auth = AdminAuth(secret_key=settings.JWT_SECRET_KEY)

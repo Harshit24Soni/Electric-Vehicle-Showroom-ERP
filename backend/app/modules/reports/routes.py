@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import date
+
 from app.db.session import get_db
 from app.shared.utils import export_csv
 from app.modules.reports import services
 from app.modules.reports.schemas import DashboardStatsResponse, DashboardAlertsResponse
 from app.auth.dependencies import get_current_staff
 from app.auth.roles import require_roles
-from datetime import date
 
 router = APIRouter(
     prefix="/reports",
@@ -18,15 +20,14 @@ router = APIRouter(
 )
 
 
-
 @router.get("/sales-register")
-def export_sales_register(
+async def export_sales_register(
     from_date: date,
     to_date: date,
-    db=Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
-    rows = services.sales_register(
+    rows = await services.sales_register(
         db=db,
         from_date=from_date,
         to_date=to_date,
@@ -46,16 +47,15 @@ def export_sales_register(
         filename="sales_register.csv",
     )
 
-from fastapi.responses import JSONResponse
 
 @router.get("/sales-summary")
-def get_sales_summary(
+async def get_sales_summary(
     from_date: date,
     to_date: date,
-    db=Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
 ):
-    rows = services.sales_register(
+    rows = await services.sales_register(
         db=db,
         from_date=from_date,
         to_date=to_date,
@@ -75,9 +75,13 @@ def get_sales_summary(
         
     return JSONResponse(content={"items": summary})
 
+
 @router.get("/finance-register")
-def export_finance_register(db=Depends(get_db), _staff=Depends(get_current_staff)):
-    rows = services.finance_register(db=db)
+async def export_finance_register(
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff)
+):
+    rows = await services.finance_register(db=db)
 
     return export_csv(
         headers=[
@@ -93,6 +97,7 @@ def export_finance_register(db=Depends(get_db), _staff=Depends(get_current_staff
         filename="finance_register.csv",
     )
 
+
 @router.get("/dashboard-stats", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
     return await services.get_dashboard_stats(db)
@@ -101,5 +106,3 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
 @router.get("/alerts", response_model=DashboardAlertsResponse)
 async def get_dashboard_alerts(db: AsyncSession = Depends(get_db)):
     return await services.get_dashboard_alerts(db)
-
-

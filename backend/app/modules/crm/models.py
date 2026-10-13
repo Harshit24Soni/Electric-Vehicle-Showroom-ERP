@@ -17,7 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-from app.db.mixins import AuditMixin, SoftDeleteMixin
+from app.db.mixins import AuditMixin, SoftDeleteMixin, utc_now_naive
 
 class Enquiry(Base, AuditMixin, SoftDeleteMixin):
     """Enquiry tracking for leads - stores initial inquiry information"""
@@ -161,7 +161,7 @@ class LeadAssignmentHistory(Base, AuditMixin, SoftDeleteMixin):
     old_staff_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("staff.staff_id"), nullable=True)
     new_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("staff.staff_id"), nullable=False)
     changed_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("staff.staff_id"), nullable=False)
-    changed_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    changed_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=utc_now_naive)
     remarks: Mapped[str | None] = mapped_column(Text)
 
 
@@ -173,7 +173,7 @@ class LeadStatusHistory(Base, AuditMixin, SoftDeleteMixin):
     old_status: Mapped[str | None] = mapped_column(String(30))
     new_status: Mapped[str] = mapped_column(String(30), nullable=False)
     changed_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("staff.staff_id"), nullable=False)
-    changed_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    changed_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=utc_now_naive)
     remarks: Mapped[str | None] = mapped_column(Text)
 
 
@@ -205,7 +205,7 @@ class LeadFollowup(Base, AuditMixin, SoftDeleteMixin):
         ForeignKey("lead.lead_id", ondelete="CASCADE"),
         nullable=False,
     )
-    followup_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False, default=datetime.utcnow)
+    followup_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False, default=utc_now_naive)
     remarks: Mapped[str] = mapped_column(Text, nullable=False)
     outcome_status: Mapped[str] = mapped_column(String(20), nullable=False)
     next_followup_date: Mapped[date | None] = mapped_column(Date, nullable=True)

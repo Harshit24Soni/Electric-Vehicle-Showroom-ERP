@@ -1,4 +1,5 @@
 import uuid
+import logging
 from typing import List, Optional
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +8,8 @@ from fastapi import HTTPException
 import qrcode
 import base64
 import io
+
+logger = logging.getLogger(__name__)
 
 from app.modules.inventory.models import (
     InventoryTag, TagStatus, SpareMaster, SpareBatch, SpareSerial, SpareStockBalance, SparePartCode
@@ -83,71 +86,78 @@ async def scan_tag(db: AsyncSession, identifier: str) -> InventoryTagResponse:
     return await _enrich_tag(db, tag)
 
 async def create_tags(db: AsyncSession, req: BulkTagCreateRequest, current_user_id: int) -> List[InventoryTagResponse]:
-    # Validate Spare
-    spare_res = await db.execute(select(SpareMaster).where(SpareMaster.spare_id == req.spare_id))
-    spare = spare_res.scalar_one_or_none()
-    if not spare:
-        raise HTTPException(status_code=404, detail="Spare not found")
-        
-    if spare.tracking_mode != req.tracking_mode:
-        raise HTTPException(status_code=400, detail="Tracking mode mismatch")
+    """Create bulk inventory QR/Bar tags with transactional rollback protection."""
+    try:
+        # Validate Spare
+        spare_res = await db.execute(select(SpareMaster).where(SpareMaster.spare_id == req.spare_id))
+        spare = spare_res.scalar_one_or_none()
+        if not spare:
+            raise HTTPException(status_code=404, detail="Spare not found")
+            
+        if spare.tracking_mode != req.tracking_mode:
+            raise HTTPException(status_code=400, detail="Tracking mode mismatch")
 
-    created_tags = []
-    
-    if req.tracking_mode == "SERIALIZED":
-        if not req.serial_ids:
-            raise HTTPException(status_code=400, detail="Serial IDs required for SERIALIZED tracking mode")
-        for sid in req.serial_ids:
-            # Verify serial exists
-            serial_res = await db.execute(select(SpareSerial).where(SpareSerial.serial_id == sid, SpareSerial.spare_id == req.spare_id))
-            if not serial_res.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail=f"Serial ID {sid} invalid")
+        created_tags = []
+        
+        if req.tracking_mode == "SERIALIZED":
+            if not req.serial_ids:
+                raise HTTPException(status_code=400, detail="Serial IDs required for SERIALIZED tracking mode")
+            for sid in req.serial_ids:
+                # Verify serial exists
+                serial_res = await db.execute(select(SpareSerial).where(SpareSerial.serial_id == sid, SpareSerial.spare_id == req.spare_id))
+                if not serial_res.scalar_one_or_none():
+                    raise HTTPException(status_code=400, detail=f"Serial ID {sid} invalid")
+                    
+                tag = InventoryTag(
+                    tag_identifier=_generate_opaque_identifier(),
+                    tracking_mode="SERIALIZED",
+                    spare_id=req.spare_id,
+                    serial_id=sid
+                )
+                db.add(tag)
+                created_tags.append(tag)
                 
-            tag = InventoryTag(
-                tag_identifier=_generate_opaque_identifier(),
-                tracking_mode="SERIALIZED",
-                spare_id=req.spare_id,
-                serial_id=sid
-            )
-            db.add(tag)
-            created_tags.append(tag)
-            
-    elif req.tracking_mode == "BATCH":
-        if not req.batch_id:
-            raise HTTPException(status_code=400, detail="Batch ID required for BATCH tracking mode")
-        batch_res = await db.execute(select(SpareBatch).where(SpareBatch.batch_id == req.batch_id, SpareBatch.spare_id == req.spare_id))
-        if not batch_res.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Batch ID invalid")
-            
-        qty = req.quantity or 1
-        for _ in range(qty):
-            tag = InventoryTag(
-                tag_identifier=_generate_opaque_identifier(),
-                tracking_mode="BATCH",
-                spare_id=req.spare_id,
-                batch_id=req.batch_id
-            )
-            db.add(tag)
-            created_tags.append(tag)
-            
-    elif req.tracking_mode == "QUANTITY":
-        qty = req.quantity or 1
-        for _ in range(qty):
-            tag = InventoryTag(
-                tag_identifier=_generate_opaque_identifier(),
-                tracking_mode="QUANTITY",
-                spare_id=req.spare_id
-            )
-            db.add(tag)
-            created_tags.append(tag)
+        elif req.tracking_mode == "BATCH":
+            if not req.batch_id:
+                raise HTTPException(status_code=400, detail="Batch ID required for BATCH tracking mode")
+            batch_res = await db.execute(select(SpareBatch).where(SpareBatch.batch_id == req.batch_id, SpareBatch.spare_id == req.spare_id))
+            if not batch_res.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="Batch ID invalid")
+                
+            qty = req.quantity or 1
+            for _ in range(qty):
+                tag = InventoryTag(
+                    tag_identifier=_generate_opaque_identifier(),
+                    tracking_mode="BATCH",
+                    spare_id=req.spare_id,
+                    batch_id=req.batch_id
+                )
+                db.add(tag)
+                created_tags.append(tag)
+                
+        elif req.tracking_mode == "QUANTITY":
+            qty = req.quantity or 1
+            for _ in range(qty):
+                tag = InventoryTag(
+                    tag_identifier=_generate_opaque_identifier(),
+                    tracking_mode="QUANTITY",
+                    spare_id=req.spare_id
+                )
+                db.add(tag)
+                created_tags.append(tag)
 
-    await db.flush()
-    
-    responses = []
-    for t in created_tags:
-        responses.append(await _enrich_tag(db, t))
+        await db.flush()
         
-    return responses
+        responses = []
+        for t in created_tags:
+            responses.append(await _enrich_tag(db, t))
+            
+        return responses
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to create tags for spare %s: %s", req.spare_id, exc, exc_info=True)
+        raise
+
 
 async def list_tags(db: AsyncSession, spare_id: Optional[int] = None, status: Optional[str] = None, page: int = 1, size: int = 20):
     query = select(InventoryTag)

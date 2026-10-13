@@ -16,7 +16,7 @@ from datetime import datetime, date
 from app.db.base import Base
 
 
-from app.db.mixins import SoftDeleteMixin, AuditMixin
+from app.db.mixins import SoftDeleteMixin, AuditMixin, utc_now_naive
 
 class Customer(Base, SoftDeleteMixin, AuditMixin):
 	__tablename__ = "customer"
@@ -276,11 +276,11 @@ class SparePriceHistory(Base):
     spare_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to inventory.spare_master
     price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     margin: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
-    effective_from: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    effective_from: Mapped[datetime] = mapped_column(TIMESTAMP, default=utc_now_naive)
     effective_to: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("staff.staff_id"))
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=utc_now_naive)
 
 
 class VehiclePriceHistory(Base):
@@ -289,11 +289,11 @@ class VehiclePriceHistory(Base):
     history_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     vehicle_model_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("vehicle_model.vehicle_model_id", ondelete="CASCADE"), nullable=False)
     price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    effective_from: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    effective_from: Mapped[datetime] = mapped_column(TIMESTAMP, default=utc_now_naive)
     effective_to: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("staff.staff_id"))
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=utc_now_naive)
 
 
 class PinResetRequest(Base):
@@ -303,7 +303,7 @@ class PinResetRequest(Base):
     staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("staff.staff_id", ondelete="CASCADE"), nullable=False)
     request_type: Mapped[str] = mapped_column(String(50), nullable=False) # STAFF_FORGOT_PIN
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING") # PENDING, APPROVED, DENIED
-    requested_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    requested_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=utc_now_naive)
     processed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     processed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("staff.staff_id"))
 

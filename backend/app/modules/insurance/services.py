@@ -1,9 +1,18 @@
+import logging
+from datetime import datetime, timezone
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-from datetime import datetime
 from fastapi import HTTPException
 
 from app.modules.insurance import models
+
+logger = logging.getLogger(__name__)
+
+
+def _utc_now_naive() -> datetime:
+    """Return current naive UTC datetime for standard TIMESTAMP storage."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class InsuranceError(Exception):
@@ -12,16 +21,21 @@ class InsuranceError(Exception):
 
 async def create_company(db: AsyncSession, payload) -> models.InsuranceCompany:
     """Create a new insurance company"""
-    c = models.InsuranceCompany(
-        company_name=payload.company_name,
-        contact_phone=payload.contact_phone,
-        contact_email=payload.contact_email,
-        is_active=True,
-        created_at=datetime.utcnow(),
-    )
-    db.add(c)
-    await db.flush()
-    return c
+    try:
+        c = models.InsuranceCompany(
+            company_name=payload.company_name,
+            contact_phone=payload.contact_phone,
+            contact_email=payload.contact_email,
+            is_active=True,
+            created_at=_utc_now_naive(),
+        )
+        db.add(c)
+        await db.flush()
+        return c
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to create insurance company %s: %s", getattr(payload, "company_name", None), exc)
+        raise
 
 
 async def get_company(db: AsyncSession, company_id: int) -> models.InsuranceCompany | None:
@@ -48,32 +62,37 @@ async def create_policy(db: AsyncSession, payload) -> models.Policy:
     if payload.policy_end_date <= payload.policy_start_date:
         raise InsuranceError("policy_end_date must be after policy_start_date")
 
-    # ensure no other active policy for the same chassis exists
-    existing_stmt = select(models.Policy).filter(
-        models.Policy.chassis_no == payload.chassis_no,
-        models.Policy.is_active == True,
-        models.Policy.is_deleted == False
-    )
-    result = await db.execute(existing_stmt)
-    existing = result.scalars().first()
-    if existing:
-        # we still allow creating but mark old as inactive
-        existing.is_active = False
+    try:
+        # ensure no other active policy for the same chassis exists
+        existing_stmt = select(models.Policy).filter(
+            models.Policy.chassis_no == payload.chassis_no,
+            models.Policy.is_active == True,
+            models.Policy.is_deleted == False
+        )
+        result = await db.execute(existing_stmt)
+        existing = result.scalars().first()
+        if existing:
+            # mark old as inactive
+            existing.is_active = False
 
-    p = models.Policy(
-        vehicle_sale_id=payload.vehicle_sale_id,
-        chassis_no=payload.chassis_no,
-        insurance_company_id=payload.insurance_company_id,
-        policy_number=payload.policy_number,
-        policy_start_date=payload.policy_start_date,
-        policy_end_date=payload.policy_end_date,
-        premium_amount=payload.premium_amount,
-        is_active=True,
-        created_at=datetime.utcnow(),
-    )
-    db.add(p)
-    await db.flush()
-    return p
+        p = models.Policy(
+            vehicle_sale_id=payload.vehicle_sale_id,
+            chassis_no=payload.chassis_no,
+            insurance_company_id=payload.insurance_company_id,
+            policy_number=payload.policy_number,
+            policy_start_date=payload.policy_start_date,
+            policy_end_date=payload.policy_end_date,
+            premium_amount=payload.premium_amount,
+            is_active=True,
+            created_at=_utc_now_naive(),
+        )
+        db.add(p)
+        await db.flush()
+        return p
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to create policy for chassis %s: %s", getattr(payload, "chassis_no", None), exc)
+        raise
 
 
 async def get_policy(db: AsyncSession, policy_id: int) -> models.Policy | None:
@@ -106,18 +125,25 @@ async def delete_company(
     if not company:
         return False
 
-    if hard_delete:
-        if current_user["designation"] not in ["Admin", "Dealer"]:
-            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
-        await db.delete(company)
-    else:
-        company.is_deleted = True
-        company.deleted_at = datetime.utcnow()
-        company.deleted_by = current_user["staff_id"]
-        company.is_active = False
+    try:
+        if hard_delete:
+            if current_user["designation"] not in ["Admin", "Dealer"]:
+                raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+            await db.delete(company)
+        else:
+            company.is_deleted = True
+            company.deleted_at = _utc_now_naive()
+            company.deleted_by = current_user["staff_id"]
+            company.is_active = False
 
-    await db.flush()
-    return True
+        await db.flush()
+        return True
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to delete insurance company %s: %s", company_id, exc)
+        raise
 
 
 async def delete_policy(
@@ -129,15 +155,22 @@ async def delete_policy(
     if not policy:
         return False
 
-    if hard_delete:
-        if current_user["designation"] not in ["Admin", "Dealer"]:
-            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
-        await db.delete(policy)
-    else:
-        policy.is_deleted = True
-        policy.deleted_at = datetime.utcnow()
-        policy.deleted_by = current_user["staff_id"]
-        policy.is_active = False
+    try:
+        if hard_delete:
+            if current_user["designation"] not in ["Admin", "Dealer"]:
+                raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+            await db.delete(policy)
+        else:
+            policy.is_deleted = True
+            policy.deleted_at = _utc_now_naive()
+            policy.deleted_by = current_user["staff_id"]
+            policy.is_active = False
 
-    await db.flush()
-    return True
+        await db.flush()
+        return True
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to delete insurance policy %s: %s", policy_id, exc)
+        raise

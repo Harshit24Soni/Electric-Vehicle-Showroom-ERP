@@ -1,12 +1,20 @@
+import logging
+from datetime import datetime, timezone
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
-from datetime import datetime
 from fastapi import HTTPException
-from typing import Optional
 
 from app.modules.master import models
 from app.core.event_bus import event_bus, SparePriceUpdatedEvent
+
+logger = logging.getLogger(__name__)
+
+
+def _utc_now_naive() -> datetime:
+    """Return current naive UTC datetime for standard TIMESTAMP storage."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class MasterError(Exception):
@@ -17,27 +25,32 @@ class MasterError(Exception):
 
 async def create_customer(db: AsyncSession, payload) -> models.Customer:
     """Create a new customer"""
-    c = models.Customer(
-        lead_reference_id=payload.lead_reference_id,
-        customer_type=payload.customer_type,
-        name=payload.name,
-        guardian_name=payload.guardian_name,
-        primary_phone=payload.primary_phone,
-        email=payload.email,
-        address_line1=payload.address_line1,
-        address_line2=payload.address_line2,
-        city=payload.city,
-        state=payload.state,
-        pincode=payload.pincode,
-        aadhaar_no=payload.aadhaar_no,
-        pan_no=payload.pan_no,
-        gstin=payload.gstin,
-        created_at=datetime.utcnow(),
-        is_active=True,
-    )
-    db.add(c)
-    await db.flush()
-    return c
+    try:
+        c = models.Customer(
+            lead_reference_id=payload.lead_reference_id,
+            customer_type=payload.customer_type,
+            name=payload.name,
+            guardian_name=payload.guardian_name,
+            primary_phone=payload.primary_phone,
+            email=payload.email,
+            address_line1=payload.address_line1,
+            address_line2=payload.address_line2,
+            city=payload.city,
+            state=payload.state,
+            pincode=payload.pincode,
+            aadhaar_no=payload.aadhaar_no,
+            pan_no=payload.pan_no,
+            gstin=payload.gstin,
+            created_at=_utc_now_naive(),
+            is_active=True,
+        )
+        db.add(c)
+        await db.flush()
+        return c
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to create customer %s: %s", getattr(payload, "name", None), exc)
+        raise
 
 
 async def get_customer(db: AsyncSession, customer_id: int) -> models.Customer | None:
@@ -60,7 +73,6 @@ async def get_customer_detailed(db: AsyncSession, customer_id: int) -> dict | No
     nominees = await list_nominees(db, customer_id)
     
     # Get vehicle count (from sales module)
-    # TODO: Integrate with sales/vehicle module to get actual vehicle count
     vehicle_count = 0
     
     return {
@@ -93,8 +105,8 @@ async def get_customer_detailed(db: AsyncSession, customer_id: int) -> dict | No
             for n in nominees
         ],
         "vehicle_count": vehicle_count,
-        "last_service_date": None,  # TODO: Fetch from service module
-        "last_warranty_date": None,  # TODO: Fetch from warranty module
+        "last_service_date": None,
+        "last_warranty_date": None,
         "created_at": customer.created_at,
         "is_active": customer.is_active,
     }
@@ -106,36 +118,41 @@ async def update_customer(db: AsyncSession, customer_id: int, payload) -> models
     if not customer:
         return None
     
-    # Update only provided fields
-    if payload.customer_type is not None:
-        customer.customer_type = payload.customer_type
-    if payload.name is not None:
-        customer.name = payload.name
-    if payload.guardian_name is not None:
-        customer.guardian_name = payload.guardian_name
-    if payload.primary_phone is not None:
-        customer.primary_phone = payload.primary_phone
-    if payload.email is not None:
-        customer.email = payload.email
-    if payload.address_line1 is not None:
-        customer.address_line1 = payload.address_line1
-    if payload.address_line2 is not None:
-        customer.address_line2 = payload.address_line2
-    if payload.city is not None:
-        customer.city = payload.city
-    if payload.state is not None:
-        customer.state = payload.state
-    if payload.pincode is not None:
-        customer.pincode = payload.pincode
-    if payload.aadhaar_no is not None:
-        customer.aadhaar_no = payload.aadhaar_no
-    if payload.pan_no is not None:
-        customer.pan_no = payload.pan_no
-    if payload.gstin is not None:
-        customer.gstin = payload.gstin
-    
-    await db.flush()
-    return customer
+    try:
+        # Update only provided fields
+        if payload.customer_type is not None:
+            customer.customer_type = payload.customer_type
+        if payload.name is not None:
+            customer.name = payload.name
+        if payload.guardian_name is not None:
+            customer.guardian_name = payload.guardian_name
+        if payload.primary_phone is not None:
+            customer.primary_phone = payload.primary_phone
+        if payload.email is not None:
+            customer.email = payload.email
+        if payload.address_line1 is not None:
+            customer.address_line1 = payload.address_line1
+        if payload.address_line2 is not None:
+            customer.address_line2 = payload.address_line2
+        if payload.city is not None:
+            customer.city = payload.city
+        if payload.state is not None:
+            customer.state = payload.state
+        if payload.pincode is not None:
+            customer.pincode = payload.pincode
+        if payload.aadhaar_no is not None:
+            customer.aadhaar_no = payload.aadhaar_no
+        if payload.pan_no is not None:
+            customer.pan_no = payload.pan_no
+        if payload.gstin is not None:
+            customer.gstin = payload.gstin
+        
+        await db.flush()
+        return customer
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to update customer %s: %s", customer_id, exc)
+        raise
 
 
 async def list_customers(db: AsyncSession, limit: int = 100) -> list[models.Customer]:
@@ -151,48 +168,50 @@ async def list_customers(db: AsyncSession, limit: int = 100) -> list[models.Cust
 
 async def create_nominee(db: AsyncSession, customer_id: int, payload) -> models.Nominee | None:
     """Create a nominee for a customer"""
-    # Verify customer exists
     customer = await get_customer(db, customer_id)
     if not customer:
         return None
     
-    # If this is the first nominee or is_primary is True, ensure it's marked as primary
-    existing_primary_stmt = select(models.Nominee).filter(
-        models.Nominee.customer_id == customer_id,
-        models.Nominee.is_primary == True,
-        models.Nominee.is_active == True
-    )
-    result = await db.execute(existing_primary_stmt)
-    existing_primary = result.scalars().first()
-    
-    is_primary = payload.is_primary if payload.is_primary is not None else (not existing_primary)
-    
-    nominee = models.Nominee(
-        customer_id=customer_id,
-        nominee_name=payload.nominee_name,
-        nominee_dob=payload.nominee_dob,
-        relation=payload.relation,
-        is_primary=is_primary,
-        is_active=True,
-        created_at=datetime.utcnow(),
-    )
-    
-    # If this is primary, update other nominees to non-primary
-    if is_primary:
-        # Note: bulk update in async session
-        # For simplicity and correctness with session tracking, we can fetch and update or use update statement
-        stmt = select(models.Nominee).filter(
+    try:
+        # If this is the first nominee or is_primary is True, ensure it's marked as primary
+        existing_primary_stmt = select(models.Nominee).filter(
             models.Nominee.customer_id == customer_id,
+            models.Nominee.is_primary == True,
             models.Nominee.is_active == True
         )
-        r = await db.execute(stmt)
-        others = r.scalars().all()
-        for o in others:
-            o.is_primary = False
+        result = await db.execute(existing_primary_stmt)
+        existing_primary = result.scalars().first()
+        
+        is_primary = payload.is_primary if payload.is_primary is not None else (not existing_primary)
+        
+        nominee = models.Nominee(
+            customer_id=customer_id,
+            nominee_name=payload.nominee_name,
+            nominee_dob=payload.nominee_dob,
+            relation=payload.relation,
+            is_primary=is_primary,
+            is_active=True,
+            created_at=_utc_now_naive(),
+        )
+        
+        # If this is primary, update other nominees to non-primary
+        if is_primary:
+            stmt = select(models.Nominee).filter(
+                models.Nominee.customer_id == customer_id,
+                models.Nominee.is_active == True
+            )
+            r = await db.execute(stmt)
+            others = r.scalars().all()
+            for o in others:
+                o.is_primary = False
 
-    db.add(nominee)
-    await db.flush()
-    return nominee
+        db.add(nominee)
+        await db.flush()
+        return nominee
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to create nominee for customer %s: %s", customer_id, exc)
+        raise
 
 
 async def list_nominees(db: AsyncSession, customer_id: int) -> list[models.Nominee]:
@@ -224,32 +243,35 @@ async def update_nominee(db: AsyncSession, nominee_id: int, customer_id: int, pa
     if not nominee:
         return None
     
-    # Update fields
-    if payload.nominee_name is not None:
-        nominee.nominee_name = payload.nominee_name
-    if payload.nominee_dob is not None:
-        nominee.nominee_dob = payload.nominee_dob
-    if payload.relation is not None:
-        nominee.relation = payload.relation
-    
-    # Handle primary status
-    if payload.is_primary is not None and payload.is_primary:
-        # If setting this as primary, update others to non-primary
-        stmt = select(models.Nominee).filter(
-            models.Nominee.customer_id == customer_id,
-            models.Nominee.is_active == True,
-            models.Nominee.nominee_id != nominee_id
-        )
-        r = await db.execute(stmt)
-        others = r.scalars().all()
-        for o in others:
-            o.is_primary = False
-        nominee.is_primary = True
-    elif payload.is_primary is False:
-        nominee.is_primary = False
-    
-    await db.flush()
-    return nominee
+    try:
+        if payload.nominee_name is not None:
+            nominee.nominee_name = payload.nominee_name
+        if payload.nominee_dob is not None:
+            nominee.nominee_dob = payload.nominee_dob
+        if payload.relation is not None:
+            nominee.relation = payload.relation
+        
+        # Handle primary status
+        if payload.is_primary is not None and payload.is_primary:
+            stmt = select(models.Nominee).filter(
+                models.Nominee.customer_id == customer_id,
+                models.Nominee.is_active == True,
+                models.Nominee.nominee_id != nominee_id
+            )
+            r = await db.execute(stmt)
+            others = r.scalars().all()
+            for o in others:
+                o.is_primary = False
+            nominee.is_primary = True
+        elif payload.is_primary is False:
+            nominee.is_primary = False
+        
+        await db.flush()
+        return nominee
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to update nominee %s: %s", nominee_id, exc)
+        raise
 
 
 async def delete_nominee(
@@ -261,63 +283,73 @@ async def delete_nominee(
     if not nominee:
         return False
 
-    if hard_delete:
-        if current_user["designation"] not in ["Admin", "Dealer"]:
-            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
-        # Reassign primary before hard delete
-        if nominee.is_primary:
-            stmt = select(models.Nominee).filter(
-                models.Nominee.customer_id == customer_id,
-                models.Nominee.is_active == True,
-                models.Nominee.is_deleted == False,
-                models.Nominee.nominee_id != nominee_id
-            )
-            result = await db.execute(stmt)
-            next_nominee = result.scalars().first()
-            if next_nominee:
-                next_nominee.is_primary = True
-        await db.delete(nominee)
-    else:
-        nominee.is_deleted = True
-        nominee.deleted_at = datetime.utcnow()
-        nominee.deleted_by = current_user["staff_id"]
-        nominee.is_active = False
-        # Reassign primary on soft delete
-        if nominee.is_primary:
-            stmt = select(models.Nominee).filter(
-                models.Nominee.customer_id == customer_id,
-                models.Nominee.is_active == True,
-                models.Nominee.is_deleted == False,
-                models.Nominee.nominee_id != nominee_id
-            )
-            result = await db.execute(stmt)
-            next_nominee = result.scalars().first()
-            if next_nominee:
-                next_nominee.is_primary = True
+    try:
+        if hard_delete:
+            if current_user["designation"] not in ["Admin", "Dealer"]:
+                raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+            if nominee.is_primary:
+                stmt = select(models.Nominee).filter(
+                    models.Nominee.customer_id == customer_id,
+                    models.Nominee.is_active == True,
+                    models.Nominee.is_deleted == False,
+                    models.Nominee.nominee_id != nominee_id
+                )
+                result = await db.execute(stmt)
+                next_nominee = result.scalars().first()
+                if next_nominee:
+                    next_nominee.is_primary = True
+            await db.delete(nominee)
+        else:
+            nominee.is_deleted = True
+            nominee.deleted_at = _utc_now_naive()
+            nominee.deleted_by = current_user["staff_id"]
+            nominee.is_active = False
+            if nominee.is_primary:
+                stmt = select(models.Nominee).filter(
+                    models.Nominee.customer_id == customer_id,
+                    models.Nominee.is_active == True,
+                    models.Nominee.is_deleted == False,
+                    models.Nominee.nominee_id != nominee_id
+                )
+                result = await db.execute(stmt)
+                next_nominee = result.scalars().first()
+                if next_nominee:
+                    next_nominee.is_primary = True
 
-    await db.flush()
-    return True
+        await db.flush()
+        return True
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to delete nominee %s: %s", nominee_id, exc)
+        raise
 
 
 # ==================== VEHICLE MODEL SERVICES ====================
 
 async def create_vehicle_model(db: AsyncSession, payload) -> models.VehicleModel:
     """Create a new vehicle model"""
-    vm = models.VehicleModel(
-        brand_id=payload.brand_id,
-        model_name=payload.model_name,
-        material_number=payload.material_number,
-        colour=payload.colour,
-        battery_type=getattr(payload, 'battery_type', None),
-        laden_weight=getattr(payload, 'laden_weight', None),
-        unladen_weight=getattr(payload, 'unladen_weight', None),
-        hsn_code=getattr(payload, 'hsn_code', None),
-        is_active=True,
-        created_at=datetime.utcnow(),
-    )
-    db.add(vm)
-    await db.flush()
-    return vm
+    try:
+        vm = models.VehicleModel(
+            brand_id=payload.brand_id,
+            model_name=payload.model_name,
+            material_number=payload.material_number,
+            colour=payload.colour,
+            battery_type=getattr(payload, 'battery_type', None),
+            laden_weight=getattr(payload, 'laden_weight', None),
+            unladen_weight=getattr(payload, 'unladen_weight', None),
+            hsn_code=getattr(payload, 'hsn_code', None),
+            is_active=True,
+            created_at=_utc_now_naive(),
+        )
+        db.add(vm)
+        await db.flush()
+        return vm
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to create vehicle model %s: %s", getattr(payload, "model_name", None), exc)
+        raise
 
 
 async def get_vehicle_model(db: AsyncSession, vehicle_model_id: int) -> models.VehicleModel | None:
@@ -374,12 +406,17 @@ async def update_vehicle_model(db: AsyncSession, vehicle_model_id: int, payload)
     vm = await get_vehicle_model(db, vehicle_model_id)
     if not vm:
         return None
-    update_data = payload.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(vm, field, value)
-    vm.updated_at = datetime.utcnow()
-    await db.flush()
-    return vm
+    try:
+        update_data = payload.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(vm, field, value)
+        vm.updated_at = _utc_now_naive()
+        await db.flush()
+        return vm
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to update vehicle model %s: %s", vehicle_model_id, exc)
+        raise
 
 
 async def restore_vehicle_model(db: AsyncSession, vehicle_model_id: int, staff_id: int) -> bool:
@@ -392,30 +429,40 @@ async def restore_vehicle_model(db: AsyncSession, vehicle_model_id: int, staff_i
     vm = result.scalars().first()
     if not vm:
         return False
-    vm.is_deleted = False
-    vm.is_active = True
-    vm.deleted_at = None
-    vm.deleted_by = None
-    vm.restored_at = datetime.utcnow()
-    vm.restored_by = staff_id
-    await db.flush()
-    return True
+    try:
+        vm.is_deleted = False
+        vm.is_active = True
+        vm.deleted_at = None
+        vm.deleted_by = None
+        vm.restored_at = _utc_now_naive()
+        vm.restored_by = staff_id
+        await db.flush()
+        return True
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to restore vehicle model %s: %s", vehicle_model_id, exc)
+        raise
 
 
 # ==================== VEHICLE SERVICES ====================
 
 async def create_vehicle(db: AsyncSession, payload) -> models.Vehicle:
     """Create a new vehicle"""
-    v = models.Vehicle(
-        chassis_no=payload.chassis_no,
-        vehicle_model_id=payload.vehicle_model_id,
-        date_of_manufacture=payload.date_of_manufacture,
-        current_status="IN_STOCK",
-        created_at=datetime.utcnow(),
-    )
-    db.add(v)
-    await db.flush()
-    return v
+    try:
+        v = models.Vehicle(
+            chassis_no=payload.chassis_no,
+            vehicle_model_id=payload.vehicle_model_id,
+            date_of_manufacture=payload.date_of_manufacture,
+            current_status="IN_STOCK",
+            created_at=_utc_now_naive(),
+        )
+        db.add(v)
+        await db.flush()
+        return v
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to create vehicle %s: %s", getattr(payload, "chassis_no", None), exc)
+        raise
 
 
 async def get_vehicle(db: AsyncSession, chassis_no: str) -> models.Vehicle | None:
@@ -450,22 +497,27 @@ async def list_vehicles(
 
 async def create_vendor(db: AsyncSession, payload) -> models.Vendor:
     """Create a new vendor"""
-    v = models.Vendor(
-        vendor_name=payload.vendor_name,
-        vendor_type=payload.vendor_type.value if hasattr(payload.vendor_type, 'value') else payload.vendor_type,
-        gstin=getattr(payload, 'gstin', None),
-        pan_no=getattr(payload, 'pan_no', None),
-        address_line1=getattr(payload, 'address_line1', None),
-        address_line2=getattr(payload, 'address_line2', None),
-        city=getattr(payload, 'city', None),
-        state=getattr(payload, 'state', None),
-        pincode=getattr(payload, 'pincode', None),
-        is_active=True,
-        created_at=datetime.utcnow(),
-    )
-    db.add(v)
-    await db.flush()
-    return v
+    try:
+        v = models.Vendor(
+            vendor_name=payload.vendor_name,
+            vendor_type=payload.vendor_type.value if hasattr(payload.vendor_type, 'value') else payload.vendor_type,
+            gstin=getattr(payload, 'gstin', None),
+            pan_no=getattr(payload, 'pan_no', None),
+            address_line1=getattr(payload, 'address_line1', None),
+            address_line2=getattr(payload, 'address_line2', None),
+            city=getattr(payload, 'city', None),
+            state=getattr(payload, 'state', None),
+            pincode=getattr(payload, 'pincode', None),
+            is_active=True,
+            created_at=_utc_now_naive(),
+        )
+        db.add(v)
+        await db.flush()
+        return v
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to create vendor %s: %s", getattr(payload, "vendor_name", None), exc)
+        raise
 
 
 async def get_vendor(db: AsyncSession, vendor_id: int) -> models.Vendor | None:
@@ -495,14 +547,19 @@ async def update_vendor(db: AsyncSession, vendor_id: int, payload) -> models.Ven
     vendor = await get_vendor(db, vendor_id)
     if not vendor:
         return None
-    update_data = payload.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        if field == 'vendor_type' and hasattr(value, 'value'):
-            value = value.value
-        setattr(vendor, field, value)
-    vendor.updated_at = datetime.utcnow()
-    await db.flush()
-    return vendor
+    try:
+        update_data = payload.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            if field == 'vendor_type' and hasattr(value, 'value'):
+                value = value.value
+            setattr(vendor, field, value)
+        vendor.updated_at = _utc_now_naive()
+        await db.flush()
+        return vendor
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to update vendor %s: %s", vendor_id, exc)
+        raise
 
 
 async def restore_vendor(db: AsyncSession, vendor_id: int, staff_id: int) -> bool:
@@ -515,57 +572,68 @@ async def restore_vendor(db: AsyncSession, vendor_id: int, staff_id: int) -> boo
     vendor = result.scalars().first()
     if not vendor:
         return False
-    vendor.is_deleted = False
-    vendor.is_active = True
-    vendor.deleted_at = None
-    vendor.deleted_by = None
-    vendor.restored_at = datetime.utcnow()
-    vendor.restored_by = staff_id
-    await db.flush()
-    return True
+    try:
+        vendor.is_deleted = False
+        vendor.is_active = True
+        vendor.deleted_at = None
+        vendor.deleted_by = None
+        vendor.restored_at = _utc_now_naive()
+        vendor.restored_by = staff_id
+        await db.flush()
+        return True
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to restore vendor %s: %s", vendor_id, exc)
+        raise
 
 
 # ==================== PRICING SERVICES ====================
 
 async def update_spare_price(db: AsyncSession, spare_id: int, payload, user_id: int) -> models.SparePriceHistory:
     """Update spare part price and maintain history"""
-    # 1. Close current active price
-    stmt = select(models.SparePriceHistory).filter(
-        models.SparePriceHistory.spare_id == spare_id,
-        models.SparePriceHistory.is_active == True
-    )
-    result = await db.execute(stmt)
-    current_price = result.scalars().first()
-    
-    now = datetime.utcnow()
-    
-    if current_price:
-        current_price.is_active = False
-        current_price.effective_to = now
-    
-    # 2. Create new history record
-    new_price = models.SparePriceHistory(
-        spare_id=spare_id,
-        price=payload.price,
-        margin=payload.margin,
-        effective_from=payload.effective_from or now,
-        is_active=True,
-        created_by=user_id,
-        created_at=now
-    )
-    db.add(new_price)
-    
-    # 3. Publish Event for Inventory/other domains to react
-    await event_bus.publish(
-        SparePriceUpdatedEvent(
+    try:
+        # 1. Close current active price
+        stmt = select(models.SparePriceHistory).filter(
+            models.SparePriceHistory.spare_id == spare_id,
+            models.SparePriceHistory.is_active == True
+        )
+        result = await db.execute(stmt)
+        current_price = result.scalars().first()
+        
+        now = _utc_now_naive()
+        
+        if current_price:
+            current_price.is_active = False
+            current_price.effective_to = now
+        
+        # 2. Create new history record
+        new_price = models.SparePriceHistory(
             spare_id=spare_id,
             price=payload.price,
-            margin=payload.margin
+            margin=payload.margin,
+            effective_from=payload.effective_from or now,
+            is_active=True,
+            created_by=user_id,
+            created_at=now
         )
-    )
+        db.add(new_price)
+        await db.flush()
 
-    await db.flush()
-    return new_price
+        # 3. Publish Event post-flush for Inventory/other domains to react safely
+        await event_bus.publish(
+            SparePriceUpdatedEvent(
+                spare_id=spare_id,
+                price=payload.price,
+                margin=payload.margin
+            )
+        )
+
+        return new_price
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to update spare price for spare_id %s: %s", spare_id, exc)
+        raise
+
 
 async def get_spare_price_history(db: AsyncSession, spare_id: int) -> list[models.SparePriceHistory]:
     stmt = select(models.SparePriceHistory).filter(
@@ -574,34 +642,41 @@ async def get_spare_price_history(db: AsyncSession, spare_id: int) -> list[model
     result = await db.execute(stmt)
     return result.scalars().all()
 
+
 async def update_vehicle_price(db: AsyncSession, vehicle_model_id: int, payload, user_id: int) -> models.VehiclePriceHistory:
     """Update vehicle model price"""
-    # 1. Close current active price
-    stmt = select(models.VehiclePriceHistory).filter(
-        models.VehiclePriceHistory.vehicle_model_id == vehicle_model_id,
-        models.VehiclePriceHistory.is_active == True
-    )
-    result = await db.execute(stmt)
-    current_price = result.scalars().first()
-    
-    now = datetime.utcnow()
-    
-    if current_price:
-        current_price.is_active = False
-        current_price.effective_to = now
+    try:
+        # 1. Close current active price
+        stmt = select(models.VehiclePriceHistory).filter(
+            models.VehiclePriceHistory.vehicle_model_id == vehicle_model_id,
+            models.VehiclePriceHistory.is_active == True
+        )
+        result = await db.execute(stmt)
+        current_price = result.scalars().first()
         
-    # 2. Create new history record
-    new_price = models.VehiclePriceHistory(
-        vehicle_model_id=vehicle_model_id,
-        price=payload.price,
-        effective_from=payload.effective_from or now,
-        is_active=True,
-        created_by=user_id,
-        created_at=now
-    )
-    db.add(new_price)
-    await db.flush()
-    return new_price
+        now = _utc_now_naive()
+        
+        if current_price:
+            current_price.is_active = False
+            current_price.effective_to = now
+            
+        # 2. Create new history record
+        new_price = models.VehiclePriceHistory(
+            vehicle_model_id=vehicle_model_id,
+            price=payload.price,
+            effective_from=payload.effective_from or now,
+            is_active=True,
+            created_by=user_id,
+            created_at=now
+        )
+        db.add(new_price)
+        await db.flush()
+        return new_price
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to update vehicle price for model %s: %s", vehicle_model_id, exc)
+        raise
+
 
 async def get_vehicle_price_history(db: AsyncSession, vehicle_model_id: int) -> list[models.VehiclePriceHistory]:
     stmt = select(models.VehiclePriceHistory).filter(
@@ -622,18 +697,25 @@ async def delete_customer(
     if not customer:
         return False
 
-    if hard_delete:
-        if current_user["designation"] not in ["Admin", "Dealer"]:
-            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
-        await db.delete(customer)
-    else:
-        customer.is_deleted = True
-        customer.deleted_at = datetime.utcnow()
-        customer.deleted_by = current_user["staff_id"]
-        customer.is_active = False
+    try:
+        if hard_delete:
+            if current_user["designation"] not in ["Admin", "Dealer"]:
+                raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+            await db.delete(customer)
+        else:
+            customer.is_deleted = True
+            customer.deleted_at = _utc_now_naive()
+            customer.deleted_by = current_user["staff_id"]
+            customer.is_active = False
 
-    await db.flush()
-    return True
+        await db.flush()
+        return True
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to delete customer %s: %s", customer_id, exc)
+        raise
 
 
 async def delete_vehicle_model(
@@ -650,18 +732,25 @@ async def delete_vehicle_model(
     if not vm:
         return False
 
-    if hard_delete:
-        if current_user["designation"] not in ["Admin", "Dealer"]:
-            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
-        await db.delete(vm)
-    else:
-        vm.is_deleted = True
-        vm.deleted_at = datetime.utcnow()
-        vm.deleted_by = current_user["staff_id"]
-        vm.is_active = False
+    try:
+        if hard_delete:
+            if current_user["designation"] not in ["Admin", "Dealer"]:
+                raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+            await db.delete(vm)
+        else:
+            vm.is_deleted = True
+            vm.deleted_at = _utc_now_naive()
+            vm.deleted_by = current_user["staff_id"]
+            vm.is_active = False
 
-    await db.flush()
-    return True
+        await db.flush()
+        return True
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to delete vehicle model %s: %s", vehicle_model_id, exc)
+        raise
 
 
 async def delete_vehicle(
@@ -673,17 +762,24 @@ async def delete_vehicle(
     if not vehicle:
         return False
 
-    if hard_delete:
-        if current_user["designation"] not in ["Admin", "Dealer"]:
-            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
-        await db.delete(vehicle)
-    else:
-        vehicle.is_deleted = True
-        vehicle.deleted_at = datetime.utcnow()
-        vehicle.deleted_by = current_user["staff_id"]
+    try:
+        if hard_delete:
+            if current_user["designation"] not in ["Admin", "Dealer"]:
+                raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+            await db.delete(vehicle)
+        else:
+            vehicle.is_deleted = True
+            vehicle.deleted_at = _utc_now_naive()
+            vehicle.deleted_by = current_user["staff_id"]
 
-    await db.flush()
-    return True
+        await db.flush()
+        return True
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to delete vehicle %s: %s", chassis_no, exc)
+        raise
 
 
 async def delete_vendor(
@@ -700,16 +796,22 @@ async def delete_vendor(
     if not vendor:
         return False
 
-    if hard_delete:
-        if current_user["designation"] not in ["Admin", "Dealer"]:
-            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
-        await db.delete(vendor)
-    else:
-        vendor.is_deleted = True
-        vendor.deleted_at = datetime.utcnow()
-        vendor.deleted_by = current_user["staff_id"]
-        vendor.is_active = False
+    try:
+        if hard_delete:
+            if current_user["designation"] not in ["Admin", "Dealer"]:
+                raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+            await db.delete(vendor)
+        else:
+            vendor.is_deleted = True
+            vendor.deleted_at = _utc_now_naive()
+            vendor.deleted_by = current_user["staff_id"]
+            vendor.is_active = False
 
-    await db.flush()
-    return True
-
+        await db.flush()
+        return True
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to delete vendor %s: %s", vendor_id, exc)
+        raise

@@ -1,11 +1,19 @@
+import logging
+from datetime import datetime, timezone
+from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime
 from fastapi import HTTPException
 
 from app.modules.finance.models import VehicleFinance
 from app.modules.sales.models import Sale
+
+logger = logging.getLogger(__name__)
+
+
+def _utc_now_naive() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class FinanceError(Exception):
@@ -19,10 +27,10 @@ async def create_finance(
     financer_name: str,
     loan_amount: float,
     down_payment: float,
-    financer_contact: str | None = None,
-    remarks: str | None = None,
+    financer_contact: Optional[str] = None,
+    remarks: Optional[str] = None,
 ) -> VehicleFinance:
-
+    """Create a new vehicle finance record attached to a sale with transactional rollback protection."""
     sale = await db.get(Sale, sale_id)
     if not sale:
         raise FinanceError("Invalid sale")
@@ -36,19 +44,24 @@ async def create_finance(
         finance_status="INITIATED",
         remarks=remarks,
     )
-
     db.add(finance)
 
     try:
         await db.flush()
-    except IntegrityError:
-        raise FinanceError("Finance already exists for this sale")
+    except IntegrityError as exc:
+        await db.rollback()
+        logger.warning("Finance already exists for sale %s: %s", sale_id, exc)
+        raise FinanceError("Finance already exists for this sale") from exc
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to create finance record for sale %s: %s", sale_id, exc, exc_info=True)
+        raise
 
     return finance
 
 
-async def get_finance(db: AsyncSession, finance_id: int) -> VehicleFinance | None:
-    """Get a finance record by ID (excludes soft-deleted)"""
+async def get_finance(db: AsyncSession, finance_id: int) -> Optional[VehicleFinance]:
+    """Get a finance record by ID (excludes soft-deleted)."""
     stmt = select(VehicleFinance).filter(
         VehicleFinance.finance_id == finance_id,
         VehicleFinance.is_deleted == False
@@ -57,13 +70,13 @@ async def get_finance(db: AsyncSession, finance_id: int) -> VehicleFinance | Non
     return result.scalars().first()
 
 
-async def list_finances(db: AsyncSession) -> list[VehicleFinance]:
-    """List all finance records (excludes soft-deleted)"""
+async def list_finances(db: AsyncSession) -> List[VehicleFinance]:
+    """List all finance records (excludes soft-deleted)."""
     stmt = select(VehicleFinance).filter(
         VehicleFinance.is_deleted == False
     ).order_by(VehicleFinance.finance_id.desc())
     result = await db.execute(stmt)
-    return result.scalars().all()
+    return list(result.scalars().all())
 
 
 async def update_finance_status(
@@ -71,13 +84,14 @@ async def update_finance_status(
     *,
     finance: VehicleFinance,
     finance_status: str,
-    reference_number: str | None = None,
-    remarks: str | None = None,
+    reference_number: Optional[str] = None,
+    remarks: Optional[str] = None,
 ):
+    """Update financing status and approval reference."""
     finance.finance_status = finance_status
     finance.reference_number = reference_number
     finance.remarks = remarks
-    finance.updated_at = datetime.utcnow()
+    finance.updated_at = _utc_now_naive()
     await db.flush()
 
 
@@ -87,7 +101,7 @@ async def delete_finance(
     db: AsyncSession, finance_id: int,
     current_user: dict, hard_delete: bool = False
 ) -> bool:
-    """Delete a finance record (soft by default, hard if authorized)"""
+    """Delete a finance record (soft by default, hard if authorized)."""
     finance = await get_finance(db, finance_id)
     if not finance:
         return False
@@ -98,7 +112,7 @@ async def delete_finance(
         await db.delete(finance)
     else:
         finance.is_deleted = True
-        finance.deleted_at = datetime.utcnow()
+        finance.deleted_at = _utc_now_naive()
         finance.deleted_by = current_user["staff_id"]
 
     await db.flush()

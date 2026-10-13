@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -8,16 +6,17 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-showroom_db}
+      POSTGRES_DB: ${POSTGRES_DB:-ev_showroom_erp}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-showroom_db}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-ev_showroom_erp}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - ev_erp_network
 
@@ -35,6 +34,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
     networks:
       - ev_erp_network
 
@@ -44,8 +44,25 @@ services:
       dockerfile: Dockerfile
     container_name: ev_erp_backend
     restart: unless-stopped
-    env_file:
-      - ./backend/.env
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      PROJECT_NAME: ${PROJECT_NAME:-EV Showroom ERP}
+      API_V1_STR: ${API_V1_STR:-/api/v1}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ev_showroom_erp}}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_DB: ${REDIS_DB:-0}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change_this_to_a_cryptographically_secure_random_key_in_production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-240}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-5}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-300}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -53,6 +70,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - ev_erp_network
 
@@ -64,12 +87,17 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
     container_name: ev_erp_frontend
     restart: unless-stopped
-    env_file:
-      - ./frontend/.env
     ports:
       - "${FRONTEND_PORT:-3000}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - ev_erp_network
 

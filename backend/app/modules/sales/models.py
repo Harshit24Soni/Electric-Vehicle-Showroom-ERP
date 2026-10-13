@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime
+from datetime import datetime, date
 
 from sqlalchemy import (
     BigInteger,
@@ -17,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.mixins import AuditMixin, SoftDeleteMixin
+from app.db.mixins import AuditMixin, SoftDeleteMixin, utc_now, utc_now_naive
 
 
 class SaleStage(str, enum.Enum):
@@ -46,7 +46,7 @@ class Sale(Base, AuditMixin, SoftDeleteMixin):
     # Linking to specific vehicle (inventory item)
     chassis_no: Mapped[str] = mapped_column(String(50), nullable=False, unique=True) # Soft link to master.vehicle
     
-    sale_date: Mapped[datetime] = mapped_column(Date, nullable=False, default=datetime.utcnow)
+    sale_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
     total_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     sale_status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING") # PENDING, INVOICED, DELIVERED, CANCELLED
     
@@ -91,7 +91,7 @@ class Sale(Base, AuditMixin, SoftDeleteMixin):
         new_idx = self._STAGE_ORDER.index(to_enum)
         if new_idx > current_idx:
             self.sale_stage = to_enum.value
-            self.stage_updated_at = datetime.utcnow()
+            self.stage_updated_at = utc_now_naive()
             return True
         return False
 
@@ -115,7 +115,7 @@ class PaymentReceipt(Base, AuditMixin, SoftDeleteMixin):
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     payment_mode: Mapped[str] = mapped_column(String(20), nullable=False) # CASH, UPI, CARD, CHEQUE, FINANCE
     transaction_ref: Mapped[str | None] = mapped_column(String(100))
-    receipt_date: Mapped[datetime] = mapped_column(Date, default=datetime.utcnow)
+    receipt_date: Mapped[date] = mapped_column(Date, default=date.today)
     
     created_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to master.staff
 
@@ -198,7 +198,7 @@ class SalePayment(Base, AuditMixin, SoftDeleteMixin):
     payment_mode: Mapped[str] = mapped_column(String(20), nullable=False)  # CASH, UPI, CARD, CHEQUE, FINANCE
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     reference_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    payment_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False, default=datetime.utcnow)
+    payment_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False, default=utc_now_naive)
     bank_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_staff_id: Mapped[int] = mapped_column(
@@ -222,7 +222,7 @@ class SaleDocument(Base, AuditMixin, SoftDeleteMixin):
     )
     document_type: Mapped[str] = mapped_column(String(50), nullable=False)  # INVOICE, RECEIPT, CHALLAN, INSURANCE, SERVICE_SCHEDULE
     document_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
-    generated_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False, default=datetime.utcnow)
+    generated_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False, default=utc_now_naive)
     generated_by_staff_id: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
@@ -295,7 +295,7 @@ class SpareSale(Base, AuditMixin, SoftDeleteMixin):
     
     sale_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     customer_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to master.customer
-    sale_date: Mapped[datetime] = mapped_column(Date, nullable=False, default=datetime.utcnow)
+    sale_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
     
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="DRAFT") # DRAFT, CONFIRMED, CANCELLED
     

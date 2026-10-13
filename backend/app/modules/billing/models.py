@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 
 from app.db.base import Base
-from app.db.mixins import AuditMixin, SoftDeleteMixin
+from app.db.mixins import AuditMixin, SoftDeleteMixin, utc_now_naive
 
 
 class SalesInvoice(Base, AuditMixin, SoftDeleteMixin):
@@ -30,7 +30,7 @@ class SalesInvoice(Base, AuditMixin, SoftDeleteMixin):
     )
 
     invoice_date: Mapped[datetime] = mapped_column(
-        TIMESTAMP, default=datetime.utcnow
+        TIMESTAMP, default=utc_now_naive
     )
 
     taxable_amount: Mapped[float] = mapped_column(
@@ -87,7 +87,7 @@ class VehicleSubsidy(Base, AuditMixin, SoftDeleteMixin):
     )
 
     last_updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, default=datetime.utcnow
+        TIMESTAMP, default=utc_now_naive
     )
 
     remarks: Mapped[str | None] = mapped_column(String)

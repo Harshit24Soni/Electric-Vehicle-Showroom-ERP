@@ -38,8 +38,8 @@ test.describe('Diagnostic Focus', () => {
     await page.click('button:has-text("Add Spare")');
     await expect(page.locator('h2', { hasText: 'Add Spare to Job Card' })).toBeVisible();
 
-    // Wait a bit to ensure rendering
-    await page.waitForTimeout(2000);
+    // Wait to ensure rendering
+    await expect(page.locator('select').first()).toBeVisible();
 
     // Diagnostics: Print all selects on the page
     console.log('\n=== SELECT DIAGNOSTICS ===');

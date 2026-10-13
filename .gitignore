@@ -1,29 +1,50 @@
-# General
-.cursor
-.DS_Store
-*.log
-
-# Python / FastAPI (Backend)
+# Python / FastAPI
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.venv/
+env/
 venv/
-.env
+ENV/
 .pytest_cache/
+.mypy_cache/
+.coverage
 htmlcov/
-site/
-coverage.xml
+*.xml
 
-# Node / React (Frontend)
+# Node / Frontend
 node_modules/
 dist/
 dist-ssr/
-*.local
-.vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+.vite/
+.npm
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# IDEs & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Playwright & Test Results
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Temporary dumps and diagnostic logs
+*.log
+*.tmp
+*_files_ansi.txt
+*_files_clean.txt

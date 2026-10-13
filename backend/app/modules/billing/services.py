@@ -1,11 +1,20 @@
+import logging
+from datetime import datetime, timezone
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime
 from fastapi import HTTPException
 
 from app.modules.billing.models import SalesInvoice
 from app.modules.sales.models import Sale
+
+logger = logging.getLogger(__name__)
+
+
+def _utc_now_naive() -> datetime:
+    """Return current naive UTC datetime for standard TIMESTAMP storage."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class BillingError(Exception):
@@ -51,7 +60,7 @@ async def generate_invoice(
     gst_rate: float,
     remarks: str | None = None,
 ) -> SalesInvoice:
-
+    """Generate a preliminary sales invoice for a delivered vehicle."""
     sale = await db.get(Sale, sale_id)
     if not sale or getattr(sale, "sale_status", None) != "DELIVERED":
         raise BillingError("Invoice can only be generated after vehicle delivery")
@@ -70,7 +79,7 @@ async def generate_invoice(
 
     invoice = SalesInvoice(
         sale_id=sale_id,
-        invoice_number=f"INV-{sale_id}-{int(datetime.utcnow().timestamp())}",
+        invoice_number=f"INV-{sale_id}-{int(_utc_now_naive().timestamp())}",
         taxable_amount=taxable_amount,
         gst_rate=gst_rate,
         gst_amount=gst_amount,
@@ -83,10 +92,15 @@ async def generate_invoice(
     try:
         db.add(invoice)
         await db.flush()
-    except IntegrityError as e:
-        raise InvoiceAlreadyExistsError("Invoice creation failed due to unique constraint") from e
-
-    return invoice
+        return invoice
+    except IntegrityError as exc:
+        await db.rollback()
+        logger.error("Unique constraint violation generating invoice for sale %s: %s", sale_id, exc)
+        raise InvoiceAlreadyExistsError("Invoice creation failed due to unique constraint") from exc
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to generate invoice for sale %s: %s", sale_id, exc)
+        raise
 
 
 async def revise_invoice(
@@ -97,28 +111,38 @@ async def revise_invoice(
     gst_rate: float,
     remarks: str | None = None,
 ) -> SalesInvoice:
-
+    """Revise non-finalized invoice pricing."""
     if invoice.is_final:
         raise InvoiceNotEditableError("Finalized invoice cannot be edited")
 
-    invoice.revision_no = (invoice.revision_no or 0) + 1
-    invoice.taxable_amount = taxable_amount
-    invoice.gst_rate = gst_rate
-    invoice.gst_amount = round(taxable_amount * gst_rate / 100, 2)
-    invoice.total_amount = round(invoice.taxable_amount + invoice.gst_amount, 2)
-    invoice.remarks = remarks
-    await db.flush()
+    try:
+        invoice.revision_no = (invoice.revision_no or 0) + 1
+        invoice.taxable_amount = taxable_amount
+        invoice.gst_rate = gst_rate
+        invoice.gst_amount = round(taxable_amount * gst_rate / 100, 2)
+        invoice.total_amount = round(invoice.taxable_amount + invoice.gst_amount, 2)
+        invoice.remarks = remarks
+        await db.flush()
+        return invoice
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to revise invoice %s: %s", getattr(invoice, 'invoice_id', None), exc)
+        raise
 
-    return invoice
 
-
-async def finalize_invoice(db: AsyncSession, *, invoice: SalesInvoice):
+async def finalize_invoice(db: AsyncSession, *, invoice: SalesInvoice) -> SalesInvoice:
+    """Lock invoice as finalized."""
     if invoice.is_final:
         raise InvoiceNotFinalizableError("Invoice already finalized")
 
-    invoice.is_final = True
-    await db.flush()
-    return invoice
+    try:
+        invoice.is_final = True
+        await db.flush()
+        return invoice
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to finalize invoice %s: %s", getattr(invoice, 'invoice_id', None), exc)
+        raise
 
 
 # ==================== DELETE SERVICES ====================
@@ -132,14 +156,21 @@ async def delete_invoice(
     if not invoice:
         return False
 
-    if hard_delete:
-        if current_user["designation"] not in ["Admin", "Dealer"]:
-            raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
-        await db.delete(invoice)
-    else:
-        invoice.is_deleted = True
-        invoice.deleted_at = datetime.utcnow()
-        invoice.deleted_by = current_user["staff_id"]
+    try:
+        if hard_delete:
+            if current_user["designation"] not in ["Admin", "Dealer"]:
+                raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
+            await db.delete(invoice)
+        else:
+            invoice.is_deleted = True
+            invoice.deleted_at = _utc_now_naive()
+            invoice.deleted_by = current_user["staff_id"]
 
-    await db.flush()
-    return True
+        await db.flush()
+        return True
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to delete invoice %s: %s", invoice_id, exc)
+        raise

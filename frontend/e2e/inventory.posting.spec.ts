@@ -58,10 +58,13 @@ test.describe('Purchase to Inventory Posting Workflow', () => {
     await batchInput.fill('BATCH-001');
 
     // 7. Submit Posting
+    const postResponsePromise = page.waitForResponse(response => 
+      response.url().includes('/procurement/purchases/spares/1/post')
+    );
     await page.click('button:has-text("Confirm & Post")');
+    await postResponsePromise;
 
     // 8. Verify Payload
-    await page.waitForTimeout(500); // Give time for request to complete
     expect(postedPayload).toBeTruthy();
     expect(postedPayload.location).toBe('MAIN_WAREHOUSE');
     expect(postedPayload.items).toHaveLength(2);

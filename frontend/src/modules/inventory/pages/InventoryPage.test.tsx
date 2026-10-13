@@ -23,7 +23,20 @@ describe('InventoryPage', () => {
       { vehicle_id: 3, chassis_no: 'CH3', vehicle_status: 'SOLD', color: 'Green' },
     ]
     
-    vi.mocked(api.get).mockResolvedValueOnce(mockVehicles)
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url.includes('/master/vehicles')) {
+        return mockVehicles
+      }
+      if (url.includes('/inventory/dashboard/stats')) {
+        return { total_active_spares: 12, total_stock_value: 50000, movements_30d: 5 }
+      }
+      if (url.includes('/inventory/stock/locations')) {
+        return [{ location: 'MAIN', total_items: 10, total_value: 20000 }]
+      }
+      return []
+    })
+
+    const { fireEvent } = await import('@testing-library/react')
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -31,15 +44,17 @@ describe('InventoryPage', () => {
       </QueryClientProvider>
     )
 
-    // Wait for the data to load
+    // Switch to Vehicles tab
+    const vehiclesTabBtn = screen.getByRole('button', { name: /Vehicles/i })
+    expect(vehiclesTabBtn).toBeInTheDocument()
+    fireEvent.click(vehiclesTabBtn)
+
+    // Wait for the vehicle data to load
     await waitFor(() => {
       expect(screen.getByText('CH1')).toBeInTheDocument()
     })
 
-    // Assert that status counts are visible (we use text content or similar if we added data-testid, but here we can check if '1' is present next to 'In Stock')
-    // Wait, the status cards render the count inside a <p> next to the label.
-    // E.g., <p>1</p> <p>In Stock</p>
-    const inStockCount = screen.getAllByText('1')[0]
-    expect(inStockCount).toBeInTheDocument()
+    expect(screen.getByText('CH2')).toBeInTheDocument()
+    expect(screen.getByText('CH3')).toBeInTheDocument()
   })
 })

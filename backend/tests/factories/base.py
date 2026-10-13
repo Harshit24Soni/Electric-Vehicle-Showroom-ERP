@@ -22,7 +22,7 @@ class BaseFactory:
         """Creates and saves a model instance to the database."""
         instance = cls.build(**kwargs)
         db_session.add(instance)
-        await db_session.commit()
+        await db_session.flush()
         await db_session.refresh(instance)
         return instance
 

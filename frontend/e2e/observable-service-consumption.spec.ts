@@ -23,8 +23,9 @@ test.describe('Observable Service Spare Consumption Fullstack E2E', () => {
     console.log('--- Step 3: Navigate to Service ---');
     if (isMobile) {
         await page.locator('button:has(.lucide-menu)').click({ force: true });
-        await page.waitForTimeout(500);
-        await page.locator('.fixed.inset-0').locator('a[href="/service"]').click({ force: true });
+        const mobileNav = page.locator('.fixed.inset-0');
+        await expect(mobileNav).toBeVisible();
+        await mobileNav.locator('a[href="/service"]').click({ force: true });
     } else {
         await page.locator('.hidden.lg\\:block').locator('a[href="/service"]').click({ force: true });
     }
@@ -108,8 +109,9 @@ test.describe('Observable Service Spare Consumption Fullstack E2E', () => {
     console.log('--- Step 10: Navigate to Inventory ---');
     if (isMobile) {
         await page.locator('button:has(.lucide-menu)').click({ force: true });
-        await page.waitForTimeout(500);
-        await page.locator('.fixed.inset-0').locator('a[href="/inventory"]').click({ force: true });
+        const mobileNav = page.locator('.fixed.inset-0');
+        await expect(mobileNav).toBeVisible();
+        await mobileNav.locator('a[href="/inventory"]').click({ force: true });
     } else {
         await page.locator('.hidden.lg\\:block').locator('a[href="/inventory"]').click({ force: true });
     }
@@ -135,8 +137,9 @@ test.describe('Observable Service Spare Consumption Fullstack E2E', () => {
     console.log('--- Step 12: Reverse Consumption ---');
     if (isMobile) {
         await page.locator('button:has(.lucide-menu)').click({ force: true });
-        await page.waitForTimeout(500);
-        await page.locator('.fixed.inset-0').locator('a[href="/service"]').click({ force: true });
+        const mobileNav = page.locator('.fixed.inset-0');
+        await expect(mobileNav).toBeVisible();
+        await mobileNav.locator('a[href="/service"]').click({ force: true });
     } else {
         await page.locator('.hidden.lg\\:block').locator('a[href="/service"]').click({ force: true });
     }
@@ -155,8 +158,9 @@ test.describe('Observable Service Spare Consumption Fullstack E2E', () => {
     console.log('--- Step 13: Verify Inventory Restoration ---');
     if (isMobile) {
         await page.locator('button:has(.lucide-menu)').click({ force: true });
-        await page.waitForTimeout(500);
-        await page.locator('.fixed.inset-0').locator('a[href="/inventory"]').click({ force: true });
+        const mobileNav = page.locator('.fixed.inset-0');
+        await expect(mobileNav).toBeVisible();
+        await mobileNav.locator('a[href="/inventory"]').click({ force: true });
     } else {
         await page.locator('.hidden.lg\\:block').locator('a[href="/inventory"]').click({ force: true });
     }

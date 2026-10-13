@@ -1,12 +1,19 @@
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional
 from fastapi import HTTPException
 
 from app.modules.crm import models
 from app.modules.crm import schemas as crm_schemas
+
+logger = logging.getLogger(__name__)
+
+
+def _utc_now_naive() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class CRMError(Exception):
@@ -29,11 +36,11 @@ async def create_lead(db: AsyncSession, *, payload, current_staff_id: int) -> mo
         created_by_staff_id=current_staff_id,
         expected_purchase_date=payload.expected_purchase_date,
         remarks=payload.remarks,
-        created_at=datetime.utcnow(),
+        created_at=_utc_now_naive(),
         # New workflow fields
         expected_purchase_days=getattr(payload, 'expected_purchase_days', None),
         lead_status=getattr(payload, 'lead_status', 'WARM'),
-        visit_date=datetime.utcnow(),
+        visit_date=_utc_now_naive(),
     )
     # Auto-calculate next followup date
     lead.calculate_next_followup()
@@ -124,7 +131,7 @@ async def delete_lead(
         await db.delete(lead)
     else:
         lead.is_deleted = True
-        lead.deleted_at = datetime.utcnow()
+        lead.deleted_at = _utc_now_naive()
         lead.deleted_by = current_user["staff_id"]
 
     await db.flush()
@@ -152,70 +159,76 @@ async def convert_lead_to_customer(
     from app.modules.master import models as master_models
 
     # (a) Fetch Lead & guard
-    lead = await get_lead(db, lead_id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-    if lead.is_converted:
-        raise HTTPException(status_code=400, detail="This lead has already been converted to a customer.")
+    try:
+        lead = await get_lead(db, lead_id)
+        if not lead:
+            raise HTTPException(status_code=404, detail="Lead not found")
+        if lead.is_converted:
+            raise HTTPException(status_code=400, detail="This lead has already been converted to a customer.")
 
-    # (b) Create Customer
-    customer = master_models.Customer(
-        lead_reference_id=lead_id,
-        name=payload.name,
-        primary_phone=payload.phone,
-        email=payload.email,
-        customer_type=payload.customer_type,
-        address_line1=payload.address_line1,
-        city=payload.city,
-        state=payload.state,
-        pincode=payload.pincode,
-        aadhaar_no=payload.aadhaar_no,
-        pan_no=payload.pan_no,
-        is_active=True,
-        created_at=datetime.utcnow(),
-        created_by=current_user["staff_id"],
-    )
-    db.add(customer)
-    await db.flush()  # get customer_id
+        # (b) Create Customer
+        customer = master_models.Customer(
+            lead_reference_id=lead_id,
+            name=payload.name,
+            primary_phone=payload.phone,
+            email=payload.email,
+            customer_type=payload.customer_type,
+            address_line1=payload.address_line1,
+            city=payload.city,
+            state=payload.state,
+            pincode=payload.pincode,
+            aadhaar_no=payload.aadhaar_no,
+            pan_no=payload.pan_no,
+            is_active=True,
+            created_at=_utc_now_naive(),
+            created_by=current_user["staff_id"],
+        )
+        db.add(customer)
+        await db.flush()  # get customer_id
 
-    # (c) Create primary Nominee
-    nominee = master_models.Nominee(
-        customer_id=customer.customer_id,
-        nominee_name=payload.nominee.nominee_name,
-        nominee_dob=payload.nominee.nominee_dob,
-        relation=payload.nominee.relation,
-        is_primary=True,
-        is_active=True,
-        created_at=datetime.utcnow(),
-        created_by=current_user["staff_id"],
-    )
-    db.add(nominee)
-    await db.flush()  # get nominee_id
+        # (c) Create primary Nominee
+        nominee = master_models.Nominee(
+            customer_id=customer.customer_id,
+            nominee_name=payload.nominee.nominee_name,
+            nominee_dob=payload.nominee.nominee_dob,
+            relation=payload.nominee.relation,
+            is_primary=True,
+            is_active=True,
+            created_at=_utc_now_naive(),
+            created_by=current_user["staff_id"],
+        )
+        db.add(nominee)
+        await db.flush()  # get nominee_id
 
-    # (d) Update Lead — mark converted
-    lead.is_converted = True
-    lead.customer_id = customer.customer_id
+        # (d) Update Lead — mark converted
+        lead.is_converted = True
+        lead.customer_id = customer.customer_id
 
-    # Fetch CONVERTED / SOLD status from master
-    stmt = select(models.LeadStatusMaster).filter(
-        models.LeadStatusMaster.status_name.in_(("CONVERTED", "SOLD"))
-    )
-    result = await db.execute(stmt)
-    converted_status = result.scalars().first()
-    if converted_status:
-        lead.lead_status_id = converted_status.status_id
-    lead.lead_status = "SOLD"
-    lead.next_followup_date = None  # No more follow-ups needed
+        # Fetch CONVERTED / SOLD status from master
+        stmt = select(models.LeadStatusMaster).filter(
+            models.LeadStatusMaster.status_name.in_(("CONVERTED", "SOLD"))
+        )
+        result = await db.execute(stmt)
+        converted_status = result.scalars().first()
+        if converted_status:
+            lead.lead_status_id = converted_status.status_id
+        lead.lead_status = "SOLD"
+        lead.next_followup_date = None  # No more follow-ups needed
 
-    # (e) Commit atomically
-    await db.commit()
+        # (e) Commit atomically
+        await db.commit()
 
-    return {
-        "message": "Lead converted to customer successfully",
-        "customer_id": customer.customer_id,
-        "lead_id": lead_id,
-        "nominee_id": nominee.nominee_id,
-    }
+        return {
+            "message": "Lead converted to customer successfully",
+            "customer_id": customer.customer_id,
+            "lead_id": lead_id,
+            "nominee_id": nominee.nominee_id,
+        }
+    except Exception as exc:
+        await db.rollback()
+        logger.error("Failed to convert lead %s to customer: %s", lead_id, exc, exc_info=True)
+        raise
+
 
 
 async def assign_lead(db: AsyncSession, lead_id: int, new_owner_id: int, changed_by: int):
@@ -230,7 +243,7 @@ async def assign_lead(db: AsyncSession, lead_id: int, new_owner_id: int, changed
         old_staff_id=lead.owner_staff_id,
         new_staff_id=new_owner_id,
         changed_by_staff_id=changed_by,
-        changed_at=datetime.utcnow()
+        changed_at=_utc_now_naive()
     )
     db.add(history)
 
@@ -268,7 +281,7 @@ async def create_enquiry(db: AsyncSession, payload, current_staff_id: int) -> mo
         owner_staff_id=payload.owner_staff_id or current_staff_id,
         created_by_staff_id=current_staff_id,
         remarks=payload.remarks,
-        created_at=datetime.utcnow(),
+        created_at=_utc_now_naive(),
     )
     db.add(enquiry)
     await db.flush()
@@ -345,7 +358,7 @@ async def add_followup(db: AsyncSession, payload, current_staff_id: int) -> mode
         assigned_staff_id=payload.assigned_staff_id or current_staff_id,
         followup_status="PENDING",
         remarks=payload.remarks,
-        created_at=datetime.utcnow(),
+        created_at=_utc_now_naive(),
     )
     db.add(f)
     await db.flush()
@@ -394,7 +407,7 @@ async def update_followup(db: AsyncSession, followup_id: int, payload) -> models
     if payload.followup_status:
         f.followup_status = payload.followup_status
         if payload.followup_status in ["COMPLETED", "DONE"]:
-            f.completed_at = datetime.utcnow()
+            f.completed_at = _utc_now_naive()
     if payload.remarks:
         f.remarks = payload.remarks
         
@@ -450,7 +463,7 @@ async def add_activity(db: AsyncSession, payload: dict, current_staff_id: int) -
         performed_by_staff_id=current_staff_id, # Always current user
         outcome=payload.get("outcome"),
         next_action_date=payload.get("next_action_date"),
-        created_at=datetime.utcnow(),
+        created_at=_utc_now_naive(),
     )
     db.add(a)
     await db.flush()
@@ -484,7 +497,7 @@ async def add_lead_followup(
 
     followup = models.LeadFollowup(
         lead_id=lead_id,
-        followup_date=datetime.utcnow(),
+        followup_date=_utc_now_naive(),
         remarks=payload.remarks,
         outcome_status=payload.outcome_status,
         next_followup_date=payload.next_followup_date,
@@ -581,7 +594,7 @@ async def add_test_ride(
         test_ride_date=payload.test_ride_date,
         staff_id=current_staff_id,
         customer_feedback=payload.customer_feedback,
-        created_at=datetime.utcnow(),
+        created_at=_utc_now_naive(),
     )
     db.add(test_ride)
     await db.flush()
@@ -605,7 +618,7 @@ async def delete_enquiry(
         await db.delete(enquiry)
     else:
         enquiry.is_deleted = True
-        enquiry.deleted_at = datetime.utcnow()
+        enquiry.deleted_at = _utc_now_naive()
         enquiry.deleted_by = current_user["staff_id"]
 
     await db.flush()
@@ -627,7 +640,7 @@ async def delete_followup(
         await db.delete(followup)
     else:
         followup.is_deleted = True
-        followup.deleted_at = datetime.utcnow()
+        followup.deleted_at = _utc_now_naive()
         followup.deleted_by = current_user["staff_id"]
 
     await db.flush()
