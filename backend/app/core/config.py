@@ -36,7 +36,9 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: Optional[str] = None
 
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    ALLOWED_ORIGINS: str = (
+        "https://electric-vehicle-showroom-erp.vercel.app,http://localhost:3000,http://localhost:5173"
+    )
 
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True

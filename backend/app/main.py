@@ -37,15 +37,24 @@ init_models()
 init_listeners()
 app = FastAPI(title="EV Showroom ERP Backend")
 
-# CORS — read allowed origins from settings
+# CORS Configuration
 allowed_origins = [
-    origin.strip()
-    for origin in settings.ALLOWED_ORIGINS.split(",")
+    "https://electric-vehicle-showroom-erp.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
 ]
+
+# Merge any additional origins configured via environment settings
+if getattr(settings, "ALLOWED_ORIGINS", None):
+    for origin in settings.ALLOWED_ORIGINS.split(","):
+        origin_clean = origin.strip()
+        if origin_clean and origin_clean not in allowed_origins:
+            allowed_origins.append(origin_clean)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"https:\/\/electric-vehicle-showroom-erp.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
