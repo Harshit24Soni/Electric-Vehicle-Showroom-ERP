@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import process from 'node:process';
 
 const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000';
 const backendURL = process.env.PLAYWRIGHT_BACKEND_URL || 'http://localhost:8000/health';
@@ -66,6 +67,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
       env: {
+        ...process.env,
         ENVIRONMENT: 'test',
       },
     },
