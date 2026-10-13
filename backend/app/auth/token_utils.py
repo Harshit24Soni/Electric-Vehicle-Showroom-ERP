@@ -30,13 +30,15 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     else:
         expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode.update({
-        "exp": expire,
-        "iat": now,
-        "nbf": now,
-        "type": "access",
-        "token_type": "bearer",
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": now,
+            "nbf": now,
+            "type": "access",
+            "token_type": "bearer",
+        }
+    )
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -52,13 +54,15 @@ def create_refresh_token(data: Dict[str, Any], expires_delta: Optional[timedelta
     else:
         expire = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
-    to_encode.update({
-        "exp": expire,
-        "iat": now,
-        "nbf": now,
-        "type": "refresh",
-        "token_type": "refresh",
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": now,
+            "nbf": now,
+            "type": "refresh",
+            "token_type": "refresh",
+        }
+    )
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 

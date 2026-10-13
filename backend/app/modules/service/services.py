@@ -37,21 +37,16 @@ async def open_job_card(
     remarks: Optional[str] = None,
 ) -> ServiceJobCard:
     """Open a new job card (checks for existing open, non-deleted cards)."""
-    stmt = (
-        select(ServiceJobCard)
-        .filter(
-            ServiceJobCard.chassis_no == chassis_no,
-            ServiceJobCard.closed_at.is_(None),
-            ServiceJobCard.is_deleted == False,
-        )
+    stmt = select(ServiceJobCard).filter(
+        ServiceJobCard.chassis_no == chassis_no,
+        ServiceJobCard.closed_at.is_(None),
+        ServiceJobCard.is_deleted == False,
     )
     result = await db.execute(stmt)
     existing = result.scalars().first()
 
     if existing:
-        raise JobCardAlreadyOpenError(
-            "An open job card already exists for this vehicle"
-        )
+        raise JobCardAlreadyOpenError("An open job card already exists for this vehicle")
 
     job = ServiceJobCard(
         chassis_no=chassis_no,
@@ -66,29 +61,25 @@ async def open_job_card(
 
 async def get_job_card(db: AsyncSession, job_card_id: int) -> Optional[ServiceJobCard]:
     """Get a job card by ID (excludes soft-deleted)."""
-    stmt = select(ServiceJobCard).filter(
-        ServiceJobCard.job_card_id == job_card_id,
-        ServiceJobCard.is_deleted == False
-    )
+    stmt = select(ServiceJobCard).filter(ServiceJobCard.job_card_id == job_card_id, ServiceJobCard.is_deleted == False)
     result = await db.execute(stmt)
     return result.scalars().first()
 
 
 async def list_job_cards(db: AsyncSession) -> List[ServiceJobCard]:
     """List all job cards (excludes soft-deleted)."""
-    stmt = select(ServiceJobCard).filter(
-        ServiceJobCard.is_deleted == False
-    ).order_by(ServiceJobCard.opened_at.desc())
+    stmt = select(ServiceJobCard).filter(ServiceJobCard.is_deleted == False).order_by(ServiceJobCard.opened_at.desc())
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
 
 async def list_job_card_consumptions(db: AsyncSession, job_card_id: int) -> List[ServiceSpareConsumption]:
     """List all spare consumption records for a job card."""
-    stmt = select(ServiceSpareConsumption).filter(
-        ServiceSpareConsumption.job_card_id == job_card_id,
-        ServiceSpareConsumption.is_deleted == False
-    ).order_by(ServiceSpareConsumption.consumption_id.desc())
+    stmt = (
+        select(ServiceSpareConsumption)
+        .filter(ServiceSpareConsumption.job_card_id == job_card_id, ServiceSpareConsumption.is_deleted == False)
+        .order_by(ServiceSpareConsumption.consumption_id.desc())
+    )
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
@@ -139,33 +130,30 @@ async def create_draft_consumption(
         part_code_snapshot=part_code,
         description_snapshot=description,
         unit_cost_snapshot=unit_cost,
-        total_cost=0.0
+        total_cost=0.0,
     )
     db.add(consumption)
     await db.flush()
     return consumption
 
 
-async def confirm_consumption(
-    db: AsyncSession,
-    *,
-    consumption_id: int,
-    staff_id: int
-) -> ServiceSpareConsumption:
+async def confirm_consumption(db: AsyncSession, *, consumption_id: int, staff_id: int) -> ServiceSpareConsumption:
     """Confirm a draft spare consumption, locking stock and recording movements with transaction safety."""
     try:
         # 1. Lock consumption
-        stmt = select(ServiceSpareConsumption).where(
-            ServiceSpareConsumption.consumption_id == consumption_id
-        ).with_for_update()
+        stmt = (
+            select(ServiceSpareConsumption)
+            .where(ServiceSpareConsumption.consumption_id == consumption_id)
+            .with_for_update()
+        )
         consumption = (await db.execute(stmt)).scalar_one_or_none()
-        
+
         if not consumption:
             raise ServiceError("Consumption record not found")
-        
+
         if consumption.status != "DRAFT":
             raise ServiceError("Only DRAFT consumptions can be confirmed")
-            
+
         job = await get_job_card(db, consumption.job_card_id)
         if not job or job.closed_at:
             raise JobCardClosedError("Job card is already closed")
@@ -176,9 +164,11 @@ async def confirm_consumption(
         if consumption.tracking_mode == "BATCH":
             if not consumption.batch_id:
                 raise ServiceError("Batch ID is required for BATCH tracked spare.")
-            stmt_batch = select(SpareBatch).where(
-                and_(SpareBatch.batch_id == consumption.batch_id, SpareBatch.status == "ACTIVE")
-            ).with_for_update()
+            stmt_batch = (
+                select(SpareBatch)
+                .where(and_(SpareBatch.batch_id == consumption.batch_id, SpareBatch.status == "ACTIVE"))
+                .with_for_update()
+            )
             batch = (await db.execute(stmt_batch)).scalar_one_or_none()
             if not batch or batch.available_quantity < consumption.quantity:
                 raise ServiceError(f"Insufficient quantity in batch {consumption.batch_id}")
@@ -190,9 +180,11 @@ async def confirm_consumption(
                 raise ServiceError("Serial ID is required for SERIALIZED tracked spare.")
             if consumption.quantity != 1:
                 raise ServiceError("Quantity must be 1 for SERIALIZED tracked spare.")
-            stmt_serial = select(SpareSerial).where(
-                and_(SpareSerial.serial_id == consumption.serial_id, SpareSerial.status == "IN_STOCK")
-            ).with_for_update()
+            stmt_serial = (
+                select(SpareSerial)
+                .where(and_(SpareSerial.serial_id == consumption.serial_id, SpareSerial.status == "IN_STOCK"))
+                .with_for_update()
+            )
             serial = (await db.execute(stmt_serial)).scalar_one_or_none()
             if not serial:
                 raise ServiceError(f"Serial {consumption.serial_id} is not in stock or invalid.")
@@ -200,14 +192,14 @@ async def confirm_consumption(
             unit_cost = serial.unit_cost
 
         # Lock stock balance
-        stmt_balance = select(SpareStockBalance).where(
-            SpareStockBalance.spare_id == consumption.spare_id
-        ).with_for_update()
+        stmt_balance = (
+            select(SpareStockBalance).where(SpareStockBalance.spare_id == consumption.spare_id).with_for_update()
+        )
         balance = (await db.execute(stmt_balance)).scalar_one_or_none()
-        
+
         if not balance or balance.quantity < consumption.quantity:
             raise ServiceError(f"Insufficient stock balance for spare {consumption.spare_id}")
-            
+
         balance.quantity -= consumption.quantity
 
         # 3. Create stock movement
@@ -219,7 +211,7 @@ async def confirm_consumption(
             serial_id=consumption.serial_id,
             reference_type="SERVICE_JOB_CARD",
             reference_id=consumption.job_card_id,
-            remarks=f"Consumed via Job Card {consumption.job_card_id}"
+            remarks=f"Consumed via Job Card {consumption.job_card_id}",
         )
 
         # 4. Update consumption record
@@ -238,22 +230,19 @@ async def confirm_consumption(
         raise
 
 
-async def reverse_consumption(
-    db: AsyncSession,
-    *,
-    consumption_id: int,
-    staff_id: int
-) -> ServiceSpareConsumption:
+async def reverse_consumption(db: AsyncSession, *, consumption_id: int, staff_id: int) -> ServiceSpareConsumption:
     """Reverse a confirmed spare consumption and restore inventory stock with transaction safety."""
     try:
-        stmt = select(ServiceSpareConsumption).where(
-            ServiceSpareConsumption.consumption_id == consumption_id
-        ).with_for_update()
+        stmt = (
+            select(ServiceSpareConsumption)
+            .where(ServiceSpareConsumption.consumption_id == consumption_id)
+            .with_for_update()
+        )
         consumption = (await db.execute(stmt)).scalar_one_or_none()
-        
+
         if not consumption:
             raise ServiceError("Consumption record not found")
-            
+
         if consumption.status != "CONSUMED":
             raise ServiceError("Only CONSUMED records can be reversed")
 
@@ -267,14 +256,16 @@ async def reverse_consumption(
             batch = (await db.execute(stmt_batch)).scalar_one_or_none()
             if batch:
                 batch.available_quantity += consumption.quantity
-                
+
         elif consumption.tracking_mode == "SERIALIZED":
             stmt_serial = select(SpareSerial).where(SpareSerial.serial_id == consumption.serial_id).with_for_update()
             serial = (await db.execute(stmt_serial)).scalar_one_or_none()
             if serial:
                 serial.status = "IN_STOCK"
 
-        stmt_balance = select(SpareStockBalance).where(SpareStockBalance.spare_id == consumption.spare_id).with_for_update()
+        stmt_balance = (
+            select(SpareStockBalance).where(SpareStockBalance.spare_id == consumption.spare_id).with_for_update()
+        )
         balance = (await db.execute(stmt_balance)).scalar_one_or_none()
         if balance:
             balance.quantity += consumption.quantity
@@ -290,7 +281,7 @@ async def reverse_consumption(
             serial_id=consumption.serial_id,
             reference_type="SERVICE_JOB_CARD",
             reference_id=consumption.job_card_id,
-            remarks=f"Reversed Job Card {consumption.job_card_id} consumption"
+            remarks=f"Reversed Job Card {consumption.job_card_id} consumption",
         )
 
         consumption.status = "REVERSED"
@@ -308,26 +299,25 @@ async def remove_draft_consumption(
     consumption_id: int,
 ) -> bool:
     """Remove a draft spare consumption record."""
-    stmt = select(ServiceSpareConsumption).where(
-        ServiceSpareConsumption.consumption_id == consumption_id
-    ).with_for_update()
+    stmt = (
+        select(ServiceSpareConsumption)
+        .where(ServiceSpareConsumption.consumption_id == consumption_id)
+        .with_for_update()
+    )
     consumption = (await db.execute(stmt)).scalar_one_or_none()
-    
+
     if not consumption:
         return False
-        
+
     if consumption.status != "DRAFT":
         raise ServiceError("Only DRAFT consumptions can be removed")
-        
+
     await db.delete(consumption)
     await db.flush()
     return True
 
 
-async def close_job_card(
-    db: AsyncSession,
-    job: ServiceJobCard
-):
+async def close_job_card(db: AsyncSession, job: ServiceJobCard):
     """Mark an open job card as closed."""
     if job.closed_at:
         raise JobCardClosedError("Job card already closed")
@@ -338,10 +328,8 @@ async def close_job_card(
 
 # ==================== DELETE SERVICES ====================
 
-async def delete_job_card(
-    db: AsyncSession, job_card_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+
+async def delete_job_card(db: AsyncSession, job_card_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete a job card (soft by default, hard if authorized)"""
     job = await get_job_card(db, job_card_id)
     if not job:

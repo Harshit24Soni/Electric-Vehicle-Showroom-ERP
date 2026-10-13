@@ -5,7 +5,6 @@ from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
 from app.modules.insurance import services, schemas
 
-
 router = APIRouter(prefix="/insurance", tags=["Insurance"])
 
 

@@ -11,12 +11,11 @@ from datetime import datetime
 from app.db.base import Base
 from app.db.mixins import AuditMixin, SoftDeleteMixin, utc_now_naive
 
+
 class ServiceJobCard(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "job_card"
 
-    job_card_id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True
-    )
+    job_card_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
     chassis_no: Mapped[str] = mapped_column(
         String(50),
@@ -24,26 +23,19 @@ class ServiceJobCard(Base, AuditMixin, SoftDeleteMixin):
         nullable=False,
     )
 
-    is_free_service: Mapped[bool] = mapped_column(
-        Boolean, default=False
-    )
+    is_free_service: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    opened_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, default=utc_now_naive
-    )
+    opened_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=utc_now_naive)
 
-    closed_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP
-    )
+    closed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
 
     remarks: Mapped[str | None] = mapped_column(String)
+
 
 class ServiceSpareConsumption(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_consumption"
 
-    consumption_id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True
-    )
+    consumption_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
     job_card_id: Mapped[int] = mapped_column(
         BigInteger,
@@ -51,12 +43,8 @@ class ServiceSpareConsumption(Base, AuditMixin, SoftDeleteMixin):
         nullable=False,
     )
 
-    spare_id: Mapped[int] = mapped_column(
-        BigInteger,
-        nullable=False,
-        index=True
-    ) # Soft link to inventory module
-    
+    spare_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)  # Soft link to inventory module
+
     tracking_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="QUANTITY")
     quantity: Mapped[int] = mapped_column(nullable=False)
 
@@ -71,5 +59,5 @@ class ServiceSpareConsumption(Base, AuditMixin, SoftDeleteMixin):
     consumed_by: Mapped[int | None] = mapped_column(BigInteger)
     consumed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
 
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="DRAFT") # DRAFT, CONSUMED, REVERSED
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="DRAFT")  # DRAFT, CONSUMED, REVERSED
     stock_movement_id: Mapped[int | None] = mapped_column(BigInteger)

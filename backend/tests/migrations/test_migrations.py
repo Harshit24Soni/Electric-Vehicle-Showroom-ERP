@@ -10,6 +10,7 @@ from app.db.session import engine
 # as alembic requires actual connection not wrapped in tx.
 # But for test purposes, we can verify alembic upgrades work on empty db.
 
+
 @pytest.mark.asyncio
 async def test_database_migrations():
     """
@@ -17,29 +18,33 @@ async def test_database_migrations():
     """
     # 1. Drop all tables to simulate empty DB
     async with engine.begin() as conn:
+
         def recreate_schema(sync_conn):
             sync_conn.execute(text("DROP SCHEMA public CASCADE"))
             sync_conn.execute(text("CREATE SCHEMA public"))
+
         await conn.run_sync(recreate_schema)
-        
-    await engine.dispose() # Close connections so subprocess doesn't hang
+
+    await engine.dispose()  # Close connections so subprocess doesn't hang
 
     # 2. Run Alembic Upgrade Head in subprocess
     import sys
     import subprocess
+
     result = await asyncio.to_thread(
         subprocess.run,
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=os.path.join(os.path.dirname(__file__), "../../..", "backend"),
         capture_output=True,
         text=True,
-        env={**os.environ}
+        env={**os.environ},
     )
     assert result.returncode == 0, f"Alembic failed: {result.stderr}"
-    
+
     # 3. Verify schema usable by querying a table
     from app.core.config import settings
     from app.db.session import create_async_engine
+
     new_engine = create_async_engine(str(settings.DATABASE_URL))
     async with new_engine.connect() as conn:
         res = await conn.execute(text("SELECT COUNT(*) FROM staff"))

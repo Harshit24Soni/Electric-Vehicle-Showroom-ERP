@@ -1,6 +1,7 @@
 from app.modules.master.models import Customer
 from .base import BaseFactory, fake
 
+
 class CustomerFactory(BaseFactory):
     model = Customer
 

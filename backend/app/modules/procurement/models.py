@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 from app.db.mixins import AuditMixin, SoftDeleteMixin
 
+
 class SparePurchase(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_purchase"
 
@@ -16,7 +17,7 @@ class SparePurchase(Base, AuditMixin, SoftDeleteMixin):
     purchase_date: Mapped[date] = mapped_column(Date)
     remarks: Mapped[Optional[str]] = mapped_column(Text)
     include_in_accounting: Mapped[bool] = mapped_column(Boolean, default=True)
-    
+
     # Phase 3 Fields
     status: Mapped[str] = mapped_column(String(50), default="DRAFT", nullable=False)
     docket_reference: Mapped[Optional[str]] = mapped_column(String(100))
@@ -29,7 +30,9 @@ class SparePurchase(Base, AuditMixin, SoftDeleteMixin):
 
     # Relationships
     vendor = relationship("Vendor")
-    items: Mapped[List["SparePurchaseItem"]] = relationship("SparePurchaseItem", back_populates="purchase", cascade="all, delete-orphan")
+    items: Mapped[List["SparePurchaseItem"]] = relationship(
+        "SparePurchaseItem", back_populates="purchase", cascade="all, delete-orphan"
+    )
 
 
 class SparePurchaseItem(Base, AuditMixin, SoftDeleteMixin):
@@ -37,12 +40,14 @@ class SparePurchaseItem(Base, AuditMixin, SoftDeleteMixin):
 
     purchase_item_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     spare_purchase_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("spare_purchase.spare_purchase_id"))
-    spare_id: Mapped[Optional[int]] = mapped_column(BigInteger) # Soft link to inventory.spare_master, Optional for OCR drafts
+    spare_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger
+    )  # Soft link to inventory.spare_master, Optional for OCR drafts
     quantity: Mapped[int] = mapped_column(Integer)
     unit_cost: Mapped[float] = mapped_column(Numeric(12, 2))
     gst_percentage: Mapped[Optional[float]] = mapped_column(Numeric(5, 2))
     total_cost: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
-    
+
     # Phase 3 OCR/Verification Fields
     part_code: Mapped[Optional[str]] = mapped_column(String(100))
     part_description: Mapped[Optional[str]] = mapped_column(String(255))
@@ -68,7 +73,9 @@ class VehiclePurchase(Base, AuditMixin, SoftDeleteMixin):
 
     # Relationships
     vendor = relationship("Vendor")
-    details: Mapped[List["VehiclePurchaseDetail"]] = relationship("VehiclePurchaseDetail", back_populates="purchase", cascade="all, delete-orphan")
+    details: Mapped[List["VehiclePurchaseDetail"]] = relationship(
+        "VehiclePurchaseDetail", back_populates="purchase", cascade="all, delete-orphan"
+    )
 
 
 class VehiclePurchaseDetail(Base, AuditMixin, SoftDeleteMixin):

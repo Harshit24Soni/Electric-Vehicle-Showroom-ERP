@@ -54,12 +54,14 @@ class AdminAuth(AuthenticationBackend):
             if user.role != "ADMIN":
                 return False
 
-            request.session.update({
-                "token": str(user.staff_id),
-                "user_id": user.staff_id,
-                "email": user.email,
-                "role": user.role,
-            })
+            request.session.update(
+                {
+                    "token": str(user.staff_id),
+                    "user_id": user.staff_id,
+                    "email": user.email,
+                    "role": user.role,
+                }
+            )
             return True
 
     async def logout(self, request: Request) -> bool:

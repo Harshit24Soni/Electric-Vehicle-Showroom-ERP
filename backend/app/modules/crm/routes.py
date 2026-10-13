@@ -5,11 +5,11 @@ from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
 from app.modules.crm import services, schemas
 
-
 router = APIRouter(prefix="/crm", tags=["CRM"])
 
 
 # ==================== MASTER ENDPOINTS ====================
+
 
 @router.get("/master/lead-statuses")
 async def get_lead_statuses(db: AsyncSession = Depends(get_db)):
@@ -25,12 +25,9 @@ async def get_enquiry_statuses(db: AsyncSession = Depends(get_db)):
 
 # ==================== LEAD ENDPOINTS ====================
 
+
 @router.post("/leads", response_model=schemas.LeadResponse, status_code=status.HTTP_201_CREATED)
-async def create_lead(
-    data: schemas.LeadCreate,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def create_lead(data: schemas.LeadCreate, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Create a new lead independently (not tied to customer)"""
     lead = await services.create_lead(db, payload=data, current_staff_id=_staff["staff_id"])
     return lead
@@ -41,18 +38,14 @@ async def list_leads(
     db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
     status_id: int = Query(None, description="Filter by lead status ID"),
-    owner_id: int = Query(None, description="Filter by owner staff ID")
+    owner_id: int = Query(None, description="Filter by owner staff ID"),
 ):
     """List all leads with optional filters"""
     return await services.list_leads(db, status_id=status_id, owner_id=owner_id)
 
 
 @router.get("/leads/{lead_id}", response_model=schemas.LeadResponse)
-async def get_lead(
-    lead_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def get_lead(lead_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Get a single lead by ID"""
     lead = await services.get_lead(db, lead_id)
     if not lead:
@@ -62,10 +55,7 @@ async def get_lead(
 
 @router.put("/leads/{lead_id}", response_model=schemas.LeadResponse)
 async def update_lead(
-    lead_id: int,
-    data: schemas.LeadUpdate,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    lead_id: int, data: schemas.LeadUpdate, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     """Update lead information"""
     lead = await services.update_lead(db, lead_id, data)
@@ -79,7 +69,7 @@ async def delete_lead(
     lead_id: int,
     hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
     db: AsyncSession = Depends(get_db),
-    current_staff=Depends(get_current_staff)
+    current_staff=Depends(get_current_staff),
 ):
     """Delete a lead (soft delete by default)"""
     success = await services.delete_lead(db, lead_id, current_staff, hard_delete)
@@ -97,35 +87,26 @@ async def convert_lead_to_customer(
     lead_id: int,
     data: schemas.LeadConvertPayload,
     db: AsyncSession = Depends(get_db),
-    current_staff=Depends(get_current_staff)
+    current_staff=Depends(get_current_staff),
 ):
     """Convert a lead to a customer with full KYC + Nominee (atomic transaction)"""
-    return await services.convert_lead_to_customer(
-        db, lead_id, payload=data, current_user=current_staff
-    )
+    return await services.convert_lead_to_customer(db, lead_id, payload=data, current_user=current_staff)
 
 
 @router.get("/leads/{lead_id}/activities", response_model=list)
-async def get_lead_activities(
-    lead_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def get_lead_activities(lead_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Get activity history for a lead"""
     return await services.get_lead_activities(db, lead_id)
 
 
 @router.post("/leads/{lead_id}/assign")
 async def assign_lead(
-    lead_id: int,
-    new_owner_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_staff=Depends(get_current_staff)
+    lead_id: int, new_owner_id: int, db: AsyncSession = Depends(get_db), current_staff=Depends(get_current_staff)
 ):
     """Reassign a lead to another staff member"""
     if current_staff["designation"] not in ["ADMIN", "DEALER"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Admin or Dealer can reassign leads")
-        
+
     try:
         lead = await services.assign_lead(db, lead_id, new_owner_id, current_staff["staff_id"])
         return {"message": "Lead reassigned successfully", "lead_id": lead.lead_id}
@@ -135,11 +116,10 @@ async def assign_lead(
 
 # ==================== ENQUIRY ENDPOINTS ====================
 
+
 @router.post("/enquiries", response_model=schemas.EnquiryResponse, status_code=status.HTTP_201_CREATED)
 async def create_enquiry(
-    data: schemas.EnquiryCreate,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    data: schemas.EnquiryCreate, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     """Create a new enquiry for a lead"""
     enquiry = await services.create_enquiry(db, payload=data, current_staff_id=_staff["staff_id"])
@@ -150,18 +130,14 @@ async def create_enquiry(
 async def list_enquiries(
     db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
-    status_id: int = Query(None, description="Filter by enquiry status ID")
+    status_id: int = Query(None, description="Filter by enquiry status ID"),
 ):
     """List all enquiries with optional filters"""
     return await services.list_enquiries(db, status_id=status_id)
 
 
 @router.get("/enquiries/{enquiry_id}", response_model=schemas.EnquiryResponse)
-async def get_enquiry(
-    enquiry_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def get_enquiry(enquiry_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Get a single enquiry by ID"""
     enquiry = await services.get_enquiry(db, enquiry_id)
     if not enquiry:
@@ -171,10 +147,7 @@ async def get_enquiry(
 
 @router.put("/enquiries/{enquiry_id}", response_model=schemas.EnquiryResponse)
 async def update_enquiry(
-    enquiry_id: int,
-    data: dict,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    enquiry_id: int, data: dict, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     """Update enquiry information"""
     enquiry = await services.update_enquiry(db, enquiry_id, data)
@@ -188,7 +161,7 @@ async def delete_enquiry(
     enquiry_id: int,
     hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
     db: AsyncSession = Depends(get_db),
-    current_staff=Depends(get_current_staff)
+    current_staff=Depends(get_current_staff),
 ):
     """Delete an enquiry (soft delete by default)"""
     success = await services.delete_enquiry(db, enquiry_id, current_staff, hard_delete)
@@ -198,21 +171,17 @@ async def delete_enquiry(
 
 
 @router.get("/enquiries/stats/summary")
-async def get_enquiry_stats(
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def get_enquiry_stats(db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Get enquiry statistics (active count, etc)"""
     return await services.get_enquiry_stats(db)
 
 
 # ==================== FOLLOWUP ENDPOINTS ====================
 
+
 @router.post("/followups", response_model=schemas.FollowupResponse, status_code=status.HTTP_201_CREATED)
 async def create_followup(
-    data: schemas.FollowupCreate,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    data: schemas.FollowupCreate, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     """Create a new followup schedule"""
     f = await services.add_followup(db, data, current_staff_id=_staff["staff_id"])
@@ -224,7 +193,7 @@ async def update_followup(
     followup_id: int,
     data: schemas.FollowupUpdate,
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    _staff=Depends(get_current_staff),
 ):
     """Update a followup schedule (e.g. mark as COMPLETED)"""
     try:
@@ -235,10 +204,7 @@ async def update_followup(
 
 
 @router.get("/followups/pending", response_model=list[schemas.FollowupResponse])
-async def pending_followups(
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def pending_followups(db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Get all pending followups"""
     return await services.list_pending_followups(db)
 
@@ -248,7 +214,7 @@ async def delete_followup(
     followup_id: int,
     hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
     db: AsyncSession = Depends(get_db),
-    current_staff=Depends(get_current_staff)
+    current_staff=Depends(get_current_staff),
 ):
     """Delete a followup (soft delete by default)"""
     success = await services.delete_followup(db, followup_id, current_staff, hard_delete)
@@ -261,7 +227,7 @@ async def delete_followup(
 async def get_followup_dashboard(
     db: AsyncSession = Depends(get_db),
     _staff=Depends(get_current_staff),
-    followup_type: str = Query("ALL", description="ALL|SALES|SERVICE|WARRANTY")
+    followup_type: str = Query("ALL", description="ALL|SALES|SERVICE|WARRANTY"),
 ):
     """Get unified followup dashboard with all types"""
     return await services.get_followup_dashboard(db, followup_type)
@@ -269,18 +235,16 @@ async def get_followup_dashboard(
 
 # ==================== ACTIVITY ENDPOINTS ====================
 
+
 @router.post("/activities")
-async def add_activity(
-    data: dict,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def add_activity(data: dict, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Record a lead activity"""
     a = await services.add_activity(db, data, current_staff_id=_staff["staff_id"])
     return {"message": "Activity recorded", "activity_id": a.activity_id}
 
 
 # ==================== NEW LEAD FOLLOWUP ENDPOINTS ====================
+
 
 @router.post(
     "/leads/{lead_id}/followups",
@@ -295,9 +259,7 @@ async def add_lead_followup(
 ):
     """Add a followup to a lead (remarks minimum 10 characters)"""
     try:
-        followup = await services.add_lead_followup(
-            db, lead_id, data, current_staff_id=_staff["staff_id"]
-        )
+        followup = await services.add_lead_followup(db, lead_id, data, current_staff_id=_staff["staff_id"])
         return followup
     except services.CRMError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -341,9 +303,7 @@ async def add_test_ride(
 ):
     """Add a test ride for a lead"""
     try:
-        ride = await services.add_test_ride(
-            db, lead_id, data, current_staff_id=_staff["staff_id"]
-        )
+        ride = await services.add_test_ride(db, lead_id, data, current_staff_id=_staff["staff_id"])
         return {"message": "Test ride added", "test_ride_id": ride.test_ride_id}
     except services.CRMError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

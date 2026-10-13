@@ -41,8 +41,7 @@ async def create_company(db: AsyncSession, payload) -> models.InsuranceCompany:
 async def get_company(db: AsyncSession, company_id: int) -> models.InsuranceCompany | None:
     """Get an insurance company by ID (excludes soft-deleted)"""
     stmt = select(models.InsuranceCompany).filter(
-        models.InsuranceCompany.insurance_company_id == company_id,
-        models.InsuranceCompany.is_deleted == False
+        models.InsuranceCompany.insurance_company_id == company_id, models.InsuranceCompany.is_deleted == False
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -50,9 +49,11 @@ async def get_company(db: AsyncSession, company_id: int) -> models.InsuranceComp
 
 async def list_companies(db: AsyncSession) -> list[models.InsuranceCompany]:
     """List all insurance companies (excludes soft-deleted)"""
-    stmt = select(models.InsuranceCompany).filter(
-        models.InsuranceCompany.is_deleted == False
-    ).order_by(models.InsuranceCompany.company_name)
+    stmt = (
+        select(models.InsuranceCompany)
+        .filter(models.InsuranceCompany.is_deleted == False)
+        .order_by(models.InsuranceCompany.company_name)
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -67,7 +68,7 @@ async def create_policy(db: AsyncSession, payload) -> models.Policy:
         existing_stmt = select(models.Policy).filter(
             models.Policy.chassis_no == payload.chassis_no,
             models.Policy.is_active == True,
-            models.Policy.is_deleted == False
+            models.Policy.is_deleted == False,
         )
         result = await db.execute(existing_stmt)
         existing = result.scalars().first()
@@ -97,29 +98,24 @@ async def create_policy(db: AsyncSession, payload) -> models.Policy:
 
 async def get_policy(db: AsyncSession, policy_id: int) -> models.Policy | None:
     """Get a policy by ID (excludes soft-deleted)"""
-    stmt = select(models.Policy).filter(
-        models.Policy.policy_id == policy_id,
-        models.Policy.is_deleted == False
-    )
+    stmt = select(models.Policy).filter(models.Policy.policy_id == policy_id, models.Policy.is_deleted == False)
     result = await db.execute(stmt)
     return result.scalars().first()
 
 
 async def list_policies(db: AsyncSession) -> list[models.Policy]:
     """List all policies (excludes soft-deleted)"""
-    stmt = select(models.Policy).filter(
-        models.Policy.is_deleted == False
-    ).order_by(models.Policy.policy_end_date.desc())
+    stmt = (
+        select(models.Policy).filter(models.Policy.is_deleted == False).order_by(models.Policy.policy_end_date.desc())
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
 # ==================== DELETE SERVICES ====================
 
-async def delete_company(
-    db: AsyncSession, company_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+
+async def delete_company(db: AsyncSession, company_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete an insurance company (soft by default, hard if authorized)"""
     company = await get_company(db, company_id)
     if not company:
@@ -146,10 +142,7 @@ async def delete_company(
         raise
 
 
-async def delete_policy(
-    db: AsyncSession, policy_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+async def delete_policy(db: AsyncSession, policy_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete an insurance policy (soft by default, hard if authorized)"""
     policy = await get_policy(db, policy_id)
     if not policy:

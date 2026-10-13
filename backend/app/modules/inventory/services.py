@@ -15,7 +15,7 @@ from app.modules.inventory.models import (
     SparePartVehicleCompatibility,
     SpareBatch,
     SpareStockBalance,
-    SpareCostHistory
+    SpareCostHistory,
 )
 from app.modules.inventory.contracts import (
     CheckSpareStockRequest,
@@ -24,6 +24,7 @@ from app.modules.inventory.contracts import (
     CheckVehicleAvailabilityRequest,
     VehicleAvailabilityResponse,
 )
+
 
 class InventoryError(Exception):
     pass
@@ -45,9 +46,7 @@ class InvalidSpareMovementError(InventoryError):
     pass
 
 
-async def get_latest_vehicle_movement(
-    db: AsyncSession, chassis_no: str
-) -> VehicleStockMovement | None:
+async def get_latest_vehicle_movement(db: AsyncSession, chassis_no: str) -> VehicleStockMovement | None:
     stmt = (
         select(VehicleStockMovement)
         .filter(VehicleStockMovement.chassis_no == chassis_no)
@@ -57,6 +56,7 @@ async def get_latest_vehicle_movement(
     result = await db.execute(stmt)
     return result.scalars().first()
 
+
 async def is_vehicle_available(db: AsyncSession, chassis_no: str) -> bool:
     last = await get_latest_vehicle_movement(db, chassis_no)
 
@@ -64,6 +64,7 @@ async def is_vehicle_available(db: AsyncSession, chassis_no: str) -> bool:
         return False
 
     return last.movement_type in ("INWARD", "AVAILABLE")
+
 
 async def add_vehicle_movement(
     db: AsyncSession,
@@ -82,21 +83,15 @@ async def add_vehicle_movement(
     # Prevent duplicate allocation
     if movement_type == "ALLOCATED":
         if last and last.movement_type == "ALLOCATED":
-            raise DuplicateVehicleAllocationError(
-                f"Vehicle {chassis_no} already allocated"
-            )
+            raise DuplicateVehicleAllocationError(f"Vehicle {chassis_no} already allocated")
 
         if last and last.movement_type not in ("INWARD", "AVAILABLE"):
-            raise VehicleNotAvailableError(
-                f"Vehicle {chassis_no} not available for allocation"
-            )
+            raise VehicleNotAvailableError(f"Vehicle {chassis_no} not available for allocation")
 
     # Prevent double delivery
     if movement_type == "DELIVERED":
         if last and last.movement_type == "DELIVERED":
-            raise InventoryError(
-                f"Vehicle {chassis_no} already delivered"
-            )
+            raise InventoryError(f"Vehicle {chassis_no} already delivered")
 
     movement = VehicleStockMovement(
         chassis_no=chassis_no,
@@ -114,16 +109,15 @@ async def add_vehicle_movement(
 
     return movement
 
-async def get_spare_stock(
-    db: AsyncSession, spare_id: int
-) -> int:
-    stmt = (
-        select(func.coalesce(func.sum(SpareStockMovement.quantity), 0))
-        .filter(SpareStockMovement.spare_id == spare_id)
+
+async def get_spare_stock(db: AsyncSession, spare_id: int) -> int:
+    stmt = select(func.coalesce(func.sum(SpareStockMovement.quantity), 0)).filter(
+        SpareStockMovement.spare_id == spare_id
     )
     result = await db.execute(stmt)
     qty = result.scalar()
     return int(qty)
+
 
 def _validate_spare_movement(
     spare: SpareMaster,
@@ -132,18 +126,13 @@ def _validate_spare_movement(
 ):
     if spare.tracking_mode == "SERIALIZED":
         if serial_id is None:
-            raise InvalidSpareMovementError(
-                "Serialized spare requires serial_id"
-            )
+            raise InvalidSpareMovementError("Serialized spare requires serial_id")
         if abs(quantity) != 1:
-            raise InvalidSpareMovementError(
-                "Serialized spare quantity must be ±1"
-            )
+            raise InvalidSpareMovementError("Serialized spare quantity must be ±1")
     else:
         if serial_id is not None:
-            raise InvalidSpareMovementError(
-                "Non-serialized spare cannot have serial_id"
-            )
+            raise InvalidSpareMovementError("Non-serialized spare cannot have serial_id")
+
 
 async def add_spare_movement(
     db: AsyncSession,
@@ -170,9 +159,7 @@ async def add_spare_movement(
     if quantity < 0:
         current_stock = await get_spare_stock(db, spare_id)
         if current_stock + quantity < 0:
-             raise InsufficientSpareStockError(
-                f"Insufficient stock for spare ID {spare.spare_id}"
-            )
+            raise InsufficientSpareStockError(f"Insufficient stock for spare ID {spare.spare_id}")
 
     movement = SpareStockMovement(
         spare_id=spare_id,
@@ -191,9 +178,7 @@ async def add_spare_movement(
     return movement
 
 
-async def list_spares(
-    db: AsyncSession, include_deleted: bool = False
-) -> list[SpareMaster]:
+async def list_spares(db: AsyncSession, include_deleted: bool = False) -> list[SpareMaster]:
     """List all spare master records."""
     stmt = select(SpareMaster).options(selectinload(SpareMaster.codes), selectinload(SpareMaster.compatibilities))
     if not include_deleted:
@@ -202,13 +187,16 @@ async def list_spares(
     result = await db.execute(stmt)
     return result.scalars().all()
 
+
 async def get_spare(db: AsyncSession, spare_id: int) -> SpareMaster | None:
-    stmt = select(SpareMaster).options(
-        selectinload(SpareMaster.codes),
-        selectinload(SpareMaster.compatibilities)
-    ).filter(SpareMaster.spare_id == spare_id, SpareMaster.is_deleted == False)
+    stmt = (
+        select(SpareMaster)
+        .options(selectinload(SpareMaster.codes), selectinload(SpareMaster.compatibilities))
+        .filter(SpareMaster.spare_id == spare_id, SpareMaster.is_deleted == False)
+    )
     result = await db.execute(stmt)
     return result.scalars().first()
+
 
 async def create_spare(
     db: AsyncSession,
@@ -217,34 +205,33 @@ async def create_spare(
     initial_code: str,
     tracking_mode: str = "QUANTITY",
     category: str | None = None,
-    remarks: str | None = None
+    remarks: str | None = None,
 ) -> SpareMaster:
     # Validate duplicate code across all active codes
-    existing_code_stmt = select(SparePartCode).filter(SparePartCode.code == initial_code, SparePartCode.is_deleted == False)
+    existing_code_stmt = select(SparePartCode).filter(
+        SparePartCode.code == initial_code, SparePartCode.is_deleted == False
+    )
     existing_code = await db.execute(existing_code_stmt)
     if existing_code.scalars().first():
         raise InventoryError(f"Part code {initial_code} already exists.")
 
     spare = SpareMaster(
-        spare_name=spare_name,
-        category=category,
-        tracking_mode=tracking_mode,
-        status="ACTIVE",
-        remarks=remarks
+        spare_name=spare_name, category=category, tracking_mode=tracking_mode, status="ACTIVE", remarks=remarks
     )
     db.add(spare)
     await db.flush()
-    
+
     code_record = SparePartCode(
         spare_id=spare.spare_id,
         code=initial_code,
         is_current=True,
-        effective_from=datetime.now(timezone.utc).replace(tzinfo=None)
+        effective_from=datetime.now(timezone.utc).replace(tzinfo=None),
     )
     db.add(code_record)
     await db.flush()
-    
+
     return await get_spare(db, spare.spare_id)
+
 
 async def update_spare(
     db: AsyncSession,
@@ -252,28 +239,24 @@ async def update_spare(
     *,
     spare_name: str | None = None,
     category: str | None = None,
-    remarks: str | None = None
+    remarks: str | None = None,
 ) -> SpareMaster:
     spare = await get_spare(db, spare_id)
     if not spare:
         raise InventoryError("Spare part not found")
-        
+
     if spare_name is not None:
         spare.spare_name = spare_name
     if category is not None:
         spare.category = category
     if remarks is not None:
         spare.remarks = remarks
-        
+
     await db.flush()
     return await get_spare(db, spare_id)
 
-async def add_part_code(
-    db: AsyncSession,
-    spare_id: int,
-    code: str,
-    reason: str | None = None
-) -> SpareMaster:
+
+async def add_part_code(db: AsyncSession, spare_id: int, code: str, reason: str | None = None) -> SpareMaster:
     spare = await get_spare(db, spare_id)
     if not spare:
         raise InventoryError("Spare part not found")
@@ -282,112 +265,94 @@ async def add_part_code(
     existing_code = await db.execute(existing_code_stmt)
     if existing_code.scalars().first():
         raise InventoryError(f"Part code {code} already exists.")
-        
+
     code_record = SparePartCode(
         spare_id=spare.spare_id,
         code=code,
         is_current=True,
         effective_from=datetime.now(timezone.utc).replace(tzinfo=None),
-        reason=reason
+        reason=reason,
     )
     db.add(code_record)
     spare.codes.append(code_record)
     await db.flush()
     return spare
 
-async def retire_part_code(
-    db: AsyncSession,
-    spare_id: int,
-    code_id: int
-) -> SpareMaster:
+
+async def retire_part_code(db: AsyncSession, spare_id: int, code_id: int) -> SpareMaster:
     spare = await get_spare(db, spare_id)
     if not spare:
         raise InventoryError("Spare part not found")
-        
+
     code_record = next((c for c in spare.codes if c.code_id == code_id), None)
     if not code_record:
         raise InventoryError("Code not associated with this spare")
-        
+
     code_record.is_current = False
     code_record.effective_to = datetime.now(timezone.utc).replace(tzinfo=None)
     await db.flush()
     return await get_spare(db, spare_id)
 
-async def add_compatibility(
-    db: AsyncSession,
-    spare_id: int,
-    vehicle_model_id: int
-) -> SpareMaster:
+
+async def add_compatibility(db: AsyncSession, spare_id: int, vehicle_model_id: int) -> SpareMaster:
     spare = await get_spare(db, spare_id)
     if not spare:
         raise InventoryError("Spare part not found")
-        
+
     existing = next((c for c in spare.compatibilities if c.vehicle_model_id == vehicle_model_id), None)
     if existing:
         return spare
-        
-    compat = SparePartVehicleCompatibility(
-        spare_id=spare_id,
-        vehicle_model_id=vehicle_model_id
-    )
+
+    compat = SparePartVehicleCompatibility(spare_id=spare_id, vehicle_model_id=vehicle_model_id)
     db.add(compat)
     spare.compatibilities.append(compat)
     await db.flush()
     return spare
 
-async def remove_compatibility(
-    db: AsyncSession,
-    spare_id: int,
-    compatibility_id: int
-) -> SpareMaster:
+
+async def remove_compatibility(db: AsyncSession, spare_id: int, compatibility_id: int) -> SpareMaster:
     spare = await get_spare(db, spare_id)
     if not spare:
         raise InventoryError("Spare part not found")
-        
+
     compat = next((c for c in spare.compatibilities if c.compatibility_id == compatibility_id), None)
     if not compat:
         raise InventoryError("Compatibility not found")
-        
+
     await db.delete(compat)
     spare.compatibilities.remove(compat)
     await db.flush()
     return spare
 
+
 async def deactivate_spare(db: AsyncSession, spare_id: int) -> SpareMaster:
     spare = await get_spare(db, spare_id)
     if not spare:
         raise InventoryError("Spare part not found")
-        
+
     spare.status = "INACTIVE"
     await db.flush()
     return await get_spare(db, spare_id)
 
 
-async def _process_purchase_receipt_items(
-    db: AsyncSession,
-    purchase,
-    payload
-):
+async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
     # Idempotency check
     existing = await db.execute(
-        select(SpareStockMovement).filter_by(
-            reference_type="PROCUREMENT",
-            reference_id=purchase.spare_purchase_id
-        )
+        select(SpareStockMovement).filter_by(reference_type="PROCUREMENT", reference_id=purchase.spare_purchase_id)
     )
     if existing.scalars().first():
         raise InventoryError("This purchase receipt has already been posted.")
 
     # Create mapping of purchase_item_id to items
     purchase_items = {item.purchase_item_id: item for item in purchase.items}
-    
+
     for item_data in payload.items:
         if item_data.purchase_item_id not in purchase_items:
             raise InventoryError(f"Purchase item {item_data.purchase_item_id} not found in purchase")
-            
+
         p_item = purchase_items[item_data.purchase_item_id]
         spare = await get_spare(db, p_item.spare_id)
-        
+
         batch_id = None
         if spare.tracking_mode == "BATCH":
             if not item_data.batch_number:
@@ -404,34 +369,34 @@ async def _process_purchase_receipt_items(
                     expiry_date=None,  # Or parse if provided
                     unit_cost=p_item.unit_cost,
                     mrp=None,
-                    status="ACTIVE"
+                    status="ACTIVE",
                 )
                 db.add(batch)
                 await db.flush()
             batch_id = batch.batch_id
-            
+
         serial_ids = []
         if spare.tracking_mode == "SERIALIZED":
             if not item_data.serial_numbers or len(item_data.serial_numbers) != p_item.quantity:
                 raise InventoryError(f"Required exactly {p_item.quantity} serial numbers for part {spare.spare_name}")
-                
+
             for s_num in item_data.serial_numbers:
                 # Check duplicate
                 ser_res = await db.execute(select(SpareSerial).filter_by(spare_id=spare.spare_id, serial_number=s_num))
                 if ser_res.scalars().first():
                     raise InventoryError(f"Serial number {s_num} already exists for part {spare.spare_name}")
-                    
+
                 new_ser = SpareSerial(
                     spare_id=spare.spare_id,
                     serial_number=s_num,
                     status="IN_STOCK",
                     location=item_data.location,
-                    unit_cost=p_item.unit_cost
+                    unit_cost=p_item.unit_cost,
                 )
                 db.add(new_ser)
                 await db.flush()
                 serial_ids.append(new_ser.serial_id)
-                
+
         # For non-serialized, or individually for serialized
         if spare.tracking_mode == "SERIALIZED":
             for s_id in serial_ids:
@@ -447,7 +412,9 @@ async def _process_purchase_receipt_items(
                     remarks="Posted from Procurement",
                     to_location=item_data.location,
                     unit_cost=p_item.unit_cost,
-                    total_cost=(float(p_item.total_cost) / p_item.quantity) if p_item.quantity and p_item.total_cost else 0
+                    total_cost=(
+                        (float(p_item.total_cost) / p_item.quantity) if p_item.quantity and p_item.total_cost else 0
+                    ),
                 )
                 db.add(mov)
         else:
@@ -463,10 +430,10 @@ async def _process_purchase_receipt_items(
                 remarks="Posted from Procurement",
                 to_location=item_data.location,
                 unit_cost=p_item.unit_cost,
-                total_cost=float(p_item.total_cost) if p_item.total_cost else 0
+                total_cost=float(p_item.total_cost) if p_item.total_cost else 0,
             )
             db.add(mov)
-            
+
         # Update Stock Balance
         bal_res = await db.execute(
             select(SpareStockBalance).filter_by(spare_id=spare.spare_id, location=item_data.location)
@@ -477,23 +444,23 @@ async def _process_purchase_receipt_items(
             db.add(balance)
         else:
             balance.quantity += p_item.quantity
-            
+
         # Update WAC
-        current_stock = await get_spare_stock(db, spare.spare_id) # Stock BEFORE this posting
-        
+        current_stock = await get_spare_stock(db, spare.spare_id)  # Stock BEFORE this posting
+
         cost_res = await db.execute(
             select(SpareCostHistory).filter_by(spare_id=spare.spare_id).order_by(SpareCostHistory.effective_date.desc())
         )
         last_cost = cost_res.scalars().first()
         old_wac = float(last_cost.wac_cost) if last_cost and last_cost.wac_cost is not None else 0.0
-        
+
         new_quantity = current_stock + p_item.quantity
         p_total_cost = float(p_item.total_cost) if p_item.total_cost else 0.0
         if new_quantity > 0:
             new_wac = ((current_stock * old_wac) + p_total_cost) / new_quantity
         else:
             new_wac = float(p_item.unit_cost)
-            
+
         new_cost = SpareCostHistory(
             spare_id=spare.spare_id,
             quantity=p_item.quantity,
@@ -501,18 +468,14 @@ async def _process_purchase_receipt_items(
             additional_costs=0,
             landed_cost=(p_total_cost / p_item.quantity) if p_item.quantity else 0,
             wac_cost=new_wac,
-            source_reference=f"PURCHASE-{purchase.spare_purchase_id}"
+            source_reference=f"PURCHASE-{purchase.spare_purchase_id}",
         )
         db.add(new_cost)
-        
+
     await db.flush()
 
 
-async def post_purchase_receipt(
-    db: AsyncSession,
-    purchase,
-    payload
-):
+async def post_purchase_receipt(db: AsyncSession, purchase, payload):
     """Post procurement purchase receipt to inventory stock balance, batches, serials and WAC with transaction rollback protection."""
     try:
         await _process_purchase_receipt_items(db, purchase, payload)
@@ -522,12 +485,13 @@ async def post_purchase_receipt(
             "Failed to post purchase receipt %s: %s",
             getattr(purchase, "spare_purchase_id", "unknown"),
             exc,
-            exc_info=True
+            exc_info=True,
         )
         raise
 
 
 # ==================== CROSS-MODULE CONTRACT SERVICES & TEMPORARY SPARES ====================
+
 
 async def check_vehicle_availability(
     db: AsyncSession, req: CheckVehicleAvailabilityRequest
@@ -539,43 +503,28 @@ async def check_vehicle_availability(
     last = await get_latest_vehicle_movement(db, req.chassis_no)
 
     if last is None:
-        return VehicleAvailabilityResponse(
-            chassis_no=req.chassis_no,
-            is_available=False,
-            current_status=None
-        )
+        return VehicleAvailabilityResponse(chassis_no=req.chassis_no, is_available=False, current_status=None)
 
     is_available = last.movement_type in ("INWARD", "AVAILABLE")
     return VehicleAvailabilityResponse(
-        chassis_no=req.chassis_no,
-        is_available=is_available,
-        current_status=last.movement_type
+        chassis_no=req.chassis_no, is_available=is_available, current_status=last.movement_type
     )
 
 
-async def check_spare_stock(
-    db: AsyncSession, req: CheckSpareStockRequest
-) -> SpareStockAvailabilityResponse:
+async def check_spare_stock(db: AsyncSession, req: CheckSpareStockRequest) -> SpareStockAvailabilityResponse:
     """
     Synchronous cross-module read.
     Aggregates stock quantities for the requested spares and returns a contract.
     """
     results = []
     for spare_id in req.spare_ids:
-        stmt = (
-            select(func.coalesce(func.sum(SpareStockMovement.quantity), 0))
-            .filter(SpareStockMovement.spare_id == spare_id)
+        stmt = select(func.coalesce(func.sum(SpareStockMovement.quantity), 0)).filter(
+            SpareStockMovement.spare_id == spare_id
         )
         result = await db.execute(stmt)
         qty = result.scalar() or 0
 
-        results.append(
-            SpareStockAvailabilityInfo(
-                spare_id=spare_id,
-                available_quantity=int(qty),
-                is_available=qty > 0
-            )
-        )
+        results.append(SpareStockAvailabilityInfo(spare_id=spare_id, available_quantity=int(qty), is_available=qty > 0))
 
     return SpareStockAvailabilityResponse(results=results)
 
@@ -592,7 +541,9 @@ async def create_temporary_spare(
     Internal logic to create a temporary spare part.
     Returns the created spare_id to keep ORM objects internal.
     """
-    existing_code_stmt = select(SparePartCode).filter(SparePartCode.code == spare_code, SparePartCode.is_deleted == False)
+    existing_code_stmt = select(SparePartCode).filter(
+        SparePartCode.code == spare_code, SparePartCode.is_deleted == False
+    )
     existing_code = await db.execute(existing_code_stmt)
     if existing_code.scalars().first():
         raise InventoryError(f"Part code {spare_code} already exists.")
@@ -613,7 +564,7 @@ async def create_temporary_spare(
         spare_id=spare.spare_id,
         code=spare_code,
         is_current=True,
-        effective_from=datetime.now(timezone.utc).replace(tzinfo=None)
+        effective_from=datetime.now(timezone.utc).replace(tzinfo=None),
     )
     db.add(code_record)
     await db.flush()
@@ -622,10 +573,10 @@ async def create_temporary_spare(
 
 async def list_temporary_spares(db: AsyncSession) -> list[SpareMaster]:
     """List unverified temporary items (excludes soft-deleted)"""
-    stmt = select(SpareMaster).options(selectinload(SpareMaster.codes)).filter(
-        SpareMaster.is_temporary == True,
-        SpareMaster.is_verified == False,
-        SpareMaster.is_deleted == False
+    stmt = (
+        select(SpareMaster)
+        .options(selectinload(SpareMaster.codes))
+        .filter(SpareMaster.is_temporary == True, SpareMaster.is_verified == False, SpareMaster.is_deleted == False)
     )
     result = await db.execute(stmt)
     return result.scalars().all()

@@ -6,24 +6,17 @@ from app.modules.billing.models import SalesInvoice
 from app.modules.sales.models import Sale
 from app.modules.master.models import Vehicle, VehicleModel, Brand, Staff, Customer
 
+
 @pytest.mark.asyncio
 async def test_reports_dashboard_stats_and_alerts(db_session: AsyncSession):
     # 1. Setup staff and customer
     staff = Staff(
-        full_name="Report Agent",
-        mobile_no="9876543230",
-        email="report@erp.test",
-        designation="ADMIN",
-        pin_hash="dummy"
+        full_name="Report Agent", mobile_no="9876543230", email="report@erp.test", designation="ADMIN", pin_hash="dummy"
     )
     db_session.add(staff)
     await db_session.flush()
 
-    customer = Customer(
-        name="Report Customer",
-        primary_phone="9876543231",
-        created_by=staff.staff_id
-    )
+    customer = Customer(name="Report Customer", primary_phone="9876543231", created_by=staff.staff_id)
     db_session.add(customer)
     await db_session.flush()
 
@@ -37,7 +30,7 @@ async def test_reports_dashboard_stats_and_alerts(db_session: AsyncSession):
         model_name="Report EV Model",
         material_number="REP-001",
         colour="Midnight Black",
-        created_by=staff.staff_id
+        created_by=staff.staff_id,
     )
     db_session.add(vm)
     await db_session.flush()
@@ -47,7 +40,7 @@ async def test_reports_dashboard_stats_and_alerts(db_session: AsyncSession):
         chassis_no="REPORT-CHASSIS-001",
         vehicle_model_id=vm.vehicle_model_id,
         current_status="IN_STOCK",
-        created_by=staff.staff_id
+        created_by=staff.staff_id,
     )
     db_session.add(vehicle)
 
@@ -58,7 +51,7 @@ async def test_reports_dashboard_stats_and_alerts(db_session: AsyncSession):
         total_amount=200000.0,
         sale_status="DELIVERED",
         created_by_staff_id=staff.staff_id,
-        created_by=staff.staff_id
+        created_by=staff.staff_id,
     )
     db_session.add(sale)
     await db_session.flush()
@@ -71,7 +64,7 @@ async def test_reports_dashboard_stats_and_alerts(db_session: AsyncSession):
         gst_amount=30508.47,
         total_amount=200000.0,
         is_final=True,
-        created_by=staff.staff_id
+        created_by=staff.staff_id,
     )
     db_session.add(invoice)
     await db_session.flush()
@@ -89,9 +82,7 @@ async def test_reports_dashboard_stats_and_alerts(db_session: AsyncSession):
     # 7. Test async sales register query
     today = date.today()
     rows = await reports_services.sales_register(
-        db_session,
-        from_date=today - timedelta(days=7),
-        to_date=today + timedelta(days=7)
+        db_session, from_date=today - timedelta(days=7), to_date=today + timedelta(days=7)
     )
     assert len(rows) >= 1
     first_row = rows[0]

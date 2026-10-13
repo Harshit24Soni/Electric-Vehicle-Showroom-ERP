@@ -28,10 +28,7 @@ from app.modules.inventory.schemas import (
 )
 from app.modules.inventory import pricing_services
 
-router = APIRouter(
-    prefix="/inventory",
-    tags=["Inventory"]
-)
+router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
 
 @router.get("/spares", response_model=list[SpareMasterResponse])
@@ -42,6 +39,7 @@ async def list_spares(
 ):
     """List all spare master records."""
     return await services.list_spares(db, include_deleted=include_deleted)
+
 
 @router.post("/spares", response_model=SpareMasterResponse, status_code=status.HTTP_201_CREATED)
 async def create_spare(
@@ -56,10 +54,11 @@ async def create_spare(
             initial_code=data.initial_code,
             tracking_mode=data.tracking_mode,
             category=data.category,
-            remarks=data.remarks
+            remarks=data.remarks,
         )
     except services.InventoryError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.get("/spares/{spare_id}", response_model=SpareMasterResponse)
 async def get_spare(
@@ -72,6 +71,7 @@ async def get_spare(
         raise HTTPException(status_code=404, detail="Spare part not found")
     return spare
 
+
 @router.patch("/spares/{spare_id}", response_model=SpareMasterResponse)
 async def update_spare(
     spare_id: int,
@@ -81,14 +81,11 @@ async def update_spare(
 ):
     try:
         return await services.update_spare(
-            db=db,
-            spare_id=spare_id,
-            spare_name=data.spare_name,
-            category=data.category,
-            remarks=data.remarks
+            db=db, spare_id=spare_id, spare_name=data.spare_name, category=data.category, remarks=data.remarks
         )
     except services.InventoryError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.delete("/spares/{spare_id}", response_model=SpareMasterResponse)
 async def deactivate_spare(
@@ -100,6 +97,7 @@ async def deactivate_spare(
         return await services.deactivate_spare(db, spare_id)
     except services.InventoryError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.post("/spares/{spare_id}/codes", response_model=SpareMasterResponse)
 async def add_part_code(
@@ -113,6 +111,7 @@ async def add_part_code(
     except services.InventoryError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @router.delete("/spares/{spare_id}/codes/{code_id}", response_model=SpareMasterResponse)
 async def retire_part_code(
     spare_id: int,
@@ -125,6 +124,7 @@ async def retire_part_code(
     except services.InventoryError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @router.post("/spares/{spare_id}/compatibilities", response_model=SpareMasterResponse)
 async def add_compatibility(
     spare_id: int,
@@ -136,6 +136,7 @@ async def add_compatibility(
         return await services.add_compatibility(db, spare_id, data.vehicle_model_id)
     except services.InventoryError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.delete("/spares/{spare_id}/compatibilities/{compatibility_id}", response_model=SpareMasterResponse)
 async def remove_compatibility(
@@ -233,41 +234,42 @@ async def get_spare_stock(
         "available_quantity": stock,
     }
 
+
 from app.modules.inventory import schemas_stock, services_stock
 from typing import List, Optional
 
+
 @router.get("/dashboard/stats", response_model=schemas_stock.InventoryDashboardResponse)
-async def get_inventory_dashboard(
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def get_inventory_dashboard(db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     return await services_stock.get_inventory_dashboard(db)
+
 
 @router.get("/stock/locations", response_model=List[schemas_stock.StockByLocationResponse])
 async def get_stock_by_location(
-    location: Optional[str] = None,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    location: Optional[str] = None, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     return await services_stock.get_stock_by_location(db, location)
+
 
 @router.get("/stock", response_model=schemas_stock.StockListResponse)
 async def list_stock(
     spare_id: Optional[int] = None,
     location: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    _staff=Depends(get_current_staff),
 ):
     return await services_stock.list_stock(db, spare_id, location)
+
 
 @router.get("/batches", response_model=schemas_stock.BatchListResponse)
 async def list_batches(
     spare_id: Optional[int] = None,
     location: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    _staff=Depends(get_current_staff),
 ):
     return await services_stock.list_batches(db, spare_id, location)
+
 
 @router.get("/serials", response_model=schemas_stock.SerialListResponse)
 async def list_serials(
@@ -275,9 +277,10 @@ async def list_serials(
     location: Optional[str] = None,
     serial_number: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    _staff=Depends(get_current_staff),
 ):
     return await services_stock.list_serials(db, spare_id, location, serial_number)
+
 
 @router.get("/movements", response_model=schemas_stock.MovementHistoryListResponse)
 async def list_movements(
@@ -285,17 +288,14 @@ async def list_movements(
     size: int = 50,
     spare_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    _staff=Depends(get_current_staff),
 ):
     return await services_stock.list_movements(db, page, size, spare_id)
 
 
-
 @router.post("/pricing/price-lists", response_model=PriceListResponse, status_code=status.HTTP_201_CREATED)
 async def create_price_list_api(
-    data: PriceListCreate,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(require_roles("ADMIN", "MANAGER"))
+    data: PriceListCreate, db: AsyncSession = Depends(get_db), _staff=Depends(require_roles("ADMIN", "MANAGER"))
 ):
     pl = await pricing_services.create_price_list(db, source_name=data.source_name, remarks=data.remarks)
     if data.initial_version:
@@ -305,25 +305,28 @@ async def create_price_list_api(
             version_reference=data.initial_version.version_reference,
             effective_from=data.initial_version.effective_from,
             received_date=data.initial_version.received_date,
-            items_data=[item.model_dump() for item in data.initial_version.items]
+            items_data=[item.model_dump() for item in data.initial_version.items],
         )
         # Re-fetch to get versions
         return await pricing_services.get_price_list(db, pl.price_list_id)
     return pl
 
+
 @router.get("/pricing/price-lists", response_model=list[PriceListResponse])
-async def list_price_lists_api(
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(require_roles("ADMIN", "MANAGER"))
-):
+async def list_price_lists_api(db: AsyncSession = Depends(get_db), _staff=Depends(require_roles("ADMIN", "MANAGER"))):
     return await pricing_services.list_price_lists(db)
 
-@router.post("/pricing/price-lists/{price_list_id}/versions", response_model=PriceListVersionResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/pricing/price-lists/{price_list_id}/versions",
+    response_model=PriceListVersionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def add_price_list_version_api(
     price_list_id: int,
     data: PriceListVersionCreate,
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(require_roles("ADMIN", "MANAGER"))
+    _staff=Depends(require_roles("ADMIN", "MANAGER")),
 ):
     try:
         return await pricing_services.add_price_list_version(
@@ -332,57 +335,57 @@ async def add_price_list_version_api(
             version_reference=data.version_reference,
             effective_from=data.effective_from,
             received_date=data.received_date,
-            items_data=[item.model_dump() for item in data.items]
+            items_data=[item.model_dump() for item in data.items],
         )
     except services.InventoryError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/spares/{spare_id}/selling-price", response_model=SpareSellingPriceHistoryResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/spares/{spare_id}/selling-price",
+    response_model=SpareSellingPriceHistoryResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def add_spare_selling_price_api(
     spare_id: int,
     data: SpareSellingPriceCreate,
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(require_roles("ADMIN", "MANAGER"))
+    _staff=Depends(require_roles("ADMIN", "MANAGER")),
 ):
     return await pricing_services.add_spare_selling_price(
-        db,
-        spare_id,
-        selling_price=data.selling_price,
-        reason=data.reason
+        db, spare_id, selling_price=data.selling_price, reason=data.reason
     )
+
 
 @router.get("/spares/{spare_id}/pricing", response_model=dict)
 async def get_spare_pricing_summary(
-    spare_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(require_roles("ADMIN", "MANAGER"))
+    spare_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(require_roles("ADMIN", "MANAGER"))
 ):
     margin_data = await pricing_services.calculate_margin(db, spare_id)
     return margin_data
 
+
 @router.get("/spares/{spare_id}/price-history", response_model=list[PriceListItemResponse])
 async def get_spare_price_history_api(
-    spare_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    spare_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     return await pricing_services.get_price_history(db, spare_id)
 
+
 @router.get("/spares/{spare_id}/cost-history", response_model=list[SpareCostHistoryResponse])
 async def get_spare_cost_history_api(
-    spare_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(require_roles("ADMIN", "MANAGER"))
+    spare_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(require_roles("ADMIN", "MANAGER"))
 ):
     return await pricing_services.get_cost_history(db, spare_id)
 
+
 @router.get("/spares/{spare_id}/selling-price-history", response_model=list[SpareSellingPriceHistoryResponse])
 async def get_spare_selling_price_history_api(
-    spare_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    spare_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     return await pricing_services.get_selling_price_history(db, spare_id)
 
+
 from app.modules.inventory.routes_tags import router as tags_router
+
 router.include_router(tags_router)

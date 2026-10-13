@@ -5,6 +5,7 @@ from typing import Optional, List
 
 class LeadCreate(BaseModel):
     """Create a new lead - independent of customer"""
+
     name: str = Field(..., min_length=1, max_length=150)
     customer_id: Optional[int] = None
     phone: str = Field(..., min_length=10, max_length=15)
@@ -22,6 +23,7 @@ class LeadCreate(BaseModel):
 
 class LeadUpdate(BaseModel):
     """Update lead information"""
+
     name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
@@ -60,12 +62,14 @@ class LeadResponse(BaseModel):
 
 class LeadConversionRequest(BaseModel):
     """Request to convert a lead to customer"""
+
     lead_id: int
     use_lead_data: bool = Field(default=True, description="Whether to use lead data for customer creation")
 
 
 class EnquiryCreate(BaseModel):
     """Create an enquiry for lead tracking"""
+
     lead_id: int
     enquiry_source: str
     enquiry_status_id: int = Field(default=1, description="Default to ACTIVE (1)")
@@ -114,6 +118,7 @@ class FollowupResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class ActivityCreate(BaseModel):
     lead_id: int
     activity_type: str
@@ -125,8 +130,10 @@ class ActivityCreate(BaseModel):
 
 # ==================== NEW WORKFLOW SCHEMAS ====================
 
+
 class LeadFollowupCreate(BaseModel):
     """Create a followup entry for a lead with mandatory remarks (min 10 chars)"""
+
     remarks: str = Field(..., min_length=10, description="Mandatory remarks, minimum 10 characters")
     outcome_status: str = Field(..., description="HOT, WARM, COLD, LOST, SOLD")
     next_followup_date: Optional[date] = None
@@ -179,6 +186,7 @@ class LeadFollowupDashboardResponse(BaseModel):
 
 class TestRideCreate(BaseModel):
     """Create a test ride entry"""
+
     chassis_no: str
     test_ride_date: date
     customer_feedback: Optional[str] = None
@@ -186,8 +194,10 @@ class TestRideCreate(BaseModel):
 
 # ==================== LEAD CONVERSION SCHEMAS ====================
 
+
 class NomineeInput(BaseModel):
     """Nested nominee input for lead conversion"""
+
     nominee_name: str = Field(..., min_length=1, max_length=150)
     nominee_dob: date
     relation: str = Field(..., min_length=1, max_length=100)
@@ -198,6 +208,7 @@ class LeadConvertPayload(BaseModel):
     Supports the 'Buyer vs. Rider' scenario: fields are pre-filled from the Lead
     but the user can override them (e.g. son enquired, father is buying).
     """
+
     # Customer details
     name: str = Field(..., min_length=1, max_length=150)
     phone: str = Field(..., min_length=10, max_length=15)
@@ -216,10 +227,10 @@ class LeadConvertPayload(BaseModel):
 
 class LeadConvertResponse(BaseModel):
     """Response after successful lead conversion"""
+
     message: str
     customer_id: int
     lead_id: int
     nominee_id: int
 
     model_config = ConfigDict(from_attributes=True)
-

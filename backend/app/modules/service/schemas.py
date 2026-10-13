@@ -2,10 +2,12 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
+
 class JobCardCreate(BaseModel):
     chassis_no: str
     is_free_service: bool
     remarks: Optional[str] = None
+
 
 class JobCardResponse(BaseModel):
     job_card_id: int
@@ -17,12 +19,14 @@ class JobCardResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class SpareConsumeCreate(BaseModel):
     spare_id: int
     tracking_mode: str = "QUANTITY"
     quantity: int
     batch_id: Optional[int] = None
     serial_id: Optional[int] = None
+
 
 class SpareConsumptionResponse(BaseModel):
     consumption_id: int
@@ -43,8 +47,10 @@ class SpareConsumptionResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class JobCardClose(BaseModel):
     remarks: Optional[str] = None
+
 
 class JobCardListItem(BaseModel):
     job_card_id: int
@@ -54,4 +60,3 @@ class JobCardListItem(BaseModel):
     closed_at: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)
-

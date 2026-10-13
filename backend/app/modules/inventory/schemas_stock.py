@@ -3,16 +3,19 @@ from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
 from decimal import Decimal
 
+
 # Dashboard
 class InventoryDashboardResponse(BaseModel):
     total_active_spares: int
     total_stock_value: Decimal
     total_movements_last_30d: int
-    
+
+
 class StockByLocationResponse(BaseModel):
     location: str
     total_quantity: int
     total_value: Decimal
+
 
 # Stock
 class StockItemResponse(BaseModel):
@@ -25,8 +28,10 @@ class StockItemResponse(BaseModel):
     unit_cost: Decimal
     total_value: Decimal
 
+
 class StockListResponse(BaseModel):
     items: List[StockItemResponse]
+
 
 # Batches
 class BatchItemResponse(BaseModel):
@@ -41,8 +46,10 @@ class BatchItemResponse(BaseModel):
     total_value: Decimal
     expiry_date: Optional[datetime] = None
 
+
 class BatchListResponse(BaseModel):
     items: List[BatchItemResponse]
+
 
 # Serials
 class SerialItemResponse(BaseModel):
@@ -55,8 +62,10 @@ class SerialItemResponse(BaseModel):
     status: str
     unit_cost: Decimal
 
+
 class SerialListResponse(BaseModel):
     items: List[SerialItemResponse]
+
 
 # Movements
 class MovementHistoryItemResponse(BaseModel):
@@ -76,6 +85,7 @@ class MovementHistoryItemResponse(BaseModel):
     reference_type: Optional[str] = None
     reference_id: Optional[str] = None
     remarks: Optional[str] = None
+
 
 class MovementHistoryListResponse(BaseModel):
     items: List[MovementHistoryItemResponse]

@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 class Role(str, Enum):
     """Standardized Role definitions across Electric Vehicle Showroom ERP."""
+
     ADMIN = "ADMIN"
     DEALER = "DEALER"
     STAFF = "STAFF"

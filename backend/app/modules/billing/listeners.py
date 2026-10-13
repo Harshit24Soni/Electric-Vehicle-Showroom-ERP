@@ -26,7 +26,7 @@ async def on_sale_transaction_completed_billing(event: SaleTransactionCompletedE
             gst_rate=gst_rate,
             gst_amount=gst_amount,
             total_amount=total,
-            is_final=True
+            is_final=True,
         )
         if db is not None:
             try:
@@ -38,6 +38,7 @@ async def on_sale_transaction_completed_billing(event: SaleTransactionCompletedE
                 raise
         else:
             from app.db.session import AsyncSessionLocal
+
             async with AsyncSessionLocal() as session:
                 try:
                     session.add(invoice)

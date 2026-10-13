@@ -4,8 +4,8 @@ from typing import Optional, Literal
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 import re
 
-
 # ==================== ENUMS ====================
+
 
 class VendorType(str, Enum):
     OEM = "OEM"
@@ -23,8 +23,10 @@ PINCODE_REGEX = re.compile(r"^\d{6}$")
 
 # ==================== NOMINEE SCHEMAS ====================
 
+
 class NomineeCreate(BaseModel):
     """Create nominee details for insurance"""
+
     nominee_name: str = Field(..., min_length=1, max_length=150)
     nominee_dob: date
     relation: str = Field(..., min_length=1, max_length=100)
@@ -33,6 +35,7 @@ class NomineeCreate(BaseModel):
 
 class NomineeUpdate(BaseModel):
     """Update nominee details"""
+
     nominee_name: Optional[str] = None
     nominee_dob: Optional[date] = None
     relation: Optional[str] = None
@@ -54,6 +57,7 @@ class NomineeResponse(BaseModel):
 
 # ==================== CUSTOMER SCHEMAS ====================
 
+
 class CustomerCreate(BaseModel):
     customer_type: Optional[str] = "INDIVIDUAL"
     name: str
@@ -73,6 +77,7 @@ class CustomerCreate(BaseModel):
 
 class CustomerUpdate(BaseModel):
     """Update customer details"""
+
     customer_type: Optional[str] = None
     name: Optional[str] = None
     guardian_name: Optional[str] = None
@@ -103,6 +108,7 @@ class CustomerResponse(BaseModel):
 
 class CustomerDetailedResponse(BaseModel):
     """Detailed customer response with nominee information"""
+
     customer_id: int
     lead_reference_id: Optional[int]
     customer_type: Optional[str]
@@ -128,6 +134,7 @@ class CustomerDetailedResponse(BaseModel):
 
 # ==================== VEHICLE MODEL SCHEMAS ====================
 
+
 class VehicleModelCreate(BaseModel):
     brand_id: int = Field(..., gt=0, description="FK to master.brand")
     model_name: str = Field(..., min_length=1, max_length=100)
@@ -141,6 +148,7 @@ class VehicleModelCreate(BaseModel):
 
 class VehicleModelUpdate(BaseModel):
     """Partial update for vehicle model — only supplied fields are changed."""
+
     model_name: Optional[str] = Field(None, min_length=1, max_length=100)
     material_number: Optional[str] = Field(None, min_length=1, max_length=100)
     colour: Optional[str] = Field(None, min_length=1, max_length=50)
@@ -170,6 +178,7 @@ class VehicleModelResponse(BaseModel):
 
 # ==================== VEHICLE SCHEMAS ====================
 
+
 class VehicleCreate(BaseModel):
     chassis_no: str
     vehicle_model_id: int
@@ -186,6 +195,7 @@ class VehicleResponse(BaseModel):
 
 
 # ==================== VENDOR SCHEMAS ====================
+
 
 class VendorCreate(BaseModel):
     vendor_name: str = Field(..., min_length=1, max_length=150)
@@ -225,6 +235,7 @@ class VendorCreate(BaseModel):
 
 class VendorUpdate(BaseModel):
     """Partial update for vendor — only supplied fields are changed."""
+
     vendor_name: Optional[str] = Field(None, min_length=1, max_length=150)
     vendor_type: Optional[VendorType] = None
     gstin: Optional[str] = Field(None, max_length=15)
@@ -279,6 +290,7 @@ class VendorResponse(BaseModel):
 
 
 # ==================== PRICING SCHEMAS ====================
+
 
 class SparePriceUpdate(BaseModel):
     price: float = Field(..., gt=0)

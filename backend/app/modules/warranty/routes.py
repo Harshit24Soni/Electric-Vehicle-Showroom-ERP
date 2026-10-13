@@ -22,6 +22,7 @@ async def raise_claim(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @router.post("/swap-component", response_model=ws.ClaimResponse, status_code=status.HTTP_201_CREATED)
 async def swap_vehicle_component_api(
     payload: ws.ComponentSwapRequest,
@@ -35,6 +36,7 @@ async def swap_vehicle_component_api(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.get("/claims", response_model=List[ws.ClaimResponse])
 async def list_claims(

@@ -20,38 +20,42 @@ def _utc_now_naive() -> datetime:
 class SalesError(Exception):
     pass
 
+
 async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> models.Sale:
     """Create a new sale — supports direct sales (no lead required) with transactional rollback protection."""
     try:
-        is_direct = getattr(payload, 'is_direct_sale', False) or payload.lead_id is None
+        is_direct = getattr(payload, "is_direct_sale", False) or payload.lead_id is None
 
         # Verify Lead (if not direct sale)
         if not is_direct:
             from app.modules.crm.contracts import verify_lead_exists
+
             lead_exists = await verify_lead_exists(db, payload.lead_id)
             if not lead_exists:
                 raise SalesError("Lead not found")
-            
+
         # Verify Customer
         from app.modules.master.contracts import verify_customer_exists, verify_vehicle_available
+
         customer_exists = await verify_customer_exists(db, payload.customer_id)
         if not customer_exists:
             raise SalesError("Customer not found")
-            
+
         # Verify Vehicle
         vehicle_available, current_status = await verify_vehicle_available(db, payload.chassis_no)
         if not vehicle_available:
             if current_status:
                 raise SalesError(f"Vehicle is not available (Status: {current_status})")
             raise SalesError("Vehicle not found")
-            
+
         # Margin Validation
         from app.modules.procurement.contracts import get_vehicle_cost_price
+
         cost_price = await get_vehicle_cost_price(db, payload.chassis_no)
-        
+
         if float(payload.total_amount) < cost_price:
             raise HTTPException(status_code=400, detail="Cannot sell below procurement cost")
-            
+
         # Create Sale
         sale = models.Sale(
             lead_id=payload.lead_id if not is_direct else None,
@@ -69,21 +73,22 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
             is_direct_sale=is_direct,
         )
         db.add(sale)
-        
+
         # Create Empty Checklist
         checklist = models.DeliveryChecklist(sale=sale)
         db.add(checklist)
-        
+
         await db.flush()
 
         from app.core.event_bus import event_bus, SaleCreatedEvent
+
         await event_bus.publish(
             SaleCreatedEvent(
                 sale_id=sale.sale_id,
                 lead_id=payload.lead_id if not is_direct else None,
                 customer_id=payload.customer_id,
                 chassis_no=payload.chassis_no,
-                status='BOOKED'
+                status="BOOKED",
             )
         )
 
@@ -107,9 +112,10 @@ async def create_sale(db: AsyncSession, payload, current_staff_id: int) -> model
         return sale
     except Exception as exc:
         await db.rollback()
-        logger.error("Failed to create sale for chassis %s: %s", getattr(payload, "chassis_no", "unknown"), exc, exc_info=True)
+        logger.error(
+            "Failed to create sale for chassis %s: %s", getattr(payload, "chassis_no", "unknown"), exc, exc_info=True
+        )
         raise
-
 
 
 async def create_sale_transaction(
@@ -135,6 +141,7 @@ async def create_sale_transaction(
 
         # (a) Verify vehicle
         from app.modules.master.contracts import verify_customer_exists, verify_vehicle_available
+
         vehicle_available, current_status = await verify_vehicle_available(db, payload.chassis_no)
         if not vehicle_available:
             if current_status:
@@ -153,8 +160,9 @@ async def create_sale_transaction(
 
         # Margin Validation
         from app.modules.procurement.contracts import get_vehicle_cost_price
+
         cost_price = await get_vehicle_cost_price(db, payload.chassis_no)
-        
+
         if float(payload.total_amount) < cost_price:
             raise HTTPException(status_code=400, detail="Cannot sell below procurement cost")
 
@@ -180,13 +188,14 @@ async def create_sale_transaction(
 
         # (c) Mark vehicle SOLD + link customer (via Event Bus)
         from app.core.event_bus import SaleCreatedEvent, SaleTransactionCompletedEvent
+
         events_to_publish.append(
             SaleCreatedEvent(
                 sale_id=sale.sale_id,
                 lead_id=payload.lead_id if not is_direct else None,
                 customer_id=payload.customer_id,
                 chassis_no=payload.chassis_no,
-                status='SOLD'
+                status="SOLD",
             )
         )
 
@@ -228,11 +237,7 @@ async def create_sale_transaction(
             )
         )
         events_to_publish.append(
-            VehicleDeliveredEvent(
-                chassis_no=payload.chassis_no,
-                sale_id=sale.sale_id,
-                invoice_no=inv_number
-            )
+            VehicleDeliveredEvent(chassis_no=payload.chassis_no, sale_id=sale.sale_id, invoice_no=inv_number)
         )
 
         # (g) Initialize portal tracking + delivery checklist
@@ -260,9 +265,9 @@ async def create_sale_transaction(
                 chassis_no=payload.chassis_no,
                 total_amount=float(payload.total_amount),
                 down_payment_amount=float(payload.down_payment_amount) if payload.down_payment_amount else None,
-                payment_mode=getattr(payload, 'payment_mode', None),
-                financier_name=getattr(payload, 'financier_name', None),
-                remarks=payload.remarks
+                payment_mode=getattr(payload, "payment_mode", None),
+                financier_name=getattr(payload, "financier_name", None),
+                remarks=payload.remarks,
             )
         )
 
@@ -277,40 +282,48 @@ async def create_sale_transaction(
         return sale
     except Exception as exc:
         await db.rollback()
-        logger.error("Failed to execute sale transaction for chassis %s: %s", getattr(payload, "chassis_no", "unknown"), exc, exc_info=True)
+        logger.error(
+            "Failed to execute sale transaction for chassis %s: %s",
+            getattr(payload, "chassis_no", "unknown"),
+            exc,
+            exc_info=True,
+        )
         raise
 
 
 async def get_sale(db: AsyncSession, sale_id: int) -> models.Sale | None:
     """Get a sale by ID (excludes soft-deleted)"""
-    stmt = select(models.Sale).options(
-        selectinload(models.Sale.lead),
-        selectinload(models.Sale.customer),
-        selectinload(models.Sale.vehicle),
-        selectinload(models.Sale.receipts),
-        selectinload(models.Sale.delivery_checklist),
-        selectinload(models.Sale.service_schedules),
-        selectinload(models.Sale.stage_history),
-        selectinload(models.Sale.sale_payments),
-        selectinload(models.Sale.sale_documents),
-        selectinload(models.Sale.portal_tracking),
-    ).filter(
-        models.Sale.sale_id == sale_id,
-        models.Sale.is_deleted == False
+    stmt = (
+        select(models.Sale)
+        .options(
+            selectinload(models.Sale.lead),
+            selectinload(models.Sale.customer),
+            selectinload(models.Sale.vehicle),
+            selectinload(models.Sale.receipts),
+            selectinload(models.Sale.delivery_checklist),
+            selectinload(models.Sale.service_schedules),
+            selectinload(models.Sale.stage_history),
+            selectinload(models.Sale.sale_payments),
+            selectinload(models.Sale.sale_documents),
+            selectinload(models.Sale.portal_tracking),
+        )
+        .filter(models.Sale.sale_id == sale_id, models.Sale.is_deleted == False)
     )
     result = await db.execute(stmt)
     return result.scalars().first()
 
+
 async def list_sales(db: AsyncSession) -> list[models.Sale]:
     """List all sales (excludes soft-deleted)"""
-    stmt = select(models.Sale).options(
-        selectinload(models.Sale.customer),
-        selectinload(models.Sale.vehicle)
-    ).filter(
-        models.Sale.is_deleted == False
-    ).order_by(desc(models.Sale.created_at))
+    stmt = (
+        select(models.Sale)
+        .options(selectinload(models.Sale.customer), selectinload(models.Sale.vehicle))
+        .filter(models.Sale.is_deleted == False)
+        .order_by(desc(models.Sale.created_at))
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
+
 
 async def add_receipt(db: AsyncSession, payload, current_staff_id: int) -> models.PaymentReceipt:
     receipt = models.PaymentReceipt(
@@ -320,158 +333,166 @@ async def add_receipt(db: AsyncSession, payload, current_staff_id: int) -> model
         transaction_ref=payload.transaction_ref,
         receipt_date=payload.receipt_date,
         created_by_staff_id=current_staff_id,
-        created_at=_utc_now_naive()
+        created_at=_utc_now_naive(),
     )
     db.add(receipt)
-    
+
     # Update Sale flag
     sale = await get_sale(db, payload.sale_id)
     if sale:
         sale.is_receipt_generated = True
-        
+
     await db.flush()
     return receipt
+
 
 async def generate_invoice(db: AsyncSession, sale_id: int) -> models.Sale:
     sale = await get_sale(db, sale_id)
     if not sale:
         raise SalesError("Sale not found")
-        
+
     if sale.is_invoice_generated:
-        return sale # Already generated
-        
+        return sale  # Already generated
+
     # Generate Number: INV-YYYY-ID
     year = datetime.now().year
     sale.invoice_number = f"INV-{year}-{sale.sale_id:04d}"
     sale.is_invoice_generated = True
     sale.sale_status = "INVOICED"
-    
+
     await db.flush()
     return sale
+
 
 async def generate_challan(db: AsyncSession, sale_id: int) -> models.Sale:
     sale = await get_sale(db, sale_id)
     if not sale:
         raise SalesError("Sale not found")
-        
+
     if sale.is_challan_generated:
         return sale
-        
+
     year = datetime.now().year
     sale.delivery_challan_number = f"CH-{year}-{sale.sale_id:04d}"
     sale.is_challan_generated = True
-    
+
     await db.flush()
     return sale
 
+
 from datetime import datetime, timedelta
+
 
 async def generate_service_schedule(db: AsyncSession, sale_id: int):
     sale = await get_sale(db, sale_id)
     if not sale:
         raise SalesError("Sale not found")
-        
+
     if sale.is_service_schedule_generated:
         return sale
-        
+
     # Create 3 Free Services
     # 1st Service: 30 days
     # 2nd Service: 90 days
     # 3rd Service: 180 days
-    
-    sale_date = sale.sale_date if isinstance(sale.sale_date, datetime) else datetime.combine(sale.sale_date, datetime.min.time())
-    
+
+    sale_date = (
+        sale.sale_date
+        if isinstance(sale.sale_date, datetime)
+        else datetime.combine(sale.sale_date, datetime.min.time())
+    )
+
     schedules = [
         models.ServiceSchedule(
             sale_id=sale_id,
             service_number=1,
             service_type="FREE",
             due_date=(sale_date + timedelta(days=30)).date(),
-            status="PENDING"
+            status="PENDING",
         ),
         models.ServiceSchedule(
             sale_id=sale_id,
             service_number=2,
             service_type="FREE",
             due_date=(sale_date + timedelta(days=90)).date(),
-            status="PENDING"
+            status="PENDING",
         ),
         models.ServiceSchedule(
             sale_id=sale_id,
             service_number=3,
             service_type="FREE",
             due_date=(sale_date + timedelta(days=180)).date(),
-            status="PENDING"
-        )
+            status="PENDING",
+        ),
     ]
-    
+
     db.add_all(schedules)
     sale.is_service_schedule_generated = True
-    
+
     await db.flush()
     return sale
+
 
 async def get_delivery_status(db: AsyncSession, sale_id: int) -> dict:
     sale = await get_sale(db, sale_id)
     if not sale:
         raise SalesError("Sale not found")
-        
+
     documents = {
         "invoice": sale.is_invoice_generated,
         "receipt": sale.is_receipt_generated,
         "challan": sale.is_challan_generated,
         "service_schedule": sale.is_service_schedule_generated,
     }
-    
+
     # Check strict delivery rules: Receipt, Invoice, Challan, Service Schedule
     required = ["invoice", "receipt", "challan", "service_schedule"]
     allowed = all(documents.get(k, False) for k in required)
-    
-    return {
-        "allowed": allowed,
-        "documents": documents
-    }
+
+    return {"allowed": allowed, "documents": documents}
+
 
 async def update_checklist(db: AsyncSession, sale_id: int, payload) -> models.DeliveryChecklist:
     stmt = select(models.DeliveryChecklist).filter_by(sale_id=sale_id)
     result = await db.execute(stmt)
     checklist = result.scalars().first()
-    
+
     if not checklist:
         # Create if missing (should exist on create_sale)
         checklist = models.DeliveryChecklist(sale_id=sale_id)
         db.add(checklist)
-        
+
     if payload.insurance_completed is not None:
         checklist.insurance_completed = payload.insurance_completed
     if payload.insurance_details is not None:
         checklist.insurance_details = payload.insurance_details
-        
+
     if payload.subsidy_completed is not None:
         checklist.subsidy_completed = payload.subsidy_completed
     if payload.subsidy_details is not None:
         checklist.subsidy_details = payload.subsidy_details
-        
+
     if payload.rto_completed is not None:
         checklist.rto_completed = payload.rto_completed
     if payload.rto_details is not None:
         checklist.rto_details = payload.rto_details
-        
+
     if payload.celex_plate_ordered is not None:
         checklist.celex_plate_ordered = payload.celex_plate_ordered
     if payload.celex_subsidy_completed is not None:
         checklist.celex_subsidy_completed = payload.celex_subsidy_completed
     if payload.celex_details is not None:
         checklist.celex_details = payload.celex_details
-        
+
     if payload.plate_fixation_date is not None:
         checklist.plate_fixation_date = payload.plate_fixation_date
-        
+
     await db.flush()
     return checklist
 
 
 # ==================== NEW WORKFLOW SERVICES ====================
+
 
 async def advance_sale_stage(
     db: AsyncSession,
@@ -487,10 +508,7 @@ async def advance_sale_stage(
     from_stage = sale.sale_stage
     advanced = sale.advance_stage(payload.to_stage)
     if not advanced:
-        raise SalesError(
-            f"Cannot advance from {from_stage} to {payload.to_stage}. "
-            f"Stage must be strictly forward."
-        )
+        raise SalesError(f"Cannot advance from {from_stage} to {payload.to_stage}. " f"Stage must be strictly forward.")
 
     # Record history
     history = models.SaleStageHistory(
@@ -696,10 +714,8 @@ async def get_sale_progress(db: AsyncSession, sale_id: int) -> dict:
 
 # ==================== DELETE SERVICES ====================
 
-async def delete_sale(
-    db: AsyncSession, sale_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+
+async def delete_sale(db: AsyncSession, sale_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete a sale (soft by default, hard if authorized)"""
     sale = await get_sale(db, sale_id)
     if not sale:

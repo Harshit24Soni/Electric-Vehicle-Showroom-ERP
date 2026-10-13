@@ -16,6 +16,7 @@ class SaleCreate(BaseModel):
 
 class SaleCreatePayload(BaseModel):
     """Full sale creation payload with financials and initial payment"""
+
     customer_id: int
     chassis_no: str
     sale_date: date = Field(default_factory=date.today)
@@ -98,7 +99,7 @@ class SaleResponse(BaseModel):
     service_schedules: List[ServiceScheduleResponse] = []
 
     # Forward reference handled by Pydantic usually, but to be safe:
-    delivery_checklist: Optional['ChecklistResponse'] = None
+    delivery_checklist: Optional["ChecklistResponse"] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -126,14 +127,20 @@ class ReceiptResponse(BaseModel):
 
 # ==================== NEW WORKFLOW SCHEMAS ====================
 
+
 class StageAdvanceRequest(BaseModel):
     """Advance a sale to the next stage"""
-    to_stage: str = Field(..., description="Target stage: ENQUIRY, QUOTATION, NEGOTIATION, BOOKING, DOCUMENTATION, PAYMENT, INVOICE, PORTAL_WORK, DELIVERY, COMPLETED")
+
+    to_stage: str = Field(
+        ...,
+        description="Target stage: ENQUIRY, QUOTATION, NEGOTIATION, BOOKING, DOCUMENTATION, PAYMENT, INVOICE, PORTAL_WORK, DELIVERY, COMPLETED",
+    )
     remarks: Optional[str] = None
 
 
 class SalePaymentCreate(BaseModel):
     """Add a payment to a sale"""
+
     payment_type: str = Field(..., description="BOOKING, PARTIAL, FINAL")
     payment_mode: str = Field(..., description="CASH, UPI, CARD, CHEQUE, FINANCE")
     amount: Decimal
@@ -161,6 +168,7 @@ class SalePaymentResponse(BaseModel):
 
 class SaleDocumentCreate(BaseModel):
     """Generate a document for a sale"""
+
     document_type: str = Field(..., description="INVOICE, RECEIPT, CHALLAN, INSURANCE, SERVICE_SCHEDULE")
 
 
@@ -180,6 +188,7 @@ class SaleDocumentResponse(BaseModel):
 
 class PortalTrackingUpdate(BaseModel):
     """Update portal tracking for a sale"""
+
     insurance_status: Optional[str] = None
     insurance_policy_number: Optional[str] = None
     subsidy_status: Optional[str] = None
@@ -230,6 +239,7 @@ class StageHistoryResponse(BaseModel):
 
 class SaleProgressResponse(BaseModel):
     """Complete sale progress with stage, percentage, payments, documents, and portal"""
+
     sale_id: int
     sale_stage: Optional[str] = None
     completion_percentage: int = 0

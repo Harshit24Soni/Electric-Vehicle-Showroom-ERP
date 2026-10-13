@@ -2,31 +2,32 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.core.event_bus import (
-    event_bus, 
-    SparePurchasedEvent, 
-    SpareConsumedEvent, 
-    VehicleIntakeEvent, 
+    event_bus,
+    SparePurchasedEvent,
+    SpareConsumedEvent,
+    VehicleIntakeEvent,
     VehicleDeliveredEvent,
     SaleCompletedEvent,
     DefectiveSpareReturnedEvent,
     WarrantyReplacementIssuedEvent,
-    SparePriceUpdatedEvent
+    SparePriceUpdatedEvent,
 )
 from app.modules.inventory.services import (
-    add_spare_movement, 
-    add_vehicle_movement, 
+    add_spare_movement,
+    add_vehicle_movement,
     create_temporary_spare,
     get_latest_vehicle_movement,
 )
 from app.db.session import AsyncSessionLocal
 
 # Decoupling Strategy (DDD Phase 1 & 4):
-# Listeners subscribe to cross-module events on the global Event Bus. 
-# They act as the asynchronous "entry points" for write operations triggered by 
-# external domains (like Service, Procurement, Warranty). The external domains do NOT 
+# Listeners subscribe to cross-module events on the global Event Bus.
+# They act as the asynchronous "entry points" for write operations triggered by
+# external domains (like Service, Procurement, Warranty). The external domains do NOT
 # call Inventory services or databases directly.
 
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def get_async_session():
@@ -39,6 +40,7 @@ async def get_async_session():
             logger.error(f"Error in inventory listener transaction: {e}", exc_info=True)
             raise
 
+
 async def handle_spare_purchased(event: SparePurchasedEvent) -> None:
     logger.info(f"Inventory module handling SparePurchasedEvent for spare {event.spare_id}")
     async with get_async_session() as db:
@@ -49,9 +51,10 @@ async def handle_spare_purchased(event: SparePurchasedEvent) -> None:
                 quantity=abs(event.quantity),
                 movement_type="PURCHASE",
                 reference_type="PROCUREMENT",
-                remarks="System auto-added from SparePurchasedEvent"
+                remarks="System auto-added from SparePurchasedEvent",
             )
             await db.commit()
+
 
 async def handle_spare_consumed(event: SpareConsumedEvent) -> None:
     logger.info(f"Inventory module handling SpareConsumedEvent for spare {event.spare_id}")
@@ -64,9 +67,10 @@ async def handle_spare_consumed(event: SpareConsumedEvent) -> None:
                 movement_type="SERVICE_CONSUMPTION",
                 reference_type=event.reference_type,
                 reference_id=event.reference_id,
-                remarks="System auto-consumed from SpareConsumedEvent"
+                remarks="System auto-consumed from SpareConsumedEvent",
             )
             await db.commit()
+
 
 async def handle_vehicle_intake(event: VehicleIntakeEvent) -> None:
     logger.info(f"Inventory module handling VehicleIntakeEvent for chassis {event.chassis_no}")
@@ -78,9 +82,10 @@ async def handle_vehicle_intake(event: VehicleIntakeEvent) -> None:
                 movement_type="INWARD",
                 reference_type="PROCUREMENT",
                 reference_id=event.reference_id,
-                remarks=f"OEM Intake — Invoice {event.invoice_no}"
+                remarks=f"OEM Intake — Invoice {event.invoice_no}",
             )
             await db.commit()
+
 
 async def handle_vehicle_delivered(event: VehicleDeliveredEvent) -> None:
     logger.info(f"Inventory module handling VehicleDeliveredEvent for chassis {event.chassis_no}")
@@ -97,9 +102,10 @@ async def handle_vehicle_delivered(event: VehicleDeliveredEvent) -> None:
                 to_location="CUSTOMER",
                 reference_type="SALE",
                 reference_id=event.sale_id,
-                remarks=f"Sale #{event.sale_id} — {event.invoice_no}"
+                remarks=f"Sale #{event.sale_id} — {event.invoice_no}",
             )
             await db.commit()
+
 
 async def handle_sale_completed(event: SaleCompletedEvent) -> None:
     logger.info(f"Inventory module handling SaleCompletedEvent for chassis {event.chassis_no}")
@@ -116,9 +122,10 @@ async def handle_sale_completed(event: SaleCompletedEvent) -> None:
                 to_location="CUSTOMER",
                 reference_type="SALE",
                 reference_id=event.sale_id,
-                remarks=f"Sale #{event.sale_id} — {event.invoice_no or 'Completed'}"
+                remarks=f"Sale #{event.sale_id} — {event.invoice_no or 'Completed'}",
             )
             await db.commit()
+
 
 async def handle_defective_returned(event: DefectiveSpareReturnedEvent) -> None:
     logger.info(f"Inventory module handling DefectiveSpareReturnedEvent for spare {event.spare_id}")
@@ -132,9 +139,10 @@ async def handle_defective_returned(event: DefectiveSpareReturnedEvent) -> None:
                 reference_type="SERVICE",
                 reference_id=event.job_card_id,
                 serial_id=event.serial_id,
-                remarks="Defective component recovered via warranty swap"
+                remarks="Defective component recovered via warranty swap",
             )
             await db.commit()
+
 
 async def handle_warranty_issued(event: WarrantyReplacementIssuedEvent) -> None:
     logger.info(f"Inventory module handling WarrantyReplacementIssuedEvent for spare {event.spare_id}")
@@ -148,13 +156,15 @@ async def handle_warranty_issued(event: WarrantyReplacementIssuedEvent) -> None:
                 reference_type="SERVICE",
                 reference_id=event.job_card_id,
                 serial_id=event.serial_id,
-                remarks="Replacement component issued via warranty swap"
+                remarks="Replacement component issued via warranty swap",
             )
             await db.commit()
+
 
 async def handle_spare_price_updated(event: SparePriceUpdatedEvent) -> None:
     logger.info(f"Inventory module acknowledged price update for spare {event.spare_id}")
     # Future extension: Update SpareMaster cached prices here
+
 
 def register_inventory_listeners():
     """

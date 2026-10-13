@@ -25,7 +25,7 @@ class SparePurchaseCreate(BaseModel):
     purchase_date: date
     remarks: Optional[str] = None
     include_in_accounting: bool = True
-    
+
     # Phase 3 Fields
     status: str = "DRAFT"
     docket_reference: Optional[str] = None
@@ -119,7 +119,7 @@ class SparePurchaseResponse(BaseModel):
     remarks: Optional[str] = None
     is_deleted: bool = False
     created_at: Optional[datetime] = None
-    
+
     # Phase 3 Fields
     status: Optional[str] = "DRAFT"
     docket_reference: Optional[str] = None
@@ -161,8 +161,10 @@ class VehiclePurchaseResponse(BaseModel):
 
 # ==================== VEHICLE INTAKE (OEM) SCHEMAS ====================
 
+
 class VehicleIntakeItem(BaseModel):
     """Single vehicle row in a bulk OEM intake"""
+
     chassis_no: str = Field(..., min_length=1, max_length=50)
     motor_no: Optional[str] = Field(None, max_length=100)
     vehicle_model_id: int
@@ -173,6 +175,7 @@ class VehicleIntakeItem(BaseModel):
 
 class VehicleIntakePayload(BaseModel):
     """Bulk vehicle intake from OEM — creates VehiclePurchase + master.vehicle records"""
+
     oem_invoice_no: str = Field(..., min_length=1, max_length=100)
     oem_invoice_date: date
     vendor_id: int
@@ -181,6 +184,7 @@ class VehicleIntakePayload(BaseModel):
 
 class VehicleIntakeResponse(BaseModel):
     """Response for a successful vehicle intake"""
+
     message: str
     vehicle_purchase_id: int
     vehicles_added: int
@@ -193,6 +197,7 @@ class PostPurchaseItemData(BaseModel):
     location: str
     batch_number: Optional[str] = None
     serial_numbers: Optional[List[str]] = None
+
 
 class PostPurchaseReceiptRequest(BaseModel):
     items: List[PostPurchaseItemData]

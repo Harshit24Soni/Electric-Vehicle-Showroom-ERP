@@ -135,6 +135,7 @@ async def get_current_staff_for_pin_change(
         )
 
     from app.modules.master.models import Staff
+
     stmt = select(Staff).where(Staff.staff_id == staff_id)
     result = await db.execute(stmt)
     staff = result.scalars().first()

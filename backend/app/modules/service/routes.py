@@ -57,7 +57,9 @@ async def list_job_card_spares(
     return await services.list_job_card_consumptions(db, job_card_id)
 
 
-@router.post("/job-cards/{job_card_id}/spares", response_model=SpareConsumptionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/job-cards/{job_card_id}/spares", response_model=SpareConsumptionResponse, status_code=status.HTTP_201_CREATED
+)
 async def draft_spare_consumption(
     job_card_id: int,
     data: SpareConsumeCreate,

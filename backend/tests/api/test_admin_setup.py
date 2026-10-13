@@ -14,6 +14,7 @@ def session_override(db_session):
     @asynccontextmanager
     async def _override(*args, **kwargs):
         yield db_session
+
     return _override
 
 
@@ -239,9 +240,7 @@ async def test_admin_model_view_endpoints_authenticated(
         assert res_staff_list.status_code == 200
 
         # 2. StaffAdmin detail endpoint
-        res_staff_detail = await client.get(
-            f"/admin/{StaffAdmin.identity}/details/{sample_admin_staff.staff_id}"
-        )
+        res_staff_detail = await client.get(f"/admin/{StaffAdmin.identity}/details/{sample_admin_staff.staff_id}")
         assert res_staff_detail.status_code == 200
 
         # 3. StaffAdmin AJAX lookup route
@@ -253,9 +252,7 @@ async def test_admin_model_view_endpoints_authenticated(
         assert res_spare_list.status_code == 200
 
         # 5. SparePartAdmin detail endpoint
-        res_spare_detail = await client.get(
-            f"/admin/{SparePartAdmin.identity}/details/{sample_spare_part.spare_id}"
-        )
+        res_spare_detail = await client.get(f"/admin/{SparePartAdmin.identity}/details/{sample_spare_part.spare_id}")
         assert res_spare_detail.status_code == 200
 
         # 6. SparePartAdmin AJAX lookup route

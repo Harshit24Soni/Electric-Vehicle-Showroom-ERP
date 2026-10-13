@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FeatureFlag:
     """Represents an enterprise feature flag definition with multi-tenant and RBAC scope."""
+
     name: str
     description: str
     enabled: bool = True
@@ -143,10 +144,7 @@ class FeatureFlagManager:
 
     def list_flags(self, tenant_id: Optional[str] = None, role: Optional[str] = None) -> Dict[str, bool]:
         """Return a mapping of all registered flags and their evaluated boolean status."""
-        return {
-            name: self.is_enabled(name, tenant_id=tenant_id, role=role)
-            for name in self._flags
-        }
+        return {name: self.is_enabled(name, tenant_id=tenant_id, role=role) for name in self._flags}
 
 
 # Singleton manager instance
@@ -158,6 +156,7 @@ feature_flags = FeatureFlagManager()
 # ------------------------------------------------------------------------------
 class UserContext:
     """Encapsulates caller tenant and authorization credentials for feature evaluation."""
+
     def __init__(self, tenant_id: str = "default_tenant", role: str = "admin"):
         self.tenant_id = tenant_id
         self.role = role
@@ -180,6 +179,7 @@ def require_feature(feature_name: str) -> Callable:
         @router.post("/procurement/ocr-scan", dependencies=[Depends(require_feature("ocr_procurement_scanning"))])
         async def scan_invoice(...): ...
     """
+
     async def feature_checker(user: UserContext = Depends(get_current_user_context)) -> None:
         if not feature_flags.is_enabled(feature_name, tenant_id=user.tenant_id, role=user.role):
             logger.warning(

@@ -3,8 +3,10 @@ from faker import Faker
 
 fake = Faker()
 
+
 class BaseFactory:
     """Base factory for generating deterministic test data."""
+
     model = None
 
     @classmethod
@@ -12,7 +14,7 @@ class BaseFactory:
         """Builds a model instance without saving to database."""
         if not cls.model:
             raise NotImplementedError("Model not defined in factory")
-        
+
         attributes = cls.get_default_attributes()
         attributes.update(kwargs)
         return cls.model(**attributes)

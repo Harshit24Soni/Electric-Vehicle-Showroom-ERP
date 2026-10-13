@@ -9,6 +9,7 @@ from app.modules.sales.models import Sale
 # Other modules must interact with Sales through these schemas and functions,
 # rather than importing internal ORM models or database tables directly.
 
+
 class SaleSummaryResponse(BaseModel):
     sale_id: int
     customer_id: int
@@ -18,6 +19,7 @@ class SaleSummaryResponse(BaseModel):
     sale_status: str
     sale_stage: Optional[str] = None
     invoice_number: Optional[str] = None
+
 
 async def get_sale_summary(db: AsyncSession, sale_id: int) -> Optional[SaleSummaryResponse]:
     """Synchronous cross-module read to fetch sale summary contract."""
@@ -34,6 +36,7 @@ async def get_sale_summary(db: AsyncSession, sale_id: int) -> Optional[SaleSumma
         sale_stage=sale.sale_stage,
         invoice_number=sale.invoice_number,
     )
+
 
 async def verify_sale_exists(db: AsyncSession, sale_id: int) -> bool:
     """Synchronous cross-module read to verify if a sale exists and is active."""

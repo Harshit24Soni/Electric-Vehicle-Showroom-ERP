@@ -35,8 +35,12 @@ class Policy(Base, AuditMixin, SoftDeleteMixin):
 
     policy_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     vehicle_sale_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    chassis_no: Mapped[str] = mapped_column(String(50), ForeignKey("vehicle.chassis_no", ondelete="RESTRICT"), nullable=False)
-    insurance_company_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("domain_insurance_company.insurance_company_id", ondelete="RESTRICT"), nullable=False)
+    chassis_no: Mapped[str] = mapped_column(
+        String(50), ForeignKey("vehicle.chassis_no", ondelete="RESTRICT"), nullable=False
+    )
+    insurance_company_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("domain_insurance_company.insurance_company_id", ondelete="RESTRICT"), nullable=False
+    )
     policy_number: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     policy_start_date: Mapped[datetime] = mapped_column(Date, nullable=False)
     policy_end_date: Mapped[datetime] = mapped_column(Date, nullable=False)

@@ -16,6 +16,7 @@ def _utc_now_naive() -> datetime:
 
 # ==================== GENERIC HELPERS ====================
 
+
 async def _list_all(db: AsyncSession, model_class: Any):
     """List all records from a table, ordered by created_at desc."""
     stmt = select(model_class).order_by(model_class.created_at.desc())
@@ -29,6 +30,7 @@ async def _get_by_id(db: AsyncSession, model_class: Any, id_value: int):
 
 
 # ==================== BRAND ====================
+
 
 async def list_brands(db: AsyncSession):
     return await _list_all(db, models.Brand)
@@ -50,10 +52,7 @@ async def create_brand(db: AsyncSession, data: dict, staff_id: int):
             else:
                 raise ValueError("Brand already exists")
 
-        brand = models.Brand(
-            brand_name=data["brand_name"],
-            created_by=staff_id
-        )
+        brand = models.Brand(brand_name=data["brand_name"], created_by=staff_id)
         db.add(brand)
         await db.commit()
         await db.refresh(brand)
@@ -113,17 +112,14 @@ async def restore_brand(db: AsyncSession, brand_id: int):
 
 # ==================== PAYMENT MODE ====================
 
+
 async def list_payment_modes(db: AsyncSession):
     return await _list_all(db, models.PaymentMode)
 
 
 async def create_payment_mode(db: AsyncSession, data: dict, staff_id: int):
     try:
-        pm = models.PaymentMode(
-            mode_name=data["mode_name"],
-            description=data.get("description"),
-            created_by=staff_id
-        )
+        pm = models.PaymentMode(mode_name=data["mode_name"], description=data.get("description"), created_by=staff_id)
         db.add(pm)
         await db.commit()
         await db.refresh(pm)
@@ -157,7 +153,7 @@ async def delete_payment_mode(db: AsyncSession, payment_mode_id: int, staff_id: 
     pm = await _get_by_id(db, models.PaymentMode, payment_mode_id)
     if pm:
         try:
-            if hasattr(pm, 'is_deleted'):
+            if hasattr(pm, "is_deleted"):
                 pm.is_deleted = True
                 pm.deleted_at = _utc_now_naive()
                 pm.deleted_by = staff_id
@@ -173,7 +169,7 @@ async def restore_payment_mode(db: AsyncSession, payment_mode_id: int):
     pm = await _get_by_id(db, models.PaymentMode, payment_mode_id)
     if pm:
         try:
-            if hasattr(pm, 'is_deleted'):
+            if hasattr(pm, "is_deleted"):
                 pm.is_deleted = False
                 pm.deleted_at = None
                 pm.deleted_by = None
@@ -187,6 +183,7 @@ async def restore_payment_mode(db: AsyncSession, payment_mode_id: int):
 
 # ==================== EXPENSE CATEGORY ====================
 
+
 async def list_expense_categories(db: AsyncSession):
     return await _list_all(db, models.ExpenseCategory)
 
@@ -194,9 +191,7 @@ async def list_expense_categories(db: AsyncSession):
 async def create_expense_category(db: AsyncSession, data: dict, staff_id: int):
     try:
         ec = models.ExpenseCategory(
-            category_name=data["category_name"],
-            description=data.get("description"),
-            created_by=staff_id
+            category_name=data["category_name"], description=data.get("description"), created_by=staff_id
         )
         db.add(ec)
         await db.commit()
@@ -231,7 +226,7 @@ async def delete_expense_category(db: AsyncSession, expense_category_id: int, st
     ec = await _get_by_id(db, models.ExpenseCategory, expense_category_id)
     if ec:
         try:
-            if hasattr(ec, 'is_deleted'):
+            if hasattr(ec, "is_deleted"):
                 ec.is_deleted = True
                 ec.deleted_at = _utc_now_naive()
                 ec.deleted_by = staff_id
@@ -247,7 +242,7 @@ async def restore_expense_category(db: AsyncSession, expense_category_id: int):
     ec = await _get_by_id(db, models.ExpenseCategory, expense_category_id)
     if ec:
         try:
-            if hasattr(ec, 'is_deleted'):
+            if hasattr(ec, "is_deleted"):
                 ec.is_deleted = False
                 ec.deleted_at = None
                 ec.deleted_by = None
@@ -261,6 +256,7 @@ async def restore_expense_category(db: AsyncSession, expense_category_id: int):
 
 # ==================== JOB CARD CATEGORY ====================
 
+
 async def list_job_card_categories(db: AsyncSession):
     return await _list_all(db, models.JobCardCategory)
 
@@ -268,9 +264,7 @@ async def list_job_card_categories(db: AsyncSession):
 async def create_job_card_category(db: AsyncSession, data: dict, staff_id: int):
     try:
         jcc = models.JobCardCategory(
-            category_name=data["category_name"],
-            description=data.get("description"),
-            created_by=staff_id
+            category_name=data["category_name"], description=data.get("description"), created_by=staff_id
         )
         db.add(jcc)
         await db.commit()
@@ -305,7 +299,7 @@ async def delete_job_card_category(db: AsyncSession, job_card_category_id: int, 
     jcc = await _get_by_id(db, models.JobCardCategory, job_card_category_id)
     if jcc:
         try:
-            if hasattr(jcc, 'is_deleted'):
+            if hasattr(jcc, "is_deleted"):
                 jcc.is_deleted = True
                 jcc.deleted_at = _utc_now_naive()
                 jcc.deleted_by = staff_id
@@ -321,7 +315,7 @@ async def restore_job_card_category(db: AsyncSession, job_card_category_id: int)
     jcc = await _get_by_id(db, models.JobCardCategory, job_card_category_id)
     if jcc:
         try:
-            if hasattr(jcc, 'is_deleted'):
+            if hasattr(jcc, "is_deleted"):
                 jcc.is_deleted = False
                 jcc.deleted_at = None
                 jcc.deleted_by = None
@@ -334,6 +328,7 @@ async def restore_job_card_category(db: AsyncSession, job_card_category_id: int)
 
 
 # ==================== INSURANCE COMPANY ====================
+
 
 async def list_insurance_companies(db: AsyncSession):
     return await _list_all(db, models.InsuranceCompany)
@@ -348,7 +343,7 @@ async def create_insurance_company(db: AsyncSession, data: dict, staff_id: int):
             email=data.get("email"),
             address=data.get("address"),
             gstin=data.get("gstin"),
-            created_by=staff_id
+            created_by=staff_id,
         )
         db.add(ic)
         await db.commit()
@@ -383,7 +378,7 @@ async def delete_insurance_company(db: AsyncSession, insurance_company_id: int, 
     ic = await _get_by_id(db, models.InsuranceCompany, insurance_company_id)
     if ic:
         try:
-            if hasattr(ic, 'is_deleted'):
+            if hasattr(ic, "is_deleted"):
                 ic.is_deleted = True
                 ic.deleted_at = _utc_now_naive()
                 ic.deleted_by = staff_id
@@ -399,7 +394,7 @@ async def restore_insurance_company(db: AsyncSession, insurance_company_id: int)
     ic = await _get_by_id(db, models.InsuranceCompany, insurance_company_id)
     if ic:
         try:
-            if hasattr(ic, 'is_deleted'):
+            if hasattr(ic, "is_deleted"):
                 ic.is_deleted = False
                 ic.deleted_at = None
                 ic.deleted_by = None
@@ -413,6 +408,7 @@ async def restore_insurance_company(db: AsyncSession, insurance_company_id: int)
 
 # ==================== BANK ====================
 
+
 async def list_banks(db: AsyncSession):
     return await _list_all(db, models.Bank)
 
@@ -425,7 +421,7 @@ async def create_bank(db: AsyncSession, data: dict, staff_id: int):
             ifsc_code=data["ifsc_code"],
             address=data.get("address"),
             contact_number=data.get("contact_number"),
-            created_by=staff_id
+            created_by=staff_id,
         )
         db.add(bank)
         await db.commit()
@@ -460,7 +456,7 @@ async def delete_bank(db: AsyncSession, bank_id: int, staff_id: int):
     bank = await _get_by_id(db, models.Bank, bank_id)
     if bank:
         try:
-            if hasattr(bank, 'is_deleted'):
+            if hasattr(bank, "is_deleted"):
                 bank.is_deleted = True
                 bank.deleted_at = _utc_now_naive()
                 bank.deleted_by = staff_id
@@ -476,7 +472,7 @@ async def restore_bank(db: AsyncSession, bank_id: int):
     bank = await _get_by_id(db, models.Bank, bank_id)
     if bank:
         try:
-            if hasattr(bank, 'is_deleted'):
+            if hasattr(bank, "is_deleted"):
                 bank.is_deleted = False
                 bank.deleted_at = None
                 bank.deleted_by = None
@@ -490,6 +486,7 @@ async def restore_bank(db: AsyncSession, bank_id: int):
 
 # ==================== DOCUMENT TYPE ====================
 
+
 async def list_document_types(db: AsyncSession):
     return await _list_all(db, models.DocumentType)
 
@@ -501,7 +498,7 @@ async def create_document_type(db: AsyncSession, data: dict, staff_id: int):
             description=data.get("description"),
             applicable_to=data.get("applicable_to"),
             is_mandatory=data.get("is_mandatory", False),
-            created_by=staff_id
+            created_by=staff_id,
         )
         db.add(dt)
         await db.commit()
@@ -536,7 +533,7 @@ async def delete_document_type(db: AsyncSession, document_type_id: int, staff_id
     dt = await _get_by_id(db, models.DocumentType, document_type_id)
     if dt:
         try:
-            if hasattr(dt, 'is_deleted'):
+            if hasattr(dt, "is_deleted"):
                 dt.is_deleted = True
                 dt.deleted_at = _utc_now_naive()
                 dt.deleted_by = staff_id
@@ -552,7 +549,7 @@ async def restore_document_type(db: AsyncSession, document_type_id: int):
     dt = await _get_by_id(db, models.DocumentType, document_type_id)
     if dt:
         try:
-            if hasattr(dt, 'is_deleted'):
+            if hasattr(dt, "is_deleted"):
                 dt.is_deleted = False
                 dt.deleted_at = None
                 dt.deleted_by = None
@@ -565,6 +562,7 @@ async def restore_document_type(db: AsyncSession, document_type_id: int):
 
 
 # ==================== SHOWROOM CONFIG ====================
+
 
 async def get_showroom_config(db: AsyncSession):
     """Fetch the single showroom configuration record."""

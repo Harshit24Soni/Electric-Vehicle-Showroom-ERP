@@ -35,19 +35,14 @@ class InvoiceNotFinalizableError(BillingError):
 
 async def get_invoice(db: AsyncSession, invoice_id: int) -> SalesInvoice | None:
     """Get an invoice by ID (excludes soft-deleted)"""
-    stmt = select(SalesInvoice).filter(
-        SalesInvoice.invoice_id == invoice_id,
-        SalesInvoice.is_deleted == False
-    )
+    stmt = select(SalesInvoice).filter(SalesInvoice.invoice_id == invoice_id, SalesInvoice.is_deleted == False)
     result = await db.execute(stmt)
     return result.scalars().first()
 
 
 async def list_invoices(db: AsyncSession) -> list[SalesInvoice]:
     """List all invoices (excludes soft-deleted)"""
-    stmt = select(SalesInvoice).filter(
-        SalesInvoice.is_deleted == False
-    ).order_by(desc(SalesInvoice.invoice_id))
+    stmt = select(SalesInvoice).filter(SalesInvoice.is_deleted == False).order_by(desc(SalesInvoice.invoice_id))
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -65,10 +60,7 @@ async def generate_invoice(
     if not sale or getattr(sale, "sale_status", None) != "DELIVERED":
         raise BillingError("Invoice can only be generated after vehicle delivery")
 
-    existing_stmt = select(SalesInvoice).filter(
-        SalesInvoice.sale_id == sale_id,
-        SalesInvoice.is_deleted == False
-    )
+    existing_stmt = select(SalesInvoice).filter(SalesInvoice.sale_id == sale_id, SalesInvoice.is_deleted == False)
     result = await db.execute(existing_stmt)
     existing = result.scalars().first()
     if existing:
@@ -126,7 +118,7 @@ async def revise_invoice(
         return invoice
     except Exception as exc:
         await db.rollback()
-        logger.error("Failed to revise invoice %s: %s", getattr(invoice, 'invoice_id', None), exc)
+        logger.error("Failed to revise invoice %s: %s", getattr(invoice, "invoice_id", None), exc)
         raise
 
 
@@ -141,16 +133,14 @@ async def finalize_invoice(db: AsyncSession, *, invoice: SalesInvoice) -> SalesI
         return invoice
     except Exception as exc:
         await db.rollback()
-        logger.error("Failed to finalize invoice %s: %s", getattr(invoice, 'invoice_id', None), exc)
+        logger.error("Failed to finalize invoice %s: %s", getattr(invoice, "invoice_id", None), exc)
         raise
 
 
 # ==================== DELETE SERVICES ====================
 
-async def delete_invoice(
-    db: AsyncSession, invoice_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+
+async def delete_invoice(db: AsyncSession, invoice_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete an invoice (soft by default, hard if authorized)"""
     invoice = await get_invoice(db, invoice_id)
     if not invoice:

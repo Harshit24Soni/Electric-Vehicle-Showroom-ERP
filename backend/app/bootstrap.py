@@ -5,6 +5,7 @@ Import all domain models here so they are registered with the Base metadata.
 This avoids scattered cross-domain imports and ensures all models are available
 for Alembic migrations and relationship resolution.
 """
+
 from sqlalchemy.orm import configure_mappers
 from app.db.base import Base
 
@@ -27,6 +28,7 @@ def init_models():
     configure_mappers()
     return Base.metadata
 
+
 def init_listeners():
     """Initialize all event bus listeners."""
     from app.modules.inventory.listeners import register_inventory_listeners
@@ -35,7 +37,7 @@ def init_listeners():
     from app.modules.billing.listeners import register_billing_listeners
     from app.modules.finance.listeners import register_finance_listeners
     from app.modules.sales.listeners import register_sales_listeners
-    
+
     register_inventory_listeners()
     register_crm_listeners()
     register_master_listeners()

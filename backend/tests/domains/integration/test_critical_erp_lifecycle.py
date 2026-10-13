@@ -28,9 +28,12 @@ async def test_procurement_to_inventory_lifecycle(admin_client: AsyncClient, db_
     """
     # 1. Setup vendor and spare part
     vendor = await VendorFactory.create(db_session, vendor_name="Lucas TVS OEM", gstin="27AAACL1234F1Z5")
-    spare = await SpareMasterFactory.create(db_session, spare_name="Regenerative Brake Sensor", tracking_mode="QUANTITY")
+    spare = await SpareMasterFactory.create(
+        db_session, spare_name="Regenerative Brake Sensor", tracking_mode="QUANTITY"
+    )
 
     from app.modules.inventory.models import SparePartCode
+
     code = SparePartCode(spare_id=spare.spare_id, code="RBS-2026-X", is_current=True)
     db_session.add(code)
     await db_session.flush()
@@ -66,9 +69,9 @@ async def test_procurement_to_inventory_lifecycle(admin_client: AsyncClient, db_
                 "unit_cost": "500.00",
                 "discount": "0.00",
                 "tax_amount": "900.00",
-                "verification_status": "CONFIRMED"
+                "verification_status": "CONFIRMED",
             }
-        ]
+        ],
     }
     verify_res = await admin_client.put(f"/procurement/purchases/spares/{purchase_id}/verify", json=verify_payload)
     assert verify_res.status_code == 200
@@ -81,12 +84,7 @@ async def test_procurement_to_inventory_lifecycle(admin_client: AsyncClient, db_
 
     # 5. Post approved receipt to inventory stock
     post_payload = {
-        "items": [
-            {
-                "purchase_item_id": verify_res.json()["items"][0]["purchase_item_id"],
-                "location": "MAIN"
-            }
-        ]
+        "items": [{"purchase_item_id": verify_res.json()["items"][0]["purchase_item_id"], "location": "MAIN"}]
     }
     post_res = await admin_client.post(f"/procurement/purchases/spares/{purchase_id}/post", json=post_payload)
     assert post_res.status_code == 200
@@ -108,10 +106,7 @@ async def test_procurement_to_inventory_lifecycle(admin_client: AsyncClient, db_
 
 
 @pytest.mark.asyncio
-async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(
-    admin_client: AsyncClient,
-    db_session: AsyncSession
-):
+async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(admin_client: AsyncClient, db_session: AsyncSession):
     """
     Test End-to-End Vehicle Sales & Finance Flow:
     1. OEM Vehicle intake bulk-registers vehicles into inventory as IN_STOCK.
@@ -123,10 +118,7 @@ async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(
     vendor = await VendorFactory.create(db_session, vendor_name="Tata Motors OEM", gstin="27AAATM9988G1Z1")
     brand = await BrandFactory.create(db_session, brand_name="Electra Pro")
     model = await VehicleModelFactory.create(
-        db_session,
-        brand_id=brand.brand_id,
-        model_name="Electra Sport X",
-        material_number="MAT-ELSP-01"
+        db_session, brand_id=brand.brand_id, model_name="Electra Sport X", material_number="MAT-ELSP-01"
     )
 
     # 2. Intake vehicles from OEM
@@ -142,9 +134,9 @@ async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(
                 "color": "Midnight Blue",
                 "motor_no": "MOT-ELSP-001",
                 "battery_serial_no": "BAT-ELSP-001",
-                "purchase_price": "120000.0"
+                "purchase_price": "120000.0",
             }
-        ]
+        ],
     }
     intake_res = await admin_client.post("/procurement/purchases/vehicles/intake", json=intake_payload)
     assert intake_res.status_code == 201
@@ -157,11 +149,7 @@ async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(
     assert vehicle.current_status == "IN_STOCK"
 
     # 3. Customer Creation
-    customer = await CustomerFactory.create(
-        db_session,
-        name="Vikram Mehta",
-        primary_phone="9988776655"
-    )
+    customer = await CustomerFactory.create(db_session, name="Vikram Mehta", primary_phone="9988776655")
 
     # 4. Create Sale
     sale = Sale(
@@ -170,7 +158,7 @@ async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(
         total_amount=150000.0,
         sale_status="PENDING",
         created_by_staff_id=1,
-        created_by=1
+        created_by=1,
     )
     db_session.add(sale)
     await db_session.flush()
@@ -181,11 +169,7 @@ async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(
     await db_session.flush()
 
     invoice = await billing_services.generate_invoice(
-        db_session,
-        sale_id=sale.sale_id,
-        taxable_amount=127118.64,
-        gst_rate=18.0,
-        remarks="Customer delivery invoice"
+        db_session, sale_id=sale.sale_id, taxable_amount=127118.64, gst_rate=18.0, remarks="Customer delivery invoice"
     )
 
     assert invoice.invoice_id is not None
@@ -200,6 +184,7 @@ async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(
 
     # 6. Process Finance Payment and Trigger Finance Ledger
     from app.modules.finance.listeners import on_sale_transaction_completed_finance
+
     finance_event = SaleTransactionCompletedEvent(
         sale_id=sale.sale_id,
         customer_id=customer.customer_id,
@@ -208,7 +193,7 @@ async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(
         payment_mode="FINANCE",
         financier_name="Tata Capital EV Finance",
         total_amount=150000.0,
-        down_payment_amount=30000.0
+        down_payment_amount=30000.0,
     )
 
     # Execute finance listener directly with active db_session

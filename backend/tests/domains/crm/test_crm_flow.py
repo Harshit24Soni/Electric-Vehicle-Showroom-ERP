@@ -6,15 +6,12 @@ from app.modules.crm import schemas as crm_schemas
 from app.modules.crm.models import LeadStatusMaster
 from app.modules.master.models import VehicleModel, Brand, Staff
 
+
 @pytest.mark.asyncio
 async def test_crm_lead_creation_and_conversion(db_session: AsyncSession):
     # 1. Setup staff first
     staff = Staff(
-        full_name="CRM Agent",
-        mobile_no="9876543210",
-        email="agent@crm.test",
-        designation="ADMIN",
-        pin_hash="dummy"
+        full_name="CRM Agent", mobile_no="9876543210", email="agent@crm.test", designation="ADMIN", pin_hash="dummy"
     )
     db_session.add(staff)
     await db_session.flush()
@@ -29,14 +26,11 @@ async def test_crm_lead_creation_and_conversion(db_session: AsyncSession):
         model_name="CRM EV Model",
         material_number="CRM-001",
         colour="Electric Blue",
-        created_by=staff.staff_id
+        created_by=staff.staff_id,
     )
     db_session.add(vm)
 
-    status_master = LeadStatusMaster(
-        status_name="NEW",
-        display_order=1
-    )
+    status_master = LeadStatusMaster(status_name="NEW", display_order=1)
     db_session.add(status_master)
     await db_session.flush()
 
@@ -49,7 +43,7 @@ async def test_crm_lead_creation_and_conversion(db_session: AsyncSession):
         lead_source="WALK_IN",
         lead_status_id=status_master.status_id,
         owner_staff_id=staff.staff_id,
-        lead_status="HOT"
+        lead_status="HOT",
     )
 
     lead = await crm_services.create_lead(db_session, payload=lead_payload, current_staff_id=staff.staff_id)
@@ -68,18 +62,14 @@ async def test_crm_lead_creation_and_conversion(db_session: AsyncSession):
         pincode="411001",
         aadhaar_no="123456789012",
         pan_no="ABCDE1234F",
-        nominee=crm_schemas.NomineeInput(
-            nominee_name="Jane Doe",
-            nominee_dob=date(2000, 1, 1),
-            relation="DAUGHTER"
-        )
+        nominee=crm_schemas.NomineeInput(nominee_name="Jane Doe", nominee_dob=date(2000, 1, 1), relation="DAUGHTER"),
     )
 
     result = await crm_services.convert_lead_to_customer(
         db_session,
         lead_id=lead.lead_id,
         payload=convert_payload,
-        current_user={"staff_id": staff.staff_id, "designation": "ADMIN"}
+        current_user={"staff_id": staff.staff_id, "designation": "ADMIN"},
     )
 
     assert result["customer_id"] is not None
@@ -88,9 +78,7 @@ async def test_crm_lead_creation_and_conversion(db_session: AsyncSession):
 
     # 5. Soft delete lead
     deleted = await crm_services.delete_lead(
-        db_session,
-        lead_id=lead.lead_id,
-        current_user={"staff_id": staff.staff_id, "designation": "ADMIN"}
+        db_session, lead_id=lead.lead_id, current_user={"staff_id": staff.staff_id, "designation": "ADMIN"}
     )
     assert deleted is True
     assert lead.is_deleted is True

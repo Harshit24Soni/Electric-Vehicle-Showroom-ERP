@@ -8,10 +8,7 @@ from sqlalchemy.orm import joinedload
 
 from app.modules.sales.models import SpareSale, SpareSaleItem
 from app.modules.sales.schemas_spare import SpareSaleCreate, SpareSaleItemCreate
-from app.modules.inventory.models import (
-    SpareMaster, SpareStockBalance, SpareBatch, SpareSerial, 
-    SpareStockMovement
-)
+from app.modules.inventory.models import SpareMaster, SpareStockBalance, SpareBatch, SpareSerial, SpareStockMovement
 from app.modules.inventory.services import add_spare_movement
 
 logger = logging.getLogger(__name__)
@@ -41,30 +38,32 @@ async def create_draft_sale(db: AsyncSession, payload: SpareSaleCreate, staff_id
         subtotal = Decimal("0.0")
         total_discount = Decimal("0.0")
         total_tax = Decimal("0.0")
-        
+
         sale_items = []
         for item in payload.items:
             line_tot = (item.unit_selling_price * item.quantity) - item.discount + item.tax
-            
-            sale_items.append(SpareSaleItem(
-                spare_id=item.spare_id,
-                part_code=item.part_code,
-                spare_name=item.spare_name,
-                tracking_mode=item.tracking_mode,
-                batch_id=item.batch_id,
-                serial_id=item.serial_id,
-                quantity=item.quantity,
-                unit_selling_price=item.unit_selling_price,
-                discount=item.discount,
-                tax=item.tax,
-                line_total=line_tot,
-            ))
-            subtotal += (item.unit_selling_price * item.quantity)
+
+            sale_items.append(
+                SpareSaleItem(
+                    spare_id=item.spare_id,
+                    part_code=item.part_code,
+                    spare_name=item.spare_name,
+                    tracking_mode=item.tracking_mode,
+                    batch_id=item.batch_id,
+                    serial_id=item.serial_id,
+                    quantity=item.quantity,
+                    unit_selling_price=item.unit_selling_price,
+                    discount=item.discount,
+                    tax=item.tax,
+                    line_total=line_tot,
+                )
+            )
+            subtotal += item.unit_selling_price * item.quantity
             total_discount += item.discount
             total_tax += item.tax
-            
+
         grand_total = subtotal - total_discount + total_tax
-        
+
         sale = SpareSale(
             customer_id=payload.customer_id,
             status="DRAFT",
@@ -74,9 +73,9 @@ async def create_draft_sale(db: AsyncSession, payload: SpareSaleCreate, staff_id
             grand_total=grand_total,
             remarks=payload.remarks,
             created_by_staff_id=staff_id,
-            items=sale_items
+            items=sale_items,
         )
-        
+
         db.add(sale)
         await db.commit()
         await db.refresh(sale)
@@ -95,7 +94,7 @@ async def confirm_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSa
             raise SpareSaleError("Sale not found")
         if sale.status != "DRAFT":
             raise SpareSaleError(f"Sale is in {sale.status} state, cannot confirm.")
-            
+
         # Atomic validation and stock movement
         for item in sale.items:
             # Check stock balance
@@ -103,29 +102,37 @@ async def confirm_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSa
             balance = (await db.execute(stmt)).scalar_one_or_none()
             if not balance or balance.quantity < item.quantity:
                 raise SpareSaleError(f"Insufficient stock for spare_id {item.spare_id}")
-                
+
             balance.quantity -= item.quantity
-                
+
             unit_cost = Decimal("0.0")
             item.unit_cost = unit_cost
-                
+
             if item.tracking_mode == "BATCH":
                 if not item.batch_id:
                     raise SpareSaleError("Batch ID is required for BATCH tracked spare.")
-                stmt = select(SpareBatch).where(and_(SpareBatch.batch_id == item.batch_id, SpareBatch.status == "ACTIVE")).with_for_update()
+                stmt = (
+                    select(SpareBatch)
+                    .where(and_(SpareBatch.batch_id == item.batch_id, SpareBatch.status == "ACTIVE"))
+                    .with_for_update()
+                )
                 batch = (await db.execute(stmt)).scalar_one_or_none()
                 if not batch or batch.available_quantity < item.quantity:
                     raise SpareSaleError(f"Insufficient quantity in batch {item.batch_id}")
                 batch.available_quantity -= item.quantity
                 unit_cost = batch.unit_cost
                 item.unit_cost = unit_cost
-                
+
             elif item.tracking_mode == "SERIALIZED":
                 if not item.serial_id:
                     raise SpareSaleError("Serial ID is required for SERIALIZED spare.")
                 if item.quantity != 1:
                     raise SpareSaleError("Quantity must be 1 for a single serialized item.")
-                stmt = select(SpareSerial).where(and_(SpareSerial.serial_id == item.serial_id, SpareSerial.status == "IN_STOCK")).with_for_update()
+                stmt = (
+                    select(SpareSerial)
+                    .where(and_(SpareSerial.serial_id == item.serial_id, SpareSerial.status == "IN_STOCK"))
+                    .with_for_update()
+                )
                 serial = (await db.execute(stmt)).scalar_one_or_none()
                 if not serial:
                     raise SpareSaleError(f"Serial {item.serial_id} is not in stock or does not exist.")
@@ -141,9 +148,9 @@ async def confirm_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSa
                 spare_id=item.spare_id,
                 quantity=-item.quantity,
                 serial_id=item.serial_id,
-                remarks=f"Sale #{sale.sale_id} Confirmation"
+                remarks=f"Sale #{sale.sale_id} Confirmation",
             )
-            
+
         sale.status = "CONFIRMED"
         sale.invoice_number = f"INV-SP-{sale.sale_id:06d}"
         await db.commit()
@@ -160,15 +167,15 @@ async def cancel_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSal
         sale = await get_spare_sale(db, sale_id)
         if not sale:
             raise SpareSaleError("Sale not found")
-            
+
         if sale.status == "CANCELLED":
             raise SpareSaleError("Sale is already cancelled")
-            
+
         if sale.status == "DRAFT":
             sale.status = "CANCELLED"
             await db.commit()
             return sale
-            
+
         # If confirmed, reverse the stock movements
         if sale.status == "CONFIRMED":
             for item in sale.items:
@@ -183,9 +190,11 @@ async def cancel_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSal
                     serial = (await db.execute(stmt)).scalar_one_or_none()
                     if serial:
                         serial.status = "IN_STOCK"
-                        
+
                 # Update stock balance
-                stmt_balance = select(SpareStockBalance).where(SpareStockBalance.spare_id == item.spare_id).with_for_update()
+                stmt_balance = (
+                    select(SpareStockBalance).where(SpareStockBalance.spare_id == item.spare_id).with_for_update()
+                )
                 balance = (await db.execute(stmt_balance)).scalar_one_or_none()
                 if balance:
                     balance.quantity += item.quantity
@@ -201,9 +210,9 @@ async def cancel_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSal
                     spare_id=item.spare_id,
                     quantity=item.quantity,
                     serial_id=item.serial_id,
-                    remarks=f"Sale #{sale.sale_id} Cancellation"
+                    remarks=f"Sale #{sale.sale_id} Cancellation",
                 )
-                
+
             sale.status = "CANCELLED"
             await db.commit()
             return await get_spare_sale(db, sale.sale_id)

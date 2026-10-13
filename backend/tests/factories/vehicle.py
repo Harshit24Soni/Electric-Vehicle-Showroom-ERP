@@ -1,6 +1,7 @@
 from app.modules.master.models import Vehicle, VehicleModel, Brand
 from .base import BaseFactory, fake
 
+
 class BrandFactory(BaseFactory):
     model = Brand
 
@@ -10,6 +11,7 @@ class BrandFactory(BaseFactory):
             "brand_name": f"Brand-{fake.unique.lexify('????').upper()}",
             "is_active": True,
         }
+
 
 class VehicleModelFactory(BaseFactory):
     model = VehicleModel
@@ -24,6 +26,7 @@ class VehicleModelFactory(BaseFactory):
             "battery_type": "Lithium-Ion 3.2kWh",
             "is_active": True,
         }
+
 
 class VehicleFactory(BaseFactory):
     model = Vehicle

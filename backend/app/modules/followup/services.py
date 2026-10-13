@@ -12,11 +12,15 @@ async def get_unified_followup_dashboard(db: AsyncSession) -> dict:
     today = date.today()
 
     # --- 1. Lead followups (active leads with next_followup_date) ---
-    lead_stmt = select(crm_models.Lead).filter(
-        crm_models.Lead.deleted_at.is_(None),
-        crm_models.Lead.is_converted != True,  # noqa: E712
-        crm_models.Lead.next_followup_date.isnot(None),
-    ).order_by(crm_models.Lead.next_followup_date)
+    lead_stmt = (
+        select(crm_models.Lead)
+        .filter(
+            crm_models.Lead.deleted_at.is_(None),
+            crm_models.Lead.is_converted != True,  # noqa: E712
+            crm_models.Lead.next_followup_date.isnot(None),
+        )
+        .order_by(crm_models.Lead.next_followup_date)
+    )
 
     result = await db.execute(lead_stmt)
     leads = result.scalars().all()
@@ -35,9 +39,13 @@ async def get_unified_followup_dashboard(db: AsyncSession) -> dict:
     ]
 
     # --- 2. Service followups ---
-    svc_stmt = select(followup_models.ServiceFollowup).filter(
-        followup_models.ServiceFollowup.is_completed == False,  # noqa: E712
-    ).order_by(followup_models.ServiceFollowup.next_service_date)
+    svc_stmt = (
+        select(followup_models.ServiceFollowup)
+        .filter(
+            followup_models.ServiceFollowup.is_completed == False,  # noqa: E712
+        )
+        .order_by(followup_models.ServiceFollowup.next_service_date)
+    )
 
     result = await db.execute(svc_stmt)
     svc_followups = result.scalars().all()
@@ -56,9 +64,13 @@ async def get_unified_followup_dashboard(db: AsyncSession) -> dict:
     ]
 
     # --- 3. Insurance followups ---
-    ins_stmt = select(followup_models.InsuranceFollowup).filter(
-        followup_models.InsuranceFollowup.is_renewed == False,  # noqa: E712
-    ).order_by(followup_models.InsuranceFollowup.renewal_date)
+    ins_stmt = (
+        select(followup_models.InsuranceFollowup)
+        .filter(
+            followup_models.InsuranceFollowup.is_renewed == False,  # noqa: E712
+        )
+        .order_by(followup_models.InsuranceFollowup.renewal_date)
+    )
 
     result = await db.execute(ins_stmt)
     ins_followups = result.scalars().all()

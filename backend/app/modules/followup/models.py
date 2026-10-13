@@ -17,6 +17,7 @@ from app.db.mixins import AuditMixin, SoftDeleteMixin
 
 class ServiceFollowup(Base, AuditMixin, SoftDeleteMixin):
     """Tracks service follow-ups linked to job cards"""
+
     __tablename__ = "service_followup"
 
     service_followup_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -36,6 +37,7 @@ class ServiceFollowup(Base, AuditMixin, SoftDeleteMixin):
 
 class InsuranceFollowup(Base, AuditMixin, SoftDeleteMixin):
     """Tracks insurance renewal follow-ups"""
+
     __tablename__ = "insurance_followup"
 
     insurance_followup_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)

@@ -133,4 +133,5 @@ def get_redis():
     while modern endpoints adopt redis_manager.
     """
     import redis as sync_redis
+
     return sync_redis.Redis.from_url(str(settings.REDIS_URL), decode_responses=True)

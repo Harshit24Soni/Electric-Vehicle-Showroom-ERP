@@ -140,6 +140,7 @@ def test_feature_flag_manager():
 async def test_require_feature_dependency():
     """Verify require_feature dependency properly enforces 403 Forbidden on disabled flags."""
     from app.core.feature_toggles import feature_flags
+
     feature_flags.disable("ocr_procurement_scanning")
 
     # Mock user context
@@ -166,10 +167,12 @@ def test_utc_now_timezone_aware():
 
 def test_soft_delete_and_audit_attributes():
     """Ensure mixins properly declare all required tracking columns."""
+
     class SampleModel(Base, AuditMixin, SoftDeleteMixin):
         __tablename__ = "sample_test_model"
         from sqlalchemy import Integer
         from sqlalchemy.orm import mapped_column
+
         id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     assert hasattr(SampleModel, "created_at")

@@ -26,14 +26,9 @@ class OCRService:
         self.provider = provider or FakeOCRProvider()
         self.confidence_threshold = confidence_threshold
 
-    async def process_invoice(
-        self,
-        db: AsyncSession,
-        vendor_id: int,
-        file: UploadFile
-    ) -> proc_models.SparePurchase:
+    async def process_invoice(self, db: AsyncSession, vendor_id: int, file: UploadFile) -> proc_models.SparePurchase:
         """Extract invoice data from uploaded file and persist a draft SparePurchase with line items.
-        
+
         Guarantees transactional integrity with explicit rollback on parse or database error.
         """
         try:
@@ -63,7 +58,7 @@ class OCRService:
                 docket_reference=ocr_result.docket_reference.value if ocr_result.docket_reference else None,
                 invoice_document_id=filename,
                 verification_status="PENDING_VERIFICATION",
-                include_in_accounting=True
+                include_in_accounting=True,
             )
             db.add(purchase)
             await db.flush()
@@ -97,7 +92,7 @@ class OCRService:
                     discount=Decimal(str(item.discount.value)) if item.discount else Decimal("0"),
                     tax_amount=Decimal(str(item.tax_amount.value)) if item.tax_amount else Decimal("0"),
                     verification_status=item_status,
-                    confidence_score=item.part_code.confidence
+                    confidence_score=item.part_code.confidence,
                 )
                 db.add(purchase_item)
 

@@ -21,15 +21,17 @@ from app.db.mixins import AuditMixin, SoftDeleteMixin
 
 # Decoupling Strategy (DDD Phase 1):
 # This is the Isolated Inventory Module.
-# We explicitly REMOVED any ForeignKeys linking to 'master.vehicle' or other 
+# We explicitly REMOVED any ForeignKeys linking to 'master.vehicle' or other
 # external domains. This ensures the Inventory DB schema is self-contained.
 # Domain references (like chassis_no) are stored as simple indexed strings.
 # This prevents cross-module joins and forces cross-module communication via APIs/Events.
+
 
 class TrackingMode(str, enum.Enum):
     QUANTITY = "QUANTITY"
     BATCH = "BATCH"
     SERIALIZED = "SERIALIZED"
+
 
 class SparePartStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
@@ -67,7 +69,7 @@ class VehicleStockMovement(Base, AuditMixin, SoftDeleteMixin):
     movement_type: Mapped[str] = mapped_column(String(30), nullable=False)
     from_location: Mapped[str | None] = mapped_column(String(100))
     to_location: Mapped[str | None] = mapped_column(String(100))
-    
+
     reference_type: Mapped[str | None] = mapped_column(String(30))
     reference_id: Mapped[int | None] = mapped_column(BigInteger)
 
@@ -91,9 +93,15 @@ class SpareMaster(Base, AuditMixin, SoftDeleteMixin):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=True)
     remarks: Mapped[str | None] = mapped_column(Text)
 
-    codes: Mapped[list["SparePartCode"]] = relationship("SparePartCode", back_populates="spare", cascade="all, delete-orphan", lazy="selectin")
-    compatibilities: Mapped[list["SparePartVehicleCompatibility"]] = relationship("SparePartVehicleCompatibility", back_populates="spare", cascade="all, delete-orphan")
-    balances: Mapped[list["SpareStockBalance"]] = relationship("SpareStockBalance", back_populates="spare", foreign_keys="[SpareStockBalance.spare_id]", lazy="selectin")
+    codes: Mapped[list["SparePartCode"]] = relationship(
+        "SparePartCode", back_populates="spare", cascade="all, delete-orphan", lazy="selectin"
+    )
+    compatibilities: Mapped[list["SparePartVehicleCompatibility"]] = relationship(
+        "SparePartVehicleCompatibility", back_populates="spare", cascade="all, delete-orphan"
+    )
+    balances: Mapped[list["SpareStockBalance"]] = relationship(
+        "SpareStockBalance", back_populates="spare", foreign_keys="[SpareStockBalance.spare_id]", lazy="selectin"
+    )
 
     # Synonyms & properties for unified SparePart interface
     id = synonym("spare_id")
@@ -119,36 +127,38 @@ class SpareMaster(Base, AuditMixin, SoftDeleteMixin):
 
 class SparePartCode(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "module_spare_part_code"
-    
+
     code_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    spare_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="CASCADE"), nullable=False)
+    spare_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="CASCADE"), nullable=False
+    )
     code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     is_current: Mapped[bool] = mapped_column(Boolean, default=True)
-    effective_from: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    effective_from: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
     effective_to: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=False))
     reason: Mapped[str | None] = mapped_column(String(200))
-    
+
     spare: Mapped["SpareMaster"] = relationship("SpareMaster", back_populates="codes")
 
 
 class SparePartVehicleCompatibility(Base, AuditMixin):
     __tablename__ = "module_spare_part_vehicle_compatibility"
-    __table_args__ = (
-        Index("idx_mod_spare_veh_compat", "spare_id", "vehicle_model_id", unique=True),
-    )
-    
+    __table_args__ = (Index("idx_mod_spare_veh_compat", "spare_id", "vehicle_model_id", unique=True),)
+
     compatibility_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    spare_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="CASCADE"), nullable=False)
+    spare_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="CASCADE"), nullable=False
+    )
     vehicle_model_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    
+
     spare: Mapped["SpareMaster"] = relationship("SpareMaster", back_populates="compatibilities")
 
 
 class SpareSerial(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "module_spare_serial"
-    __table_args__ = (
-        Index("idx_mod_spare_serial_code", "serial_no"),
-    )
+    __table_args__ = (Index("idx_mod_spare_serial_code", "serial_no"),)
 
     serial_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     spare_id: Mapped[int] = mapped_column(
@@ -166,7 +176,6 @@ class SpareSerial(Base, AuditMixin, SoftDeleteMixin):
     spare: Mapped["SpareMaster"] = relationship("SpareMaster")
 
 
-
 class SpareBatch(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "module_spare_batch"
     __table_args__ = (
@@ -175,7 +184,9 @@ class SpareBatch(Base, AuditMixin, SoftDeleteMixin):
     )
 
     batch_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    spare_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="RESTRICT"), nullable=False)
+    spare_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="RESTRICT"), nullable=False
+    )
     batch_number: Mapped[str] = mapped_column(String(100), nullable=False)
     received_date: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), nullable=False)
     expiry_date: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=False))
@@ -183,8 +194,9 @@ class SpareBatch(Base, AuditMixin, SoftDeleteMixin):
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     unit_cost: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="ACTIVE", nullable=False)
-    
+
     spare: Mapped["SpareMaster"] = relationship("SpareMaster")
+
 
 class SpareStockMovement(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "module_spare_stock_movement"
@@ -210,7 +222,9 @@ class SpareStockMovement(Base, AuditMixin, SoftDeleteMixin):
         BigInteger,
         ForeignKey("module_spare_serial.serial_id", ondelete="RESTRICT"),
     )
-    batch_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("module_spare_batch.batch_id", ondelete="RESTRICT"))
+    batch_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("module_spare_batch.batch_id", ondelete="RESTRICT")
+    )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     movement_type: Mapped[str] = mapped_column(String(30), nullable=False)
     from_location: Mapped[str | None] = mapped_column(String(100))
@@ -234,42 +248,49 @@ class SpareStockMovement(Base, AuditMixin, SoftDeleteMixin):
 
 class SpareStockBalance(Base, AuditMixin):
     __tablename__ = "module_spare_stock_balance"
-    __table_args__ = (
-        Index("idx_mod_spare_stock_bal_spare_loc", "spare_id", "location", unique=True),
-    )
+    __table_args__ = (Index("idx_mod_spare_stock_bal_spare_loc", "spare_id", "location", unique=True),)
 
     balance_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    spare_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="RESTRICT"), nullable=False)
+    spare_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="RESTRICT"), nullable=False
+    )
     location: Mapped[str] = mapped_column(String(100), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    
+
     spare: Mapped["SpareMaster"] = relationship("SpareMaster", back_populates="balances")
+
 
 class PriceList(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "module_price_list"
-    
+
     price_list_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     source_name: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="ACTIVE", nullable=False)
     remarks: Mapped[str | None] = mapped_column(Text)
-    
-    versions: Mapped[list["PriceListVersion"]] = relationship("PriceListVersion", back_populates="price_list", cascade="all, delete-orphan")
+
+    versions: Mapped[list["PriceListVersion"]] = relationship(
+        "PriceListVersion", back_populates="price_list", cascade="all, delete-orphan"
+    )
+
 
 class PriceListVersion(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "module_price_list_version"
-    __table_args__ = (
-        Index("idx_mod_price_list_version", "price_list_id"),
-    )
-    
+    __table_args__ = (Index("idx_mod_price_list_version", "price_list_id"),)
+
     version_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    price_list_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("module_price_list.price_list_id", ondelete="CASCADE"), nullable=False)
+    price_list_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_price_list.price_list_id", ondelete="CASCADE"), nullable=False
+    )
     version_reference: Mapped[str] = mapped_column(String(100), nullable=False)
     effective_from: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), nullable=False)
     received_date: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="PUBLISHED", nullable=False)
-    
+
     price_list: Mapped["PriceList"] = relationship("PriceList", back_populates="versions")
-    items: Mapped[list["PriceListItem"]] = relationship("PriceListItem", back_populates="version", cascade="all, delete-orphan")
+    items: Mapped[list["PriceListItem"]] = relationship(
+        "PriceListItem", back_populates="version", cascade="all, delete-orphan"
+    )
+
 
 class PriceListItem(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "module_price_list_item"
@@ -277,48 +298,56 @@ class PriceListItem(Base, AuditMixin, SoftDeleteMixin):
         Index("idx_mod_price_list_item_version", "version_id"),
         Index("idx_mod_price_list_item_code", "part_code"),
     )
-    
+
     item_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    version_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("module_price_list_version.version_id", ondelete="CASCADE"), nullable=False)
+    version_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_price_list_version.version_id", ondelete="CASCADE"), nullable=False
+    )
     part_code: Mapped[str] = mapped_column(String(50), nullable=False)
     part_name: Mapped[str | None] = mapped_column(String(150))
     mrp: Mapped[float | None] = mapped_column(Numeric(12, 2))
     dlp: Mapped[float | None] = mapped_column(Numeric(12, 2))
     gst_rate: Mapped[float | None] = mapped_column(Numeric(5, 2))
-    
+
     version: Mapped["PriceListVersion"] = relationship("PriceListVersion", back_populates="items")
+
 
 class SpareCostHistory(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "module_spare_cost_history"
-    __table_args__ = (
-        Index("idx_mod_spare_cost_spare", "spare_id"),
-    )
-    
+    __table_args__ = (Index("idx_mod_spare_cost_spare", "spare_id"),)
+
     cost_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    spare_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="RESTRICT"), nullable=False)
-    effective_date: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    spare_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="RESTRICT"), nullable=False
+    )
+    effective_date: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     billed_unit_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     additional_costs: Mapped[float] = mapped_column(Numeric(12, 2), default=0.00)
     landed_cost: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     wac_cost: Mapped[float | None] = mapped_column(Numeric(12, 2))
     source_reference: Mapped[str | None] = mapped_column(String(100))
-    
+
     spare: Mapped["SpareMaster"] = relationship("SpareMaster")
+
 
 class SpareSellingPriceHistory(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "module_spare_selling_price_history"
-    __table_args__ = (
-        Index("idx_mod_spare_selling_price_spare", "spare_id"),
-    )
-    
+    __table_args__ = (Index("idx_mod_spare_selling_price_spare", "spare_id"),)
+
     price_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    spare_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="RESTRICT"), nullable=False)
+    spare_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="RESTRICT"), nullable=False
+    )
     selling_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    effective_from: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    effective_from: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
     effective_to: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=False))
     reason: Mapped[str | None] = mapped_column(String(200))
-    
+
     spare: Mapped["SpareMaster"] = relationship("SpareMaster")
 
 
@@ -341,7 +370,7 @@ class InventoryTag(Base, AuditMixin, SoftDeleteMixin):
     tag_identifier: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     status: Mapped[str] = mapped_column(String(30), default="ACTIVE", nullable=False)
     tracking_mode: Mapped[str] = mapped_column(String(20), nullable=False)
-    
+
     spare_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="RESTRICT"), nullable=False
     )
@@ -351,14 +380,14 @@ class InventoryTag(Base, AuditMixin, SoftDeleteMixin):
     serial_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("module_spare_serial.serial_id", ondelete="RESTRICT")
     )
-    
+
     # Store initial creation location for reference, though true location comes from real-time stock
     location: Mapped[str | None] = mapped_column(String(100))
-    
+
     last_printed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=False))
     print_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=False))
-    
+
     spare: Mapped["SpareMaster"] = relationship("SpareMaster")
     batch: Mapped["SpareBatch"] = relationship("SpareBatch")
     serial: Mapped["SpareSerial"] = relationship("SpareSerial")

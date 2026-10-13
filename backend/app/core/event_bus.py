@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------
 class DomainEvent(BaseModel):
     """Base class for all domain events across ERP business domains."""
+
     pass
 
 

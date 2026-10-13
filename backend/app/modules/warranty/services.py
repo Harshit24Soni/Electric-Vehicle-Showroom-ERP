@@ -54,25 +54,17 @@ async def swap_vehicle_component(db: AsyncSession, payload: ws.ComponentSwapRequ
         await db.flush()
 
         # 5. Publish events for defective component & replacement component
+        await event_bus.publish(DefectiveSpareReturnedEvent(spare_id=0, serial_id=0, job_card_id=payload.job_card_id))
         await event_bus.publish(
-            DefectiveSpareReturnedEvent(
-                spare_id=0,
-                serial_id=0,
-                job_card_id=payload.job_card_id
-            )
-        )
-        await event_bus.publish(
-            WarrantyReplacementIssuedEvent(
-                spare_id=0,
-                serial_id=0,
-                job_card_id=payload.job_card_id
-            )
+            WarrantyReplacementIssuedEvent(spare_id=0, serial_id=0, job_card_id=payload.job_card_id)
         )
 
         return claim
     except Exception as exc:
         await db.rollback()
-        logger.error("Failed to execute warranty component swap for vehicle %s: %s", payload.chassis_no, exc, exc_info=True)
+        logger.error(
+            "Failed to execute warranty component swap for vehicle %s: %s", payload.chassis_no, exc, exc_info=True
+        )
         raise
 
 
@@ -97,19 +89,20 @@ async def create_claim(db: AsyncSession, payload: ws.ClaimCreate) -> wm.Claim:
 
 async def list_claims(db: AsyncSession, skip: int = 0, limit: int = 50) -> List[wm.Claim]:
     """List all warranty claims (excludes soft-deleted)."""
-    stmt = select(wm.Claim).filter(
-        wm.Claim.is_deleted == False
-    ).offset(skip).limit(limit).order_by(desc(wm.Claim.created_at))
+    stmt = (
+        select(wm.Claim)
+        .filter(wm.Claim.is_deleted == False)
+        .offset(skip)
+        .limit(limit)
+        .order_by(desc(wm.Claim.created_at))
+    )
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
 
 async def get_claim(db: AsyncSession, claim_id: int) -> Optional[wm.Claim]:
     """Get a claim by ID (excludes soft-deleted)."""
-    stmt = select(wm.Claim).filter(
-        wm.Claim.claim_id == claim_id,
-        wm.Claim.is_deleted == False
-    )
+    stmt = select(wm.Claim).filter(wm.Claim.claim_id == claim_id, wm.Claim.is_deleted == False)
     result = await db.execute(stmt)
     return result.scalars().first()
 
@@ -173,10 +166,8 @@ async def create_shipment_with_items(db: AsyncSession, payload: ws.ShipmentCreat
 
 # ==================== DELETE SERVICES ====================
 
-async def delete_claim(
-    db: AsyncSession, claim_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+
+async def delete_claim(db: AsyncSession, claim_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete a warranty claim (soft by default, hard if authorized)."""
     claim = await get_claim(db, claim_id)
     if not claim:

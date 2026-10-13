@@ -5,8 +5,10 @@ from app.modules.master.models import Vehicle
 
 logger = logging.getLogger(__name__)
 
+
 async def on_sale_created(event: SaleCreatedEvent, db: AsyncSession | None = None):
     """Update vehicle status when a sale is created."""
+
     async def _handle(session: AsyncSession):
         try:
             vehicle = await session.get(Vehicle, event.chassis_no)
@@ -27,10 +29,12 @@ async def on_sale_created(event: SaleCreatedEvent, db: AsyncSession | None = Non
             await _handle(db)
         else:
             from app.db.session import AsyncSessionLocal
+
             async with AsyncSessionLocal() as session:
                 await _handle(session)
     except Exception as exc:
         logger.error("Error processing on_sale_created in master listener: %s", exc)
+
 
 def register_master_listeners():
     event_bus.subscribe(SaleCreatedEvent, on_sale_created)

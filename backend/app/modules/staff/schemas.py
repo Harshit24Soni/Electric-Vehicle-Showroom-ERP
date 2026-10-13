@@ -4,25 +4,31 @@ from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
+
 class StaffDesignation(str, Enum):
     ADMIN = "ADMIN"
     STAFF = "STAFF"
     DEALER = "DEALER"
+
 
 # --- AUTH & PIN SCHEMAS ---
 class PinLoginRequest(BaseModel):
     identifier: str = Field(..., description="Mobile number or email", examples=["9876543210"])
     pin: str = Field(..., min_length=6, max_length=6, examples=["123456"])
 
+
 class PinChangeRequest(BaseModel):
     old_pin: str = Field(..., min_length=6, max_length=6)
     new_pin: str = Field(..., min_length=6, max_length=6)
 
+
 class AdminPinResetRequest(BaseModel):
     staff_id: int = Field(..., gt=0)
 
+
 class ForgotPinRequest(BaseModel):
     identifier: str = Field(..., description="Mobile number or email of staff")
+
 
 class SelfPinResetRequest(BaseModel):
     mobile: str = Field(..., description="Mobile number")
@@ -30,22 +36,28 @@ class SelfPinResetRequest(BaseModel):
     new_pin: str = Field(..., min_length=6, max_length=6)
     confirm_pin: str = Field(..., min_length=6, max_length=6)
 
+
 class TOTPSetupResponse(BaseModel):
     secret: str
     provisioning_uri: str
+
 
 class TOTPVerifyRequest(BaseModel):
     secret: str
     code: str
 
+
 class DealerPinResetRequest(BaseModel):
     """For dealers to reset their own PIN - requires TOTP verification"""
+
     identifier: str = Field(..., description="Mobile number or email", examples=["9876543210"])
     totp_code: str = Field(..., min_length=6, max_length=6, description="Code from Authenticator App")
     new_pin: str = Field(..., min_length=6, max_length=6)
 
+
 class PinResetRequestCreate(BaseModel):
     mobile: str = Field(..., description="Mobile number of the staff requesting PIN reset")
+
 
 # --- STAFF CRUD SCHEMAS ---
 class StaffCreate(BaseModel):
@@ -73,6 +85,7 @@ class StaffCreate(BaseModel):
     emergency_contact_name: Optional[str] = None
     emergency_contact_no: Optional[str] = Field(None, pattern=r"^[6-9]\d{9}$")
 
+
 class StaffUpdate(BaseModel):
     # Same fields as StaffCreate but all optional
     full_name: Optional[str] = Field(None, min_length=3, max_length=100)
@@ -95,6 +108,7 @@ class StaffUpdate(BaseModel):
     emergency_contact_name: Optional[str] = None
     emergency_contact_no: Optional[str] = Field(None, pattern=r"^[6-9]\d{9}$")
     is_active: Optional[bool] = None
+
 
 class StaffResponse(BaseModel):
     staff_id: int

@@ -39,7 +39,7 @@ async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.Spar
             additional_charges=data.additional_charges,
             landed_cost_total=data.landed_cost_total,
             verification_status="VERIFIED",
-            created_at=_utc_now_naive()
+            created_at=_utc_now_naive(),
         )
         db.add(purchase)
         await db.flush()
@@ -59,17 +59,12 @@ async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.Spar
                 tax_amount=item.tax_amount,
                 gst_percentage=item.gst_percentage,
                 total_cost=total_cost,
-                verification_status="CONFIRMED"
+                verification_status="CONFIRMED",
             )
             db.add(purchase_item)
 
             if item.spare_id:
-                events_to_publish.append(
-                    SparePurchasedEvent(
-                        spare_id=item.spare_id,
-                        quantity=item.quantity
-                    )
-                )
+                events_to_publish.append(SparePurchasedEvent(spare_id=item.spare_id, quantity=item.quantity))
 
         await db.commit()
         await db.refresh(purchase, ["items"])
@@ -85,12 +80,16 @@ async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.Spar
         raise
 
 
-async def verify_spare_purchase(db: AsyncSession, spare_purchase_id: int, data: procurement_schemas.SparePurchaseCreate):
+async def verify_spare_purchase(
+    db: AsyncSession, spare_purchase_id: int, data: procurement_schemas.SparePurchaseCreate
+):
     """Verify an OCR or draft purchase record and finalize line items."""
     try:
-        stmt = select(procurement_models.SparePurchase).options(
-            selectinload(procurement_models.SparePurchase.items)
-        ).filter_by(spare_purchase_id=spare_purchase_id)
+        stmt = (
+            select(procurement_models.SparePurchase)
+            .options(selectinload(procurement_models.SparePurchase.items))
+            .filter_by(spare_purchase_id=spare_purchase_id)
+        )
         result = await db.execute(stmt)
         purchase = result.scalars().first()
 
@@ -119,7 +118,9 @@ async def verify_spare_purchase(db: AsyncSession, spare_purchase_id: int, data: 
 
         for item in data.items:
             if not item.spare_id:
-                raise HTTPException(status_code=400, detail=f"Cannot verify without resolving spare_id for {item.part_code}")
+                raise HTTPException(
+                    status_code=400, detail=f"Cannot verify without resolving spare_id for {item.part_code}"
+                )
 
             total_cost = (item.unit_cost * item.quantity) - (item.discount or 0) + (item.tax_amount or 0)
 
@@ -134,7 +135,7 @@ async def verify_spare_purchase(db: AsyncSession, spare_purchase_id: int, data: 
                 tax_amount=item.tax_amount,
                 gst_percentage=item.gst_percentage,
                 total_cost=total_cost,
-                verification_status="CONFIRMED"
+                verification_status="CONFIRMED",
             )
             db.add(new_item)
 
@@ -150,9 +151,11 @@ async def verify_spare_purchase(db: AsyncSession, spare_purchase_id: int, data: 
 async def approve_spare_purchase(db: AsyncSession, spare_purchase_id: int):
     """Mark a verified spare purchase as APPROVED."""
     try:
-        stmt = select(procurement_models.SparePurchase).options(
-            selectinload(procurement_models.SparePurchase.items)
-        ).filter_by(spare_purchase_id=spare_purchase_id)
+        stmt = (
+            select(procurement_models.SparePurchase)
+            .options(selectinload(procurement_models.SparePurchase.items))
+            .filter_by(spare_purchase_id=spare_purchase_id)
+        )
         result = await db.execute(stmt)
         purchase = result.scalars().first()
 
@@ -173,12 +176,16 @@ async def approve_spare_purchase(db: AsyncSession, spare_purchase_id: int):
         raise
 
 
-async def post_spare_purchase(db: AsyncSession, spare_purchase_id: int, payload: procurement_schemas.PostPurchaseReceiptRequest):
+async def post_spare_purchase(
+    db: AsyncSession, spare_purchase_id: int, payload: procurement_schemas.PostPurchaseReceiptRequest
+):
     """Post an approved purchase receipt to inventory stock balance, batches and WAC."""
     try:
-        stmt = select(procurement_models.SparePurchase).options(
-            selectinload(procurement_models.SparePurchase.items)
-        ).filter_by(spare_purchase_id=spare_purchase_id)
+        stmt = (
+            select(procurement_models.SparePurchase)
+            .options(selectinload(procurement_models.SparePurchase.items))
+            .filter_by(spare_purchase_id=spare_purchase_id)
+        )
         result = await db.execute(stmt)
         purchase = result.scalars().first()
 
@@ -205,11 +212,7 @@ async def create_temporary_item(db: AsyncSession, data: procurement_schemas.Temp
     """Create a temporary spare item via Inventory domain contract with price history."""
     try:
         spare_id = await inventory_services.create_temporary_spare(
-            db,
-            spare_code=data.initial_code,
-            spare_name=data.spare_name,
-            category=data.category,
-            remarks=data.remarks
+            db, spare_code=data.initial_code, spare_name=data.spare_name, category=data.category, remarks=data.remarks
         )
 
         if data.price is not None:
@@ -219,7 +222,7 @@ async def create_temporary_item(db: AsyncSession, data: procurement_schemas.Temp
                 margin=0,
                 effective_from=_utc_now_naive(),
                 is_active=True,
-                created_by=user_id
+                created_by=user_id,
             )
             db.add(price_hist)
             await db.commit()
@@ -247,17 +250,22 @@ async def approve_temporary_item(db: AsyncSession, spare_id: int):
 async def list_spare_purchases(db: AsyncSession):
     """List all spare purchases with items, enriched with vendor_name and spare info."""
     from app.modules.inventory.models import SpareMaster
-    stmt = select(procurement_models.SparePurchase).options(
-        selectinload(procurement_models.SparePurchase.items),
-        selectinload(procurement_models.SparePurchase.vendor),
-    ).order_by(procurement_models.SparePurchase.created_at.desc())
+
+    stmt = (
+        select(procurement_models.SparePurchase)
+        .options(
+            selectinload(procurement_models.SparePurchase.items),
+            selectinload(procurement_models.SparePurchase.vendor),
+        )
+        .order_by(procurement_models.SparePurchase.created_at.desc())
+    )
 
     result = await db.execute(stmt)
     purchases = result.scalars().all()
 
     spare_ids = set()
     for p in purchases:
-        for item in (p.items or []):
+        for item in p.items or []:
             spare_ids.add(item.spare_id)
 
     spare_map = {}
@@ -270,39 +278,45 @@ async def list_spare_purchases(db: AsyncSession):
     out = []
     for p in purchases:
         items_list = []
-        for item in (p.items or []):
+        for item in p.items or []:
             spare_obj = spare_map.get(item.spare_id)
-            items_list.append({
-                "purchase_item_id": item.purchase_item_id,
-                "spare_id": item.spare_id,
-                "spare_name": spare_obj.spare_name if spare_obj else None,
-                "quantity": item.quantity,
-                "unit_cost": item.unit_cost,
-                "gst_percentage": item.gst_percentage or 0,
-                "total_cost": item.total_cost or 0,
-            })
-        out.append({
-            "spare_purchase_id": p.spare_purchase_id,
-            "vendor_id": p.vendor_id,
-            "vendor_name": p.vendor.vendor_name if p.vendor else None,
-            "vendor_invoice_no": p.vendor_invoice_no,
-            "vendor_invoice_date": p.vendor_invoice_date,
-            "purchase_date": p.purchase_date,
-            "remarks": p.remarks,
-            "is_deleted": p.is_deleted,
-            "created_at": p.created_at,
-            "items": items_list,
-        })
+            items_list.append(
+                {
+                    "purchase_item_id": item.purchase_item_id,
+                    "spare_id": item.spare_id,
+                    "spare_name": spare_obj.spare_name if spare_obj else None,
+                    "quantity": item.quantity,
+                    "unit_cost": item.unit_cost,
+                    "gst_percentage": item.gst_percentage or 0,
+                    "total_cost": item.total_cost or 0,
+                }
+            )
+        out.append(
+            {
+                "spare_purchase_id": p.spare_purchase_id,
+                "vendor_id": p.vendor_id,
+                "vendor_name": p.vendor.vendor_name if p.vendor else None,
+                "vendor_invoice_no": p.vendor_invoice_no,
+                "vendor_invoice_date": p.vendor_invoice_date,
+                "purchase_date": p.purchase_date,
+                "remarks": p.remarks,
+                "is_deleted": p.is_deleted,
+                "created_at": p.created_at,
+                "items": items_list,
+            }
+        )
     return out
 
 
 async def get_spare_purchase(db: AsyncSession, spare_purchase_id: int):
     """Get a spare purchase by ID (excludes soft-deleted)"""
-    stmt = select(procurement_models.SparePurchase).options(
-        selectinload(procurement_models.SparePurchase.items)
-    ).filter(
-        procurement_models.SparePurchase.spare_purchase_id == spare_purchase_id,
-        procurement_models.SparePurchase.is_deleted == False
+    stmt = (
+        select(procurement_models.SparePurchase)
+        .options(selectinload(procurement_models.SparePurchase.items))
+        .filter(
+            procurement_models.SparePurchase.spare_purchase_id == spare_purchase_id,
+            procurement_models.SparePurchase.is_deleted == False,
+        )
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -310,53 +324,64 @@ async def get_spare_purchase(db: AsyncSession, spare_purchase_id: int):
 
 async def list_vehicle_purchases(db: AsyncSession):
     """List all vehicle purchases with details, enriched with vendor_name."""
-    stmt = select(procurement_models.VehiclePurchase).options(
-        selectinload(procurement_models.VehiclePurchase.details).selectinload(procurement_models.VehiclePurchaseDetail.vehicle),
-        selectinload(procurement_models.VehiclePurchase.vendor),
-    ).order_by(procurement_models.VehiclePurchase.created_at.desc())
+    stmt = (
+        select(procurement_models.VehiclePurchase)
+        .options(
+            selectinload(procurement_models.VehiclePurchase.details).selectinload(
+                procurement_models.VehiclePurchaseDetail.vehicle
+            ),
+            selectinload(procurement_models.VehiclePurchase.vendor),
+        )
+        .order_by(procurement_models.VehiclePurchase.created_at.desc())
+    )
 
     result = await db.execute(stmt)
     purchases = result.scalars().all()
     out = []
     for p in purchases:
         details_list = []
-        for d in (p.details or []):
-            details_list.append({
-                "vehicle_purchase_detail_id": d.vehicle_purchase_detail_id,
-                "chassis_no": d.chassis_no,
-                "cost_price": d.cost_price,
-                "motor_serial_no": d.vehicle.motor_serial_no if d.vehicle else None,
-                "battery_serial_no": d.vehicle.battery_serial_no if d.vehicle else None,
-            })
-        out.append({
-            "vehicle_purchase_id": p.vehicle_purchase_id,
-            "vendor_id": p.vendor_id,
-            "vendor_name": p.vendor.vendor_name if p.vendor else None,
-            "invoice_number": p.invoice_number,
-            "invoice_date": p.invoice_date,
-            "invoice_amount": p.invoice_amount,
-            "is_deleted": p.is_deleted,
-            "created_at": p.created_at,
-            "details": details_list,
-        })
+        for d in p.details or []:
+            details_list.append(
+                {
+                    "vehicle_purchase_detail_id": d.vehicle_purchase_detail_id,
+                    "chassis_no": d.chassis_no,
+                    "cost_price": d.cost_price,
+                    "motor_serial_no": d.vehicle.motor_serial_no if d.vehicle else None,
+                    "battery_serial_no": d.vehicle.battery_serial_no if d.vehicle else None,
+                }
+            )
+        out.append(
+            {
+                "vehicle_purchase_id": p.vehicle_purchase_id,
+                "vendor_id": p.vendor_id,
+                "vendor_name": p.vendor.vendor_name if p.vendor else None,
+                "invoice_number": p.invoice_number,
+                "invoice_date": p.invoice_date,
+                "invoice_amount": p.invoice_amount,
+                "is_deleted": p.is_deleted,
+                "created_at": p.created_at,
+                "details": details_list,
+            }
+        )
     return out
 
 
 async def get_vehicle_purchase(db: AsyncSession, vehicle_purchase_id: int):
     """Get a vehicle purchase by ID (excludes soft-deleted)"""
-    stmt = select(procurement_models.VehiclePurchase).options(
-        selectinload(procurement_models.VehiclePurchase.details)
-    ).filter(
-        procurement_models.VehiclePurchase.vehicle_purchase_id == vehicle_purchase_id,
-        procurement_models.VehiclePurchase.is_deleted == False
+    stmt = (
+        select(procurement_models.VehiclePurchase)
+        .options(selectinload(procurement_models.VehiclePurchase.details))
+        .filter(
+            procurement_models.VehiclePurchase.vehicle_purchase_id == vehicle_purchase_id,
+            procurement_models.VehiclePurchase.is_deleted == False,
+        )
     )
     result = await db.execute(stmt)
     return result.scalars().first()
 
 
 async def delete_spare_purchase(
-    db: AsyncSession, spare_purchase_id: int,
-    current_user: dict, hard_delete: bool = False
+    db: AsyncSession, spare_purchase_id: int, current_user: dict, hard_delete: bool = False
 ) -> bool:
     """Delete a spare purchase (soft by default, hard if authorized)"""
     purchase = await get_spare_purchase(db, spare_purchase_id)
@@ -377,8 +402,7 @@ async def delete_spare_purchase(
 
 
 async def delete_vehicle_purchase(
-    db: AsyncSession, vehicle_purchase_id: int,
-    current_user: dict, hard_delete: bool = False
+    db: AsyncSession, vehicle_purchase_id: int, current_user: dict, hard_delete: bool = False
 ) -> bool:
     """Delete a vehicle purchase (soft by default, hard if authorized)"""
     purchase = await get_vehicle_purchase(db, vehicle_purchase_id)
@@ -404,7 +428,7 @@ async def process_vehicle_intake(
     current_user: dict,
 ) -> dict:
     """Bulk-register vehicles from an OEM invoice with strict transactional boundaries.
-    
+
     Steps:
       a. Create VehiclePurchase (parent invoice).
       b. For each vehicle:
@@ -431,9 +455,7 @@ async def process_vehicle_intake(
 
         for v_item in payload.vehicles:
             # Guard against duplicate chassis
-            existing = await db.execute(
-                select(master_models.Vehicle).filter_by(chassis_no=v_item.chassis_no)
-            )
+            existing = await db.execute(select(master_models.Vehicle).filter_by(chassis_no=v_item.chassis_no))
             if existing.scalars().first():
                 raise HTTPException(
                     status_code=400,
@@ -464,7 +486,7 @@ async def process_vehicle_intake(
                 VehicleIntakeEvent(
                     chassis_no=v_item.chassis_no,
                     reference_id=purchase.vehicle_purchase_id,
-                    invoice_no=payload.oem_invoice_no
+                    invoice_no=payload.oem_invoice_no,
                 )
             )
 

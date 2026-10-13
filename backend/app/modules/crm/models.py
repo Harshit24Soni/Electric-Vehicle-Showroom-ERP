@@ -19,23 +19,24 @@ from app.db.base import Base
 
 from app.db.mixins import AuditMixin, SoftDeleteMixin, utc_now_naive
 
+
 class Enquiry(Base, AuditMixin, SoftDeleteMixin):
     """Enquiry tracking for leads - stores initial inquiry information"""
+
     __tablename__ = "enquiry"
-    __table_args__ = (
-        Index("idx_enquiry_created", "created_at"),
-    )
+    __table_args__ = (Index("idx_enquiry_created", "created_at"),)
 
     enquiry_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     lead_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("lead.lead_id", ondelete="CASCADE"), nullable=False)
     enquiry_source: Mapped[str] = mapped_column(String(50), nullable=False)
-    enquiry_status_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("enquiry_status_master.status_id"), nullable=False)
+    enquiry_status_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("enquiry_status_master.status_id"), nullable=False
+    )
     owner_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("staff.staff_id"), nullable=False)
     created_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("staff.staff_id"), nullable=False)
     last_followup_date: Mapped[datetime | None] = mapped_column(Date)
     last_message_date: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     remarks: Mapped[str | None] = mapped_column(Text)
-
 
     # Relationships
     lead = relationship("Lead", back_populates="enquiries")
@@ -44,6 +45,7 @@ class Enquiry(Base, AuditMixin, SoftDeleteMixin):
 
 class LeadStatusEnum(str, enum.Enum):
     """Lead temperature / status classification"""
+
     HOT = "HOT"
     WARM = "WARM"
     COLD = "COLD"
@@ -53,6 +55,7 @@ class LeadStatusEnum(str, enum.Enum):
 
 class Lead(Base, AuditMixin, SoftDeleteMixin):
     """Lead tracking - represents potential customer with interest"""
+
     __tablename__ = "lead"
 
     lead_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -60,14 +63,15 @@ class Lead(Base, AuditMixin, SoftDeleteMixin):
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     phone: Mapped[str] = mapped_column(String(15), nullable=False)
     email: Mapped[str | None] = mapped_column(String(150))
-    vehicle_model_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("vehicle_model.vehicle_model_id"), nullable=False)
+    vehicle_model_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("vehicle_model.vehicle_model_id"), nullable=False
+    )
     lead_source: Mapped[str] = mapped_column(String(50), nullable=False)
     lead_status_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("lead_status_master.status_id"), nullable=False)
     owner_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("staff.staff_id"), nullable=False)
     created_by_staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("staff.staff_id"), nullable=False)
     expected_purchase_date: Mapped[datetime | None] = mapped_column(Date)
     remarks: Mapped[str | None] = mapped_column(Text)
-
 
     # --- NEW workflow columns ---
     expected_purchase_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -82,7 +86,12 @@ class Lead(Base, AuditMixin, SoftDeleteMixin):
     lead_status_ref = relationship("LeadStatusMaster")
     enquiries = relationship("Enquiry", back_populates="lead", cascade="all, delete-orphan")
     test_rides = relationship("TestRide", back_populates="lead", cascade="all, delete-orphan")
-    lead_followups = relationship("LeadFollowup", back_populates="lead", cascade="all, delete-orphan", order_by="LeadFollowup.followup_date.desc()")
+    lead_followups = relationship(
+        "LeadFollowup",
+        back_populates="lead",
+        cascade="all, delete-orphan",
+        order_by="LeadFollowup.followup_date.desc()",
+    )
 
     def calculate_next_followup(self) -> date | None:
         """Calculate next followup date based on lead temperature."""
@@ -106,7 +115,6 @@ class Lead(Base, AuditMixin, SoftDeleteMixin):
         return date.today() > self.next_followup_date
 
 
-    
 class LeadStatusMaster(Base):
     __tablename__ = "lead_status_master"
     status_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -123,9 +131,7 @@ class EnquiryStatusMaster(Base):
 
 class FollowupSchedule(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "followup_schedule"
-    __table_args__ = (
-        Index("idx_followup_schedule_date", "scheduled_date"),
-    )
+    __table_args__ = (Index("idx_followup_schedule_date", "scheduled_date"),)
 
     followup_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     lead_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("lead.lead_id", ondelete="CASCADE"), nullable=False)
@@ -134,7 +140,6 @@ class FollowupSchedule(Base, AuditMixin, SoftDeleteMixin):
     followup_status: Mapped[str] = mapped_column(String(30), nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     remarks: Mapped[str | None] = mapped_column(Text)
-
 
     # Relationship
     lead = relationship("Lead")
@@ -150,7 +155,6 @@ class LeadActivity(Base, AuditMixin, SoftDeleteMixin):
     performed_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     outcome: Mapped[str | None] = mapped_column(Text)
     next_action_date: Mapped[datetime | None] = mapped_column(Date)
-
 
 
 class LeadAssignmentHistory(Base, AuditMixin, SoftDeleteMixin):
@@ -182,12 +186,13 @@ class TestRide(Base, AuditMixin, SoftDeleteMixin):
 
     test_ride_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     lead_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("lead.lead_id", ondelete="CASCADE"), nullable=False)
-    vehicle_model_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("vehicle_model.vehicle_model_id"), nullable=False)
+    vehicle_model_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("vehicle_model.vehicle_model_id"), nullable=False
+    )
     chassis_no: Mapped[str] = mapped_column(String(50), ForeignKey("vehicle.chassis_no"), nullable=False)
     test_ride_date: Mapped[Date] = mapped_column(Date, nullable=False)
     staff_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("staff.staff_id"), nullable=False)
     customer_feedback: Mapped[str | None] = mapped_column(Text)
-
 
     # Relationships
     lead = relationship("Lead", back_populates="test_rides")
@@ -197,6 +202,7 @@ class TestRide(Base, AuditMixin, SoftDeleteMixin):
 
 class LeadFollowup(Base, AuditMixin, SoftDeleteMixin):
     """Lead followup log with mandatory remarks (min 10 chars)"""
+
     __tablename__ = "lead_followup"
 
     lead_followup_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -214,7 +220,6 @@ class LeadFollowup(Base, AuditMixin, SoftDeleteMixin):
         ForeignKey("staff.staff_id"),
         nullable=False,
     )
-
 
     # Relationships
     lead = relationship("Lead", back_populates="lead_followups")

@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 
+
 class VehicleMovementResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -44,6 +45,7 @@ class VehicleMovementCreate(BaseModel):
     to_location: Optional[str] = None
     remarks: Optional[str] = None
 
+
 class SpareMovementCreate(BaseModel):
     spare_id: int
     quantity: int
@@ -56,7 +58,7 @@ class SpareMovementCreate(BaseModel):
 
 class SparePartCodeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     code_id: int
     spare_id: int
     code: str
@@ -65,16 +67,18 @@ class SparePartCodeResponse(BaseModel):
     effective_to: Optional[datetime] = None
     reason: Optional[str] = None
 
+
 class SparePartVehicleCompatibilityResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     compatibility_id: int
     spare_id: int
     vehicle_model_id: int
 
+
 class SpareMasterResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     spare_id: int
     spare_name: str
     category: Optional[str] = None
@@ -83,13 +87,15 @@ class SpareMasterResponse(BaseModel):
     is_temporary: bool
     is_verified: bool
     remarks: Optional[str] = None
-    
+
     codes: List[SparePartCodeResponse] = []
     compatibilities: List[SparePartVehicleCompatibilityResponse] = []
+
 
 class SparePartCodeCreate(BaseModel):
     code: str
     reason: Optional[str] = None
+
 
 class SpareMasterCreate(BaseModel):
     spare_name: str
@@ -98,13 +104,16 @@ class SpareMasterCreate(BaseModel):
     initial_code: str
     remarks: Optional[str] = None
 
+
 class SpareMasterUpdate(BaseModel):
     spare_name: Optional[str] = None
     category: Optional[str] = None
     remarks: Optional[str] = None
 
+
 class SparePartVehicleCompatibilityCreate(BaseModel):
     vehicle_model_id: int
+
 
 class PriceListItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -116,6 +125,7 @@ class PriceListItemResponse(BaseModel):
     dlp: Optional[float] = None
     gst_rate: Optional[float] = None
 
+
 class PriceListVersionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     version_id: int
@@ -126,6 +136,7 @@ class PriceListVersionResponse(BaseModel):
     status: str
     items: List[PriceListItemResponse] = []
 
+
 class PriceListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     price_list_id: int
@@ -133,6 +144,7 @@ class PriceListResponse(BaseModel):
     status: str
     remarks: Optional[str] = None
     versions: List[PriceListVersionResponse] = []
+
 
 class SpareCostHistoryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -145,6 +157,7 @@ class SpareCostHistoryResponse(BaseModel):
     landed_cost: float
     source_reference: Optional[str] = None
 
+
 class SpareSellingPriceHistoryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     price_id: int
@@ -154,6 +167,7 @@ class SpareSellingPriceHistoryResponse(BaseModel):
     effective_to: Optional[datetime] = None
     reason: Optional[str] = None
 
+
 class PriceListItemCreate(BaseModel):
     part_code: str
     part_name: Optional[str] = None
@@ -161,18 +175,20 @@ class PriceListItemCreate(BaseModel):
     dlp: Optional[float] = None
     gst_rate: Optional[float] = None
 
+
 class PriceListVersionCreate(BaseModel):
     version_reference: str
     effective_from: datetime
     received_date: datetime
     items: List[PriceListItemCreate]
 
+
 class PriceListCreate(BaseModel):
     source_name: str
     remarks: Optional[str] = None
     initial_version: Optional[PriceListVersionCreate] = None
 
+
 class SpareSellingPriceCreate(BaseModel):
     selling_price: float
     reason: Optional[str] = None
-

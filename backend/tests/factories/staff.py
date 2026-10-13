@@ -2,6 +2,7 @@ from app.modules.master.models import Staff
 from app.auth.pin_utils import hash_pin
 from .base import BaseFactory, fake
 
+
 class StaffFactory(BaseFactory):
     model = Staff
 

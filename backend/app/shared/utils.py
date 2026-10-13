@@ -9,7 +9,7 @@ def sanitize_csv_field(value) -> str:
     Prefixes dangerous characters with a single quote to prevent
     execution in spreadsheet applications like Excel.
     """
-    if isinstance(value, str) and value.startswith(('=', '+', '-', '@', '\t', '\r')):
+    if isinstance(value, str) and value.startswith(("=", "+", "-", "@", "\t", "\r")):
         return "'" + value
     return value
 
@@ -25,7 +25,5 @@ def export_csv(headers, rows, filename):
     return StreamingResponse(
         buffer,
         media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename={filename}"
-        },
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )

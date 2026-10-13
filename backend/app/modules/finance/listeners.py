@@ -7,16 +7,18 @@ from app.modules.finance.models import VehicleFinance
 logger = logging.getLogger(__name__)
 
 
-async def on_sale_transaction_completed_finance(event: SaleTransactionCompletedEvent, db: Optional[AsyncSession] = None):
+async def on_sale_transaction_completed_finance(
+    event: SaleTransactionCompletedEvent, db: Optional[AsyncSession] = None
+):
     """Initialize finance ledger if the sale involves financing with rollback protection."""
     try:
-        if event.payment_mode == 'FINANCE' and event.financier_name:
+        if event.payment_mode == "FINANCE" and event.financier_name:
             finance = VehicleFinance(
                 sale_id=event.sale_id,
                 financer_name=event.financier_name,
                 loan_amount=event.total_amount - (event.down_payment_amount or 0.0),
                 down_payment=event.down_payment_amount or 0.0,
-                finance_status='INITIATED'
+                finance_status="INITIATED",
             )
             if db is not None:
                 try:
@@ -28,6 +30,7 @@ async def on_sale_transaction_completed_finance(event: SaleTransactionCompletedE
                     raise
             else:
                 from app.db.session import AsyncSessionLocal
+
                 async with AsyncSessionLocal() as session:
                     try:
                         session.add(finance)

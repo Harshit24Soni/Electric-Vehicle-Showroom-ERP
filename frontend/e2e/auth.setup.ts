@@ -1,4 +1,4 @@
-import { test as setup, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
@@ -51,7 +51,7 @@ setup('authenticate', async ({ page }) => {
       await emailInput.fill('admin@erp.com');
       await page.locator('input[type="password"], input[name="pin"]').first().fill('123456');
       await page.getByRole('button', { name: /sign in/i }).click();
-      await page.waitForURL('**/dashboard', { timeout: 8000 }).catch(() => {});
+      await page.waitForURL('**/dashboard', { timeout: 8000 }).catch(() => { });
     }
   } catch {
     // UI server not running or slow; provision storage state directly
@@ -60,7 +60,7 @@ setup('authenticate', async ({ page }) => {
   // Ensure localStorage is populated with auth state
   await page.evaluate((auth) => {
     localStorage.setItem('auth-storage', JSON.stringify(auth));
-  }, authState).catch(() => {});
+  }, authState).catch(() => { });
 
   // Cleanly write test storage state file for dependent Playwright test suites
   try {

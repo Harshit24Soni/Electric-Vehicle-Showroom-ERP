@@ -37,6 +37,7 @@ async def setup_test_db():
     try:
         from app.core.redis import redis_manager
         from app.core.event_bus import event_bus
+
         event_bus.stop()
         await redis_manager.close()
     except Exception:
@@ -48,42 +49,40 @@ async def setup_test_db():
     except Exception:
         pass
 
+
 @pytest_asyncio.fixture
 async def db_session():
     """Provides a transactional database session for each test."""
     connection = await engine.connect()
     transaction = await connection.begin()
-    
+
     AsyncSessionLocal = sessionmaker(
-        bind=connection,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False
+        bind=connection, class_=AsyncSession, expire_on_commit=False, autocommit=False, autoflush=False
     )
-    
+
     session = AsyncSessionLocal()
-    
+
     yield session
-    
+
     await session.close()
     await transaction.rollback()
     await connection.close()
 
+
 @pytest_asyncio.fixture
 async def client(db_session):
     """Provides an unauthenticated API client."""
+
     async def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as c:
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
         yield c
-        
+
     app.dependency_overrides.clear()
+
 
 @pytest_asyncio.fixture
 async def admin_client(client, db_session):
@@ -99,30 +98,35 @@ async def admin_client(client, db_session):
             mobile_no="9000000001",
             email="admin@erp.test",
             designation="ADMIN",
-            pin_hash="dummy"
+            pin_hash="dummy",
         )
         db_session.add(staff)
         await db_session.flush()
 
     async def override_get_current_staff():
         return {"staff_id": 1, "designation": "ADMIN", "dealer_id": 1}
+
     app.dependency_overrides[get_current_staff] = override_get_current_staff
     yield client
     if get_current_staff in app.dependency_overrides:
         del app.dependency_overrides[get_current_staff]
 
+
 @pytest_asyncio.fixture
 async def dealer_client(client, db_session):
     """Provides an authenticated dealer API client."""
     from app.auth.token_utils import create_access_token
+
     token = create_access_token({"sub": "dealer@erp.com", "role": "DEALER"})
     client.headers = {"Authorization": f"Bearer {token}"}
     return client
+
 
 @pytest_asyncio.fixture
 async def staff_client(client, db_session):
     """Provides an authenticated staff API client."""
     from app.auth.token_utils import create_access_token
+
     token = create_access_token({"sub": "staff@erp.com", "role": "STAFF"})
     client.headers = {"Authorization": f"Bearer {token}"}
     return client

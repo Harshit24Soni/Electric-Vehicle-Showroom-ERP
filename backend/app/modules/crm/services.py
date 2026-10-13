@@ -22,6 +22,7 @@ class CRMError(Exception):
 
 # ==================== LEAD SERVICES ====================
 
+
 async def create_lead(db: AsyncSession, *, payload, current_staff_id: int) -> models.Lead:
     """Create a new lead independent of customer"""
     lead = models.Lead(
@@ -38,8 +39,8 @@ async def create_lead(db: AsyncSession, *, payload, current_staff_id: int) -> mo
         remarks=payload.remarks,
         created_at=_utc_now_naive(),
         # New workflow fields
-        expected_purchase_days=getattr(payload, 'expected_purchase_days', None),
-        lead_status=getattr(payload, 'lead_status', 'WARM'),
+        expected_purchase_days=getattr(payload, "expected_purchase_days", None),
+        lead_status=getattr(payload, "lead_status", "WARM"),
         visit_date=_utc_now_naive(),
     )
     # Auto-calculate next followup date
@@ -52,17 +53,18 @@ async def create_lead(db: AsyncSession, *, payload, current_staff_id: int) -> mo
 
 async def list_leads(db: AsyncSession, status_id: int = None, owner_id: int = None) -> list[models.Lead]:
     """List leads with optional filters (excludes soft-deleted)"""
-    stmt = select(models.Lead).options(
-        selectinload(models.Lead.vehicle_model),
-        selectinload(models.Lead.lead_status_ref)
-    ).filter(models.Lead.is_deleted == False)
-    
+    stmt = (
+        select(models.Lead)
+        .options(selectinload(models.Lead.vehicle_model), selectinload(models.Lead.lead_status_ref))
+        .filter(models.Lead.is_deleted == False)
+    )
+
     if status_id:
         stmt = stmt.filter(models.Lead.lead_status_id == status_id)
-    
+
     if owner_id:
         stmt = stmt.filter(models.Lead.owner_staff_id == owner_id)
-    
+
     stmt = stmt.order_by(desc(models.Lead.created_at))
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -70,17 +72,18 @@ async def list_leads(db: AsyncSession, status_id: int = None, owner_id: int = No
 
 async def get_lead(db: AsyncSession, lead_id: int) -> models.Lead | None:
     """Get a single lead by ID with relationships (excludes soft-deleted)"""
-    stmt = select(models.Lead).options(
-        selectinload(models.Lead.vehicle_model),
-        selectinload(models.Lead.lead_status_ref),
-        selectinload(models.Lead.enquiries),
-        selectinload(models.Lead.test_rides),
-        selectinload(models.Lead.lead_followups),
-    ).filter(
-        models.Lead.lead_id == lead_id,
-        models.Lead.is_deleted == False
+    stmt = (
+        select(models.Lead)
+        .options(
+            selectinload(models.Lead.vehicle_model),
+            selectinload(models.Lead.lead_status_ref),
+            selectinload(models.Lead.enquiries),
+            selectinload(models.Lead.test_rides),
+            selectinload(models.Lead.lead_followups),
+        )
+        .filter(models.Lead.lead_id == lead_id, models.Lead.is_deleted == False)
     )
-    
+
     result = await db.execute(stmt)
     return result.scalars().first()
 
@@ -90,7 +93,7 @@ async def update_lead(db: AsyncSession, lead_id: int, payload) -> models.Lead | 
     lead = await get_lead(db, lead_id)
     if not lead:
         return None
-    
+
     # Update only provided fields
     if payload.name is not None:
         lead.name = payload.name
@@ -108,18 +111,15 @@ async def update_lead(db: AsyncSession, lead_id: int, payload) -> models.Lead | 
         lead.expected_purchase_date = payload.expected_purchase_date
     if payload.remarks is not None:
         lead.remarks = payload.remarks
-    if getattr(payload, 'lead_status', None) is not None:
+    if getattr(payload, "lead_status", None) is not None:
         lead.lead_status = payload.lead_status
         lead.calculate_next_followup()
-    
+
     await db.flush()
     return lead
 
 
-async def delete_lead(
-    db: AsyncSession, lead_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+async def delete_lead(db: AsyncSession, lead_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete a lead (soft by default, hard if authorized)"""
     lead = await get_lead(db, lead_id)
     if not lead:
@@ -205,9 +205,7 @@ async def convert_lead_to_customer(
         lead.customer_id = customer.customer_id
 
         # Fetch CONVERTED / SOLD status from master
-        stmt = select(models.LeadStatusMaster).filter(
-            models.LeadStatusMaster.status_name.in_(("CONVERTED", "SOLD"))
-        )
+        stmt = select(models.LeadStatusMaster).filter(models.LeadStatusMaster.status_name.in_(("CONVERTED", "SOLD")))
         result = await db.execute(stmt)
         converted_status = result.scalars().first()
         if converted_status:
@@ -230,20 +228,19 @@ async def convert_lead_to_customer(
         raise
 
 
-
 async def assign_lead(db: AsyncSession, lead_id: int, new_owner_id: int, changed_by: int):
     """Reassign a lead to another staff member"""
     lead = await get_lead(db, lead_id)
     if not lead:
         raise CRMError("Lead not found")
-    
+
     # Record history
     history = models.LeadAssignmentHistory(
         lead_id=lead_id,
         old_staff_id=lead.owner_staff_id,
         new_staff_id=new_owner_id,
         changed_by_staff_id=changed_by,
-        changed_at=_utc_now_naive()
+        changed_at=_utc_now_naive(),
     )
     db.add(history)
 
@@ -254,12 +251,11 @@ async def assign_lead(db: AsyncSession, lead_id: int, new_owner_id: int, changed
 
 async def get_lead_activities(db: AsyncSession, lead_id: int) -> list[models.LeadActivity]:
     """Get all activities for a lead (excludes soft-deleted)"""
-    stmt = select(models.LeadActivity)\
-        .filter(
-            models.LeadActivity.lead_id == lead_id,
-            models.LeadActivity.is_deleted == False
-        )\
+    stmt = (
+        select(models.LeadActivity)
+        .filter(models.LeadActivity.lead_id == lead_id, models.LeadActivity.is_deleted == False)
         .order_by(desc(models.LeadActivity.activity_time))
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -271,6 +267,7 @@ async def get_lead_statuses(db: AsyncSession):
 
 
 # ==================== ENQUIRY SERVICES ====================
+
 
 async def create_enquiry(db: AsyncSession, payload, current_staff_id: int) -> models.Enquiry:
     """Create a new enquiry"""
@@ -290,13 +287,15 @@ async def create_enquiry(db: AsyncSession, payload, current_staff_id: int) -> mo
 
 async def list_enquiries(db: AsyncSession, status_id: int = None) -> list[models.Enquiry]:
     """List enquiries with optional filters (excludes soft-deleted)"""
-    stmt = select(models.Enquiry).options(
-        selectinload(models.Enquiry.enquiry_status)
-    ).filter(models.Enquiry.is_deleted == False)
-    
+    stmt = (
+        select(models.Enquiry)
+        .options(selectinload(models.Enquiry.enquiry_status))
+        .filter(models.Enquiry.is_deleted == False)
+    )
+
     if status_id:
         stmt = stmt.filter(models.Enquiry.enquiry_status_id == status_id)
-    
+
     stmt = stmt.order_by(desc(models.Enquiry.created_at))
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -304,10 +303,7 @@ async def list_enquiries(db: AsyncSession, status_id: int = None) -> list[models
 
 async def get_enquiry(db: AsyncSession, enquiry_id: int) -> models.Enquiry | None:
     """Get a single enquiry (excludes soft-deleted)"""
-    stmt = select(models.Enquiry).filter(
-        models.Enquiry.enquiry_id == enquiry_id,
-        models.Enquiry.is_deleted == False
-    )
+    stmt = select(models.Enquiry).filter(models.Enquiry.enquiry_id == enquiry_id, models.Enquiry.is_deleted == False)
     result = await db.execute(stmt)
     return result.scalars().first()
 
@@ -317,7 +313,7 @@ async def update_enquiry(db: AsyncSession, enquiry_id: int, payload: dict) -> mo
     enquiry = await get_enquiry(db, enquiry_id)
     if not enquiry:
         return None
-    
+
     if "enquiry_source" in payload:
         enquiry.enquiry_source = payload["enquiry_source"]
     if "enquiry_status_id" in payload:
@@ -328,7 +324,7 @@ async def update_enquiry(db: AsyncSession, enquiry_id: int, payload: dict) -> mo
         enquiry.last_message_date = payload["last_message_date"]
     if "remarks" in payload:
         enquiry.remarks = payload["remarks"]
-    
+
     await db.flush()
     return enquiry
 
@@ -341,14 +337,13 @@ async def get_enquiry_statuses(db: AsyncSession):
 
 async def get_enquiry_stats(db: AsyncSession) -> dict:
     """Get enquiry statistics (excludes soft-deleted)"""
-    result = await db.execute(
-        select(models.Enquiry).filter(models.Enquiry.is_deleted == False)
-    )
+    result = await db.execute(select(models.Enquiry).filter(models.Enquiry.is_deleted == False))
     total = len(result.scalars().all())
     return {"total_enquiries": total}
 
 
 # ==================== FOLLOWUP SERVICES ====================
+
 
 async def add_followup(db: AsyncSession, payload, current_staff_id: int) -> models.FollowupSchedule:
     """Create a new followup schedule"""
@@ -367,12 +362,14 @@ async def add_followup(db: AsyncSession, payload, current_staff_id: int) -> mode
 
 async def list_pending_followups(db: AsyncSession) -> list[models.FollowupSchedule]:
     """Get all pending followups (excludes soft-deleted)"""
-    stmt = select(models.FollowupSchedule)\
+    stmt = (
+        select(models.FollowupSchedule)
         .filter(
             models.FollowupSchedule.followup_status.in_(("PENDING", "MISSED")),
-            models.FollowupSchedule.is_deleted == False
-        )\
+            models.FollowupSchedule.is_deleted == False,
+        )
         .order_by(models.FollowupSchedule.scheduled_date)
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -380,8 +377,7 @@ async def list_pending_followups(db: AsyncSession) -> list[models.FollowupSchedu
 async def get_followup(db: AsyncSession, followup_id: int) -> models.FollowupSchedule | None:
     """Get a followup by ID (excludes soft-deleted)"""
     stmt = select(models.FollowupSchedule).filter(
-        models.FollowupSchedule.followup_id == followup_id,
-        models.FollowupSchedule.is_deleted == False
+        models.FollowupSchedule.followup_id == followup_id, models.FollowupSchedule.is_deleted == False
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -398,7 +394,7 @@ async def update_followup(db: AsyncSession, followup_id: int, payload) -> models
         # Requirement: "cannot be marked 'Done' without adding a Remark"
         # If user adds remark now, it's fine.
         if not payload.remarks:
-             raise CRMError("Remarks are required when completing a follow-up")
+            raise CRMError("Remarks are required when completing a follow-up")
 
     if payload.scheduled_date:
         f.scheduled_date = payload.scheduled_date
@@ -410,7 +406,7 @@ async def update_followup(db: AsyncSession, followup_id: int, payload) -> models
             f.completed_at = _utc_now_naive()
     if payload.remarks:
         f.remarks = payload.remarks
-        
+
     await db.flush()
     return f
 
@@ -420,47 +416,50 @@ async def get_followup_dashboard(db: AsyncSession, followup_type: str = "ALL") -
     sales_followups = []
     service_followups = []
     warranty_followups = []
-    
+
     if followup_type in ("ALL", "SALES"):
-        stmt = select(models.FollowupSchedule)\
+        stmt = (
+            select(models.FollowupSchedule)
             .filter(
                 models.FollowupSchedule.followup_status.in_(("PENDING", "MISSED")),
-                models.FollowupSchedule.is_deleted == False
-            )\
+                models.FollowupSchedule.is_deleted == False,
+            )
             .order_by(models.FollowupSchedule.scheduled_date)
+        )
         result = await db.execute(stmt)
         sales_followups = result.scalars().all()
-    
+
     return {
         "sales_followups": [
             {
                 "followup_id": f.followup_id,
                 "lead_id": f.lead_id,
                 "scheduled_date": f.scheduled_date,
-                "status": f.followup_status
+                "status": f.followup_status,
             }
             for f in sales_followups
         ],
         "service_followups": service_followups,
-        "warranty_followups": warranty_followups
+        "warranty_followups": warranty_followups,
     }
 
 
 # ==================== ACTIVITY SERVICES ====================
 
+
 async def add_activity(db: AsyncSession, payload: dict, current_staff_id: int) -> models.LeadActivity:
     """Record a lead activity"""
-    
+
     # Handle activity_time parsing if it's a string
     activity_time = payload.get("activity_time")
     if isinstance(activity_time, str):
         activity_time = datetime.fromisoformat(activity_time)
-        
+
     a = models.LeadActivity(
         lead_id=payload.get("lead_id"),
         activity_type=payload.get("activity_type"),
         activity_time=activity_time,
-        performed_by_staff_id=current_staff_id, # Always current user
+        performed_by_staff_id=current_staff_id,  # Always current user
         outcome=payload.get("outcome"),
         next_action_date=payload.get("next_action_date"),
         created_at=_utc_now_naive(),
@@ -471,6 +470,7 @@ async def add_activity(db: AsyncSession, payload: dict, current_staff_id: int) -
 
 
 # ==================== NEW LEAD FOLLOWUP SERVICES ====================
+
 
 async def add_lead_followup(
     db: AsyncSession,
@@ -520,10 +520,7 @@ async def get_lead_followups(db: AsyncSession, lead_id: int) -> list[models.Lead
     """Get all followup entries for a lead (excludes soft-deleted)"""
     stmt = (
         select(models.LeadFollowup)
-        .filter(
-            models.LeadFollowup.lead_id == lead_id,
-            models.LeadFollowup.is_deleted == False
-        )
+        .filter(models.LeadFollowup.lead_id == lead_id, models.LeadFollowup.is_deleted == False)
         .order_by(desc(models.LeadFollowup.followup_date))
     )
     result = await db.execute(stmt)
@@ -557,6 +554,7 @@ async def get_lead_followup_dashboard(
 
     # Upcoming: next_followup_date > today (next 7 days)
     from datetime import timedelta
+
     upcoming_stmt = base_stmt.filter(
         models.Lead.next_followup_date > today,
         models.Lead.next_followup_date <= today + timedelta(days=7),
@@ -581,8 +579,9 @@ async def add_test_ride(
     lead = await get_lead(db, lead_id)
     if not lead:
         raise CRMError("Lead not found")
-        
+
     from app.modules.master import models as master_models
+
     vehicle = await db.get(master_models.Vehicle, payload.chassis_no)
     if not vehicle:
         raise CRMError("Vehicle not found")
@@ -603,10 +602,8 @@ async def add_test_ride(
 
 # ==================== DELETE SERVICES ====================
 
-async def delete_enquiry(
-    db: AsyncSession, enquiry_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+
+async def delete_enquiry(db: AsyncSession, enquiry_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete an enquiry (soft by default, hard if authorized)"""
     enquiry = await get_enquiry(db, enquiry_id)
     if not enquiry:
@@ -625,10 +622,7 @@ async def delete_enquiry(
     return True
 
 
-async def delete_followup(
-    db: AsyncSession, followup_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+async def delete_followup(db: AsyncSession, followup_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete a followup schedule (soft by default, hard if authorized)"""
     followup = await get_followup(db, followup_id)
     if not followup:

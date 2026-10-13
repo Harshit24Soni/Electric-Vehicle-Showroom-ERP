@@ -62,19 +62,14 @@ async def create_finance(
 
 async def get_finance(db: AsyncSession, finance_id: int) -> Optional[VehicleFinance]:
     """Get a finance record by ID (excludes soft-deleted)."""
-    stmt = select(VehicleFinance).filter(
-        VehicleFinance.finance_id == finance_id,
-        VehicleFinance.is_deleted == False
-    )
+    stmt = select(VehicleFinance).filter(VehicleFinance.finance_id == finance_id, VehicleFinance.is_deleted == False)
     result = await db.execute(stmt)
     return result.scalars().first()
 
 
 async def list_finances(db: AsyncSession) -> List[VehicleFinance]:
     """List all finance records (excludes soft-deleted)."""
-    stmt = select(VehicleFinance).filter(
-        VehicleFinance.is_deleted == False
-    ).order_by(VehicleFinance.finance_id.desc())
+    stmt = select(VehicleFinance).filter(VehicleFinance.is_deleted == False).order_by(VehicleFinance.finance_id.desc())
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
@@ -97,10 +92,8 @@ async def update_finance_status(
 
 # ==================== DELETE SERVICES ====================
 
-async def delete_finance(
-    db: AsyncSession, finance_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+
+async def delete_finance(db: AsyncSession, finance_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete a finance record (soft by default, hard if authorized)."""
     finance = await get_finance(db, finance_id)
     if not finance:

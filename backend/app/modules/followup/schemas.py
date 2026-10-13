@@ -5,6 +5,7 @@ from typing import Optional, List
 
 class FollowupItem(BaseModel):
     """Unified followup item for the dashboard"""
+
     followup_type: str  # LEAD, SERVICE, INSURANCE
     entity_id: int  # lead_id, job_card_id, or policy_id
     entity_label: str  # Display name / description
@@ -18,6 +19,7 @@ class FollowupItem(BaseModel):
 
 class UnifiedFollowupDashboardResponse(BaseModel):
     """Unified followup dashboard with all types aggregated"""
+
     lead_followups: List[FollowupItem] = []
     service_followups: List[FollowupItem] = []
     insurance_followups: List[FollowupItem] = []

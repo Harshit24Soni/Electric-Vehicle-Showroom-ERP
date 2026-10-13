@@ -23,6 +23,7 @@ class MasterError(Exception):
 
 # ==================== CUSTOMER SERVICES ====================
 
+
 async def create_customer(db: AsyncSession, payload) -> models.Customer:
     """Create a new customer"""
     try:
@@ -56,8 +57,7 @@ async def create_customer(db: AsyncSession, payload) -> models.Customer:
 async def get_customer(db: AsyncSession, customer_id: int) -> models.Customer | None:
     """Get a customer by ID (excludes soft-deleted)"""
     stmt = select(models.Customer).filter(
-        models.Customer.customer_id == customer_id,
-        models.Customer.is_deleted == False
+        models.Customer.customer_id == customer_id, models.Customer.is_deleted == False
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -68,13 +68,13 @@ async def get_customer_detailed(db: AsyncSession, customer_id: int) -> dict | No
     customer = await get_customer(db, customer_id)
     if not customer:
         return None
-    
+
     # Get nominees
     nominees = await list_nominees(db, customer_id)
-    
+
     # Get vehicle count (from sales module)
     vehicle_count = 0
-    
+
     return {
         "customer_id": customer.customer_id,
         "lead_reference_id": customer.lead_reference_id,
@@ -117,7 +117,7 @@ async def update_customer(db: AsyncSession, customer_id: int, payload) -> models
     customer = await get_customer(db, customer_id)
     if not customer:
         return None
-    
+
     try:
         # Update only provided fields
         if payload.customer_type is not None:
@@ -146,7 +146,7 @@ async def update_customer(db: AsyncSession, customer_id: int, payload) -> models
             customer.pan_no = payload.pan_no
         if payload.gstin is not None:
             customer.gstin = payload.gstin
-        
+
         await db.flush()
         return customer
     except Exception as exc:
@@ -157,33 +157,37 @@ async def update_customer(db: AsyncSession, customer_id: int, payload) -> models
 
 async def list_customers(db: AsyncSession, limit: int = 100) -> list[models.Customer]:
     """List all customers (excludes soft-deleted)"""
-    stmt = select(models.Customer).filter(
-        models.Customer.is_deleted == False
-    ).order_by(desc(models.Customer.created_at)).limit(limit)
+    stmt = (
+        select(models.Customer)
+        .filter(models.Customer.is_deleted == False)
+        .order_by(desc(models.Customer.created_at))
+        .limit(limit)
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
 # ==================== NOMINEE SERVICES ====================
 
+
 async def create_nominee(db: AsyncSession, customer_id: int, payload) -> models.Nominee | None:
     """Create a nominee for a customer"""
     customer = await get_customer(db, customer_id)
     if not customer:
         return None
-    
+
     try:
         # If this is the first nominee or is_primary is True, ensure it's marked as primary
         existing_primary_stmt = select(models.Nominee).filter(
             models.Nominee.customer_id == customer_id,
             models.Nominee.is_primary == True,
-            models.Nominee.is_active == True
+            models.Nominee.is_active == True,
         )
         result = await db.execute(existing_primary_stmt)
         existing_primary = result.scalars().first()
-        
+
         is_primary = payload.is_primary if payload.is_primary is not None else (not existing_primary)
-        
+
         nominee = models.Nominee(
             customer_id=customer_id,
             nominee_name=payload.nominee_name,
@@ -193,12 +197,11 @@ async def create_nominee(db: AsyncSession, customer_id: int, payload) -> models.
             is_active=True,
             created_at=_utc_now_naive(),
         )
-        
+
         # If this is primary, update other nominees to non-primary
         if is_primary:
             stmt = select(models.Nominee).filter(
-                models.Nominee.customer_id == customer_id,
-                models.Nominee.is_active == True
+                models.Nominee.customer_id == customer_id, models.Nominee.is_active == True
             )
             r = await db.execute(stmt)
             others = r.scalars().all()
@@ -216,11 +219,15 @@ async def create_nominee(db: AsyncSession, customer_id: int, payload) -> models.
 
 async def list_nominees(db: AsyncSession, customer_id: int) -> list[models.Nominee]:
     """List all active nominees for a customer (excludes soft-deleted)"""
-    stmt = select(models.Nominee).filter(
-        models.Nominee.customer_id == customer_id,
-        models.Nominee.is_active == True,
-        models.Nominee.is_deleted == False
-    ).order_by(desc(models.Nominee.is_primary), desc(models.Nominee.created_at))
+    stmt = (
+        select(models.Nominee)
+        .filter(
+            models.Nominee.customer_id == customer_id,
+            models.Nominee.is_active == True,
+            models.Nominee.is_deleted == False,
+        )
+        .order_by(desc(models.Nominee.is_primary), desc(models.Nominee.created_at))
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -231,7 +238,7 @@ async def get_nominee(db: AsyncSession, nominee_id: int, customer_id: int) -> mo
         models.Nominee.nominee_id == nominee_id,
         models.Nominee.customer_id == customer_id,
         models.Nominee.is_active == True,
-        models.Nominee.is_deleted == False
+        models.Nominee.is_deleted == False,
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -242,7 +249,7 @@ async def update_nominee(db: AsyncSession, nominee_id: int, customer_id: int, pa
     nominee = await get_nominee(db, nominee_id, customer_id)
     if not nominee:
         return None
-    
+
     try:
         if payload.nominee_name is not None:
             nominee.nominee_name = payload.nominee_name
@@ -250,13 +257,13 @@ async def update_nominee(db: AsyncSession, nominee_id: int, customer_id: int, pa
             nominee.nominee_dob = payload.nominee_dob
         if payload.relation is not None:
             nominee.relation = payload.relation
-        
+
         # Handle primary status
         if payload.is_primary is not None and payload.is_primary:
             stmt = select(models.Nominee).filter(
                 models.Nominee.customer_id == customer_id,
                 models.Nominee.is_active == True,
-                models.Nominee.nominee_id != nominee_id
+                models.Nominee.nominee_id != nominee_id,
             )
             r = await db.execute(stmt)
             others = r.scalars().all()
@@ -265,7 +272,7 @@ async def update_nominee(db: AsyncSession, nominee_id: int, customer_id: int, pa
             nominee.is_primary = True
         elif payload.is_primary is False:
             nominee.is_primary = False
-        
+
         await db.flush()
         return nominee
     except Exception as exc:
@@ -275,8 +282,7 @@ async def update_nominee(db: AsyncSession, nominee_id: int, customer_id: int, pa
 
 
 async def delete_nominee(
-    db: AsyncSession, nominee_id: int, customer_id: int,
-    current_user: dict, hard_delete: bool = False
+    db: AsyncSession, nominee_id: int, customer_id: int, current_user: dict, hard_delete: bool = False
 ) -> bool:
     """Delete a nominee (soft by default, hard if authorized)"""
     nominee = await get_nominee(db, nominee_id, customer_id)
@@ -292,7 +298,7 @@ async def delete_nominee(
                     models.Nominee.customer_id == customer_id,
                     models.Nominee.is_active == True,
                     models.Nominee.is_deleted == False,
-                    models.Nominee.nominee_id != nominee_id
+                    models.Nominee.nominee_id != nominee_id,
                 )
                 result = await db.execute(stmt)
                 next_nominee = result.scalars().first()
@@ -309,7 +315,7 @@ async def delete_nominee(
                     models.Nominee.customer_id == customer_id,
                     models.Nominee.is_active == True,
                     models.Nominee.is_deleted == False,
-                    models.Nominee.nominee_id != nominee_id
+                    models.Nominee.nominee_id != nominee_id,
                 )
                 result = await db.execute(stmt)
                 next_nominee = result.scalars().first()
@@ -328,6 +334,7 @@ async def delete_nominee(
 
 # ==================== VEHICLE MODEL SERVICES ====================
 
+
 async def create_vehicle_model(db: AsyncSession, payload) -> models.VehicleModel:
     """Create a new vehicle model"""
     try:
@@ -336,10 +343,10 @@ async def create_vehicle_model(db: AsyncSession, payload) -> models.VehicleModel
             model_name=payload.model_name,
             material_number=payload.material_number,
             colour=payload.colour,
-            battery_type=getattr(payload, 'battery_type', None),
-            laden_weight=getattr(payload, 'laden_weight', None),
-            unladen_weight=getattr(payload, 'unladen_weight', None),
-            hsn_code=getattr(payload, 'hsn_code', None),
+            battery_type=getattr(payload, "battery_type", None),
+            laden_weight=getattr(payload, "laden_weight", None),
+            unladen_weight=getattr(payload, "unladen_weight", None),
+            hsn_code=getattr(payload, "hsn_code", None),
             is_active=True,
             created_at=_utc_now_naive(),
         )
@@ -355,8 +362,7 @@ async def create_vehicle_model(db: AsyncSession, payload) -> models.VehicleModel
 async def get_vehicle_model(db: AsyncSession, vehicle_model_id: int) -> models.VehicleModel | None:
     """Get a single vehicle model by ID (excludes soft-deleted)"""
     stmt = select(models.VehicleModel).filter(
-        models.VehicleModel.vehicle_model_id == vehicle_model_id,
-        models.VehicleModel.is_deleted == False
+        models.VehicleModel.vehicle_model_id == vehicle_model_id, models.VehicleModel.is_deleted == False
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -366,13 +372,10 @@ async def list_vehicle_models(db: AsyncSession, include_deleted: bool = False) -
     """List vehicle models with brand_name resolved.
     When include_deleted=False, only active non-deleted records are returned.
     """
-    stmt = (
-        select(
-            models.VehicleModel,
-            models.Brand.brand_name,
-        )
-        .outerjoin(models.Brand, models.VehicleModel.brand_id == models.Brand.brand_id)
-    )
+    stmt = select(
+        models.VehicleModel,
+        models.Brand.brand_name,
+    ).outerjoin(models.Brand, models.VehicleModel.brand_id == models.Brand.brand_id)
     if not include_deleted:
         stmt = stmt.filter(
             models.VehicleModel.is_deleted == False,
@@ -422,8 +425,7 @@ async def update_vehicle_model(db: AsyncSession, vehicle_model_id: int, payload)
 async def restore_vehicle_model(db: AsyncSession, vehicle_model_id: int, staff_id: int) -> bool:
     """Restore a soft-deleted vehicle model"""
     stmt = select(models.VehicleModel).filter(
-        models.VehicleModel.vehicle_model_id == vehicle_model_id,
-        models.VehicleModel.is_deleted == True
+        models.VehicleModel.vehicle_model_id == vehicle_model_id, models.VehicleModel.is_deleted == True
     )
     result = await db.execute(stmt)
     vm = result.scalars().first()
@@ -446,6 +448,7 @@ async def restore_vehicle_model(db: AsyncSession, vehicle_model_id: int, staff_i
 
 # ==================== VEHICLE SERVICES ====================
 
+
 async def create_vehicle(db: AsyncSession, payload) -> models.Vehicle:
     """Create a new vehicle"""
     try:
@@ -467,10 +470,7 @@ async def create_vehicle(db: AsyncSession, payload) -> models.Vehicle:
 
 async def get_vehicle(db: AsyncSession, chassis_no: str) -> models.Vehicle | None:
     """Get vehicle by chassis number (excludes soft-deleted)"""
-    stmt = select(models.Vehicle).filter(
-        models.Vehicle.chassis_no == chassis_no,
-        models.Vehicle.is_deleted == False
-    )
+    stmt = select(models.Vehicle).filter(models.Vehicle.chassis_no == chassis_no, models.Vehicle.is_deleted == False)
     result = await db.execute(stmt)
     return result.scalars().first()
 
@@ -480,14 +480,14 @@ async def list_vehicles(
 ) -> list[models.Vehicle]:
     """List vehicles with optional status and model filters"""
     stmt = select(models.Vehicle).filter(models.Vehicle.is_deleted == False)
-    
+
     if status:
-        statuses = [s.strip() for s in status.split(',')]
+        statuses = [s.strip() for s in status.split(",")]
         stmt = stmt.filter(models.Vehicle.current_status.in_(statuses))
-        
+
     if vehicle_model_id:
         stmt = stmt.filter(models.Vehicle.vehicle_model_id == vehicle_model_id)
-        
+
     stmt = stmt.order_by(desc(models.Vehicle.created_at))
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -495,19 +495,20 @@ async def list_vehicles(
 
 # ==================== VENDOR SERVICES ====================
 
+
 async def create_vendor(db: AsyncSession, payload) -> models.Vendor:
     """Create a new vendor"""
     try:
         v = models.Vendor(
             vendor_name=payload.vendor_name,
-            vendor_type=payload.vendor_type.value if hasattr(payload.vendor_type, 'value') else payload.vendor_type,
-            gstin=getattr(payload, 'gstin', None),
-            pan_no=getattr(payload, 'pan_no', None),
-            address_line1=getattr(payload, 'address_line1', None),
-            address_line2=getattr(payload, 'address_line2', None),
-            city=getattr(payload, 'city', None),
-            state=getattr(payload, 'state', None),
-            pincode=getattr(payload, 'pincode', None),
+            vendor_type=payload.vendor_type.value if hasattr(payload.vendor_type, "value") else payload.vendor_type,
+            gstin=getattr(payload, "gstin", None),
+            pan_no=getattr(payload, "pan_no", None),
+            address_line1=getattr(payload, "address_line1", None),
+            address_line2=getattr(payload, "address_line2", None),
+            city=getattr(payload, "city", None),
+            state=getattr(payload, "state", None),
+            pincode=getattr(payload, "pincode", None),
             is_active=True,
             created_at=_utc_now_naive(),
         )
@@ -522,10 +523,7 @@ async def create_vendor(db: AsyncSession, payload) -> models.Vendor:
 
 async def get_vendor(db: AsyncSession, vendor_id: int) -> models.Vendor | None:
     """Get a single vendor by ID (excludes soft-deleted)"""
-    stmt = select(models.Vendor).filter(
-        models.Vendor.vendor_id == vendor_id,
-        models.Vendor.is_deleted == False
-    )
+    stmt = select(models.Vendor).filter(models.Vendor.vendor_id == vendor_id, models.Vendor.is_deleted == False)
     result = await db.execute(stmt)
     return result.scalars().first()
 
@@ -550,7 +548,7 @@ async def update_vendor(db: AsyncSession, vendor_id: int, payload) -> models.Ven
     try:
         update_data = payload.model_dump(exclude_unset=True)
         for field, value in update_data.items():
-            if field == 'vendor_type' and hasattr(value, 'value'):
+            if field == "vendor_type" and hasattr(value, "value"):
                 value = value.value
             setattr(vendor, field, value)
         vendor.updated_at = _utc_now_naive()
@@ -564,10 +562,7 @@ async def update_vendor(db: AsyncSession, vendor_id: int, payload) -> models.Ven
 
 async def restore_vendor(db: AsyncSession, vendor_id: int, staff_id: int) -> bool:
     """Restore a soft-deleted vendor"""
-    stmt = select(models.Vendor).filter(
-        models.Vendor.vendor_id == vendor_id,
-        models.Vendor.is_deleted == True
-    )
+    stmt = select(models.Vendor).filter(models.Vendor.vendor_id == vendor_id, models.Vendor.is_deleted == True)
     result = await db.execute(stmt)
     vendor = result.scalars().first()
     if not vendor:
@@ -589,23 +584,23 @@ async def restore_vendor(db: AsyncSession, vendor_id: int, staff_id: int) -> boo
 
 # ==================== PRICING SERVICES ====================
 
+
 async def update_spare_price(db: AsyncSession, spare_id: int, payload, user_id: int) -> models.SparePriceHistory:
     """Update spare part price and maintain history"""
     try:
         # 1. Close current active price
         stmt = select(models.SparePriceHistory).filter(
-            models.SparePriceHistory.spare_id == spare_id,
-            models.SparePriceHistory.is_active == True
+            models.SparePriceHistory.spare_id == spare_id, models.SparePriceHistory.is_active == True
         )
         result = await db.execute(stmt)
         current_price = result.scalars().first()
-        
+
         now = _utc_now_naive()
-        
+
         if current_price:
             current_price.is_active = False
             current_price.effective_to = now
-        
+
         # 2. Create new history record
         new_price = models.SparePriceHistory(
             spare_id=spare_id,
@@ -614,19 +609,13 @@ async def update_spare_price(db: AsyncSession, spare_id: int, payload, user_id: 
             effective_from=payload.effective_from or now,
             is_active=True,
             created_by=user_id,
-            created_at=now
+            created_at=now,
         )
         db.add(new_price)
         await db.flush()
 
         # 3. Publish Event post-flush for Inventory/other domains to react safely
-        await event_bus.publish(
-            SparePriceUpdatedEvent(
-                spare_id=spare_id,
-                price=payload.price,
-                margin=payload.margin
-            )
-        )
+        await event_bus.publish(SparePriceUpdatedEvent(spare_id=spare_id, price=payload.price, margin=payload.margin))
 
         return new_price
     except Exception as exc:
@@ -636,30 +625,34 @@ async def update_spare_price(db: AsyncSession, spare_id: int, payload, user_id: 
 
 
 async def get_spare_price_history(db: AsyncSession, spare_id: int) -> list[models.SparePriceHistory]:
-    stmt = select(models.SparePriceHistory).filter(
-        models.SparePriceHistory.spare_id == spare_id
-    ).order_by(desc(models.SparePriceHistory.effective_from))
+    stmt = (
+        select(models.SparePriceHistory)
+        .filter(models.SparePriceHistory.spare_id == spare_id)
+        .order_by(desc(models.SparePriceHistory.effective_from))
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
-async def update_vehicle_price(db: AsyncSession, vehicle_model_id: int, payload, user_id: int) -> models.VehiclePriceHistory:
+async def update_vehicle_price(
+    db: AsyncSession, vehicle_model_id: int, payload, user_id: int
+) -> models.VehiclePriceHistory:
     """Update vehicle model price"""
     try:
         # 1. Close current active price
         stmt = select(models.VehiclePriceHistory).filter(
             models.VehiclePriceHistory.vehicle_model_id == vehicle_model_id,
-            models.VehiclePriceHistory.is_active == True
+            models.VehiclePriceHistory.is_active == True,
         )
         result = await db.execute(stmt)
         current_price = result.scalars().first()
-        
+
         now = _utc_now_naive()
-        
+
         if current_price:
             current_price.is_active = False
             current_price.effective_to = now
-            
+
         # 2. Create new history record
         new_price = models.VehiclePriceHistory(
             vehicle_model_id=vehicle_model_id,
@@ -667,7 +660,7 @@ async def update_vehicle_price(db: AsyncSession, vehicle_model_id: int, payload,
             effective_from=payload.effective_from or now,
             is_active=True,
             created_by=user_id,
-            created_at=now
+            created_at=now,
         )
         db.add(new_price)
         await db.flush()
@@ -679,19 +672,19 @@ async def update_vehicle_price(db: AsyncSession, vehicle_model_id: int, payload,
 
 
 async def get_vehicle_price_history(db: AsyncSession, vehicle_model_id: int) -> list[models.VehiclePriceHistory]:
-    stmt = select(models.VehiclePriceHistory).filter(
-        models.VehiclePriceHistory.vehicle_model_id == vehicle_model_id
-    ).order_by(desc(models.VehiclePriceHistory.effective_from))
+    stmt = (
+        select(models.VehiclePriceHistory)
+        .filter(models.VehiclePriceHistory.vehicle_model_id == vehicle_model_id)
+        .order_by(desc(models.VehiclePriceHistory.effective_from))
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
 # ==================== DELETE SERVICES ====================
 
-async def delete_customer(
-    db: AsyncSession, customer_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+
+async def delete_customer(db: AsyncSession, customer_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete a customer (soft by default, hard if authorized)"""
     customer = await get_customer(db, customer_id)
     if not customer:
@@ -719,13 +712,11 @@ async def delete_customer(
 
 
 async def delete_vehicle_model(
-    db: AsyncSession, vehicle_model_id: int,
-    current_user: dict, hard_delete: bool = False
+    db: AsyncSession, vehicle_model_id: int, current_user: dict, hard_delete: bool = False
 ) -> bool:
     """Delete a vehicle model (soft by default, hard if authorized)"""
     stmt = select(models.VehicleModel).filter(
-        models.VehicleModel.vehicle_model_id == vehicle_model_id,
-        models.VehicleModel.is_deleted == False
+        models.VehicleModel.vehicle_model_id == vehicle_model_id, models.VehicleModel.is_deleted == False
     )
     result = await db.execute(stmt)
     vm = result.scalars().first()
@@ -753,10 +744,7 @@ async def delete_vehicle_model(
         raise
 
 
-async def delete_vehicle(
-    db: AsyncSession, chassis_no: str,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+async def delete_vehicle(db: AsyncSession, chassis_no: str, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete a vehicle (soft by default, hard if authorized)"""
     vehicle = await get_vehicle(db, chassis_no)
     if not vehicle:
@@ -782,15 +770,9 @@ async def delete_vehicle(
         raise
 
 
-async def delete_vendor(
-    db: AsyncSession, vendor_id: int,
-    current_user: dict, hard_delete: bool = False
-) -> bool:
+async def delete_vendor(db: AsyncSession, vendor_id: int, current_user: dict, hard_delete: bool = False) -> bool:
     """Delete a vendor (soft by default, hard if authorized)"""
-    stmt = select(models.Vendor).filter(
-        models.Vendor.vendor_id == vendor_id,
-        models.Vendor.is_deleted == False
-    )
+    stmt = select(models.Vendor).filter(models.Vendor.vendor_id == vendor_id, models.Vendor.is_deleted == False)
     result = await db.execute(stmt)
     vendor = result.scalars().first()
     if not vendor:

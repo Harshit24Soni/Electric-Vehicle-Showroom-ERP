@@ -72,7 +72,9 @@ cors_origins = list(settings.cors_origins) if settings.cors_origins else ["http:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_origin_regex=r"https:\/\/electric-vehicle-showroom-erp.*\.vercel\.app" if settings.ENVIRONMENT != "production" else None,
+    allow_origin_regex=(
+        r"https:\/\/electric-vehicle-showroom-erp.*\.vercel\.app" if settings.ENVIRONMENT != "production" else None
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

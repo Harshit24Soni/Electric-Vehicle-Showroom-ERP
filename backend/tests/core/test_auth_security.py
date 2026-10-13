@@ -164,11 +164,14 @@ def test_require_roles_dependency():
 # ------------------------------------------------------------------------------
 def test_extract_client_ip_headers():
     """Verify IP resolution across direct connections and reverse proxies."""
+
     class DummyRequest:
         def __init__(self, headers=None, client_host="192.168.1.50"):
             self.headers = headers or {}
+
             class Client:
                 host = client_host
+
             self.client = Client()
 
     # Direct connection

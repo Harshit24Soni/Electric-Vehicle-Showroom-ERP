@@ -60,27 +60,26 @@ async def get_sales_summary(
         from_date=from_date,
         to_date=to_date,
     )
-    
+
     summary = []
     for row in rows:
-        summary.append({
-            "invoice_number": row.invoice_number,
-            "invoice_date": row.invoice_date.isoformat() if row.invoice_date else None,
-            "taxable_amount": float(row.taxable_amount) if row.taxable_amount else 0,
-            "gst_rate": float(row.gst_rate) if row.gst_rate else 0,
-            "gst_amount": float(row.gst_amount) if row.gst_amount else 0,
-            "total_amount": float(row.total_amount) if row.total_amount else 0,
-            "chassis_no": row.chassis_no
-        })
-        
+        summary.append(
+            {
+                "invoice_number": row.invoice_number,
+                "invoice_date": row.invoice_date.isoformat() if row.invoice_date else None,
+                "taxable_amount": float(row.taxable_amount) if row.taxable_amount else 0,
+                "gst_rate": float(row.gst_rate) if row.gst_rate else 0,
+                "gst_amount": float(row.gst_amount) if row.gst_amount else 0,
+                "total_amount": float(row.total_amount) if row.total_amount else 0,
+                "chassis_no": row.chassis_no,
+            }
+        )
+
     return JSONResponse(content={"items": summary})
 
 
 @router.get("/finance-register")
-async def export_finance_register(
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def export_finance_register(db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     rows = await services.finance_register(db=db)
 
     return export_csv(

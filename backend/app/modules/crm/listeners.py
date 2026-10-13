@@ -6,6 +6,7 @@ from app.modules.crm.models import Lead, LeadStatusMaster
 
 logger = logging.getLogger(__name__)
 
+
 async def on_sale_created(event: SaleCreatedEvent, db: AsyncSession | None = None):
     """Mark lead as converted when a sale is created."""
     if not event.lead_id:
@@ -18,7 +19,7 @@ async def on_sale_created(event: SaleCreatedEvent, db: AsyncSession | None = Non
                 logger.error("Lead %s not found for conversion.", event.lead_id)
                 return
 
-            stmt = select(LeadStatusMaster).filter(LeadStatusMaster.status_name.in_(['WON', 'CONVERTED']))
+            stmt = select(LeadStatusMaster).filter(LeadStatusMaster.status_name.in_(["WON", "CONVERTED"]))
             result = await session.execute(stmt)
             status_obj = result.scalars().first()
 
@@ -38,10 +39,12 @@ async def on_sale_created(event: SaleCreatedEvent, db: AsyncSession | None = Non
             await _handle(db)
         else:
             from app.db.session import AsyncSessionLocal
+
             async with AsyncSessionLocal() as session:
                 await _handle(session)
     except Exception as exc:
         logger.error("Error processing on_sale_created in crm listener: %s", exc)
+
 
 def register_crm_listeners():
     event_bus.subscribe(SaleCreatedEvent, on_sale_created)

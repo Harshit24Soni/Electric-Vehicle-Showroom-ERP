@@ -6,6 +6,7 @@ from app.modules.sales.models import Sale
 
 logger = logging.getLogger(__name__)
 
+
 @asynccontextmanager
 async def get_async_session():
     """Async session generator with rollback protection for background listener tasks."""
@@ -19,6 +20,7 @@ async def get_async_session():
     finally:
         await session.close()
 
+
 async def on_vehicle_delivered_sales(event: VehicleDeliveredEvent):
     """Update sale status to DELIVERED when delivery is finalized."""
     logger.info("Sales module received VehicleDeliveredEvent for sale %s", event.sale_id)
@@ -30,6 +32,7 @@ async def on_vehicle_delivered_sales(event: VehicleDeliveredEvent):
                 await db.commit()
     except Exception as exc:
         logger.error("Failed to update sale status on VehicleDeliveredEvent for sale %s: %s", event.sale_id, exc)
+
 
 def register_sales_listeners():
     """Register sales module event listeners with the global Event Bus."""

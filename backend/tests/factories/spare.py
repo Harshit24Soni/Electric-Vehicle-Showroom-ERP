@@ -2,6 +2,7 @@ from app.modules.inventory.models import SpareMaster, SparePartCode, SpareStockB
 from app.modules.master.models import Vendor
 from .base import BaseFactory, fake
 
+
 class VendorFactory(BaseFactory):
     model = Vendor
 
@@ -16,6 +17,7 @@ class VendorFactory(BaseFactory):
             "state": "Maharashtra",
             "is_active": True,
         }
+
 
 class SpareMasterFactory(BaseFactory):
     model = SpareMaster

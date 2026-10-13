@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.modules.procurement import models
 
+
 async def get_vehicle_cost_price(db: AsyncSession, chassis_no: str) -> float:
     """Contract to get the cost price of a vehicle by chassis number."""
     stmt = select(models.VehiclePurchaseDetail).filter_by(chassis_no=chassis_no)

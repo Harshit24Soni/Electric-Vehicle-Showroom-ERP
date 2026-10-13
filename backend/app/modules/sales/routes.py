@@ -8,12 +8,9 @@ from app.auth.dependencies import get_current_staff
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
+
 @router.post("/", response_model=schemas.SaleResponse)
-async def create_sale(
-    data: schemas.SaleCreate,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def create_sale(data: schemas.SaleCreate, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Create a new sale from a lead"""
     try:
         sale = await services.create_sale(db, payload=data, current_staff_id=_staff["staff_id"])
@@ -33,20 +30,13 @@ async def create_sale_billing(
 
 
 @router.get("/", response_model=List[schemas.SaleResponse])
-async def list_sales(
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def list_sales(db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """List all sales"""
     return await services.list_sales(db)
 
 
 @router.get("/{sale_id}", response_model=schemas.SaleResponse)
-async def get_sale(
-    sale_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def get_sale(sale_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Get a sale by ID"""
     sale = await services.get_sale(db, sale_id)
     if not sale:
@@ -59,7 +49,7 @@ async def delete_sale(
     sale_id: int,
     hard_delete: bool = Query(False, description="Permanently delete (Admin/Dealer only)"),
     db: AsyncSession = Depends(get_db),
-    current_staff=Depends(get_current_staff)
+    current_staff=Depends(get_current_staff),
 ):
     """Delete a sale (soft delete by default)"""
     success = await services.delete_sale(db, sale_id, current_staff, hard_delete)
@@ -70,9 +60,7 @@ async def delete_sale(
 
 @router.post("/receipts", response_model=schemas.ReceiptResponse)
 async def add_receipt(
-    data: schemas.ReceiptCreate,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    data: schemas.ReceiptCreate, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     """Add a payment receipt"""
     try:
@@ -82,11 +70,7 @@ async def add_receipt(
 
 
 @router.post("/{sale_id}/invoice", response_model=schemas.SaleResponse)
-async def generate_invoice(
-    sale_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def generate_invoice(sale_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Generate Invoice"""
     try:
         return await services.generate_invoice(db, sale_id)
@@ -95,11 +79,7 @@ async def generate_invoice(
 
 
 @router.post("/{sale_id}/challan", response_model=schemas.SaleResponse)
-async def generate_challan(
-    sale_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def generate_challan(sale_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Generate Delivery Challan"""
     try:
         return await services.generate_challan(db, sale_id)
@@ -109,9 +89,7 @@ async def generate_challan(
 
 @router.post("/{sale_id}/service-schedule", response_model=schemas.SaleResponse)
 async def generate_service_schedule(
-    sale_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    sale_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     """Generate Service Schedule"""
     try:
@@ -121,11 +99,7 @@ async def generate_service_schedule(
 
 
 @router.get("/{sale_id}/delivery-status")
-async def get_delivery_status(
-    sale_id: int,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
-):
+async def get_delivery_status(sale_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     """Get Document & Delivery Status"""
     try:
         return await services.get_delivery_status(db, sale_id)
@@ -138,7 +112,7 @@ async def deliver_vehicle(
     sale_id: int,
     remarks: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    _staff=Depends(get_current_staff),
 ):
     """Mark sale as delivered"""
     try:
@@ -149,10 +123,7 @@ async def deliver_vehicle(
 
 @router.patch("/{sale_id}/checklist", response_model=schemas.ChecklistResponse)
 async def update_checklist(
-    sale_id: int,
-    data: schemas.ChecklistUpdate,
-    db: AsyncSession = Depends(get_db),
-    _staff=Depends(get_current_staff)
+    sale_id: int, data: schemas.ChecklistUpdate, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     """Update Delivery Checklist / Compliance"""
     try:
@@ -163,6 +134,7 @@ async def update_checklist(
 
 # ==================== NEW WORKFLOW ENDPOINTS ====================
 
+
 @router.post("/{sale_id}/stage", response_model=schemas.SaleResponse)
 async def advance_sale_stage(
     sale_id: int,
@@ -172,9 +144,7 @@ async def advance_sale_stage(
 ):
     """Advance sale to the next stage"""
     try:
-        sale = await services.advance_sale_stage(
-            db, sale_id, data, current_staff_id=_staff["staff_id"]
-        )
+        sale = await services.advance_sale_stage(db, sale_id, data, current_staff_id=_staff["staff_id"])
         return sale
     except services.SalesError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -193,9 +163,7 @@ async def add_sale_payment(
 ):
     """Add a payment to a sale"""
     try:
-        return await services.add_sale_payment(
-            db, sale_id, data, current_staff_id=_staff["staff_id"]
-        )
+        return await services.add_sale_payment(db, sale_id, data, current_staff_id=_staff["staff_id"])
     except services.SalesError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -213,9 +181,7 @@ async def generate_sale_document(
 ):
     """Generate a document (invoice, receipt, challan, etc.) for a sale"""
     try:
-        return await services.generate_sale_document(
-            db, sale_id, data, current_staff_id=_staff["staff_id"]
-        )
+        return await services.generate_sale_document(db, sale_id, data, current_staff_id=_staff["staff_id"])
     except services.SalesError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

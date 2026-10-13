@@ -10,9 +10,7 @@ def setup_test_db():
 
 @pytest.mark.asyncio
 async def test_cors_preflight_production_vercel():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         response = await client.options(
             "/auth/login-pin",
             headers={
@@ -22,10 +20,7 @@ async def test_cors_preflight_production_vercel():
             },
         )
         assert response.status_code == 200
-        assert (
-            response.headers.get("access-control-allow-origin")
-            == "https://electric-vehicle-showroom-erp.vercel.app"
-        )
+        assert response.headers.get("access-control-allow-origin") == "https://electric-vehicle-showroom-erp.vercel.app"
         assert response.headers.get("access-control-allow-credentials") == "true"
         allow_methods = response.headers.get("access-control-allow-methods", "")
         assert "POST" in allow_methods
@@ -34,9 +29,7 @@ async def test_cors_preflight_production_vercel():
 
 @pytest.mark.asyncio
 async def test_cors_xmlhttprequest_production_vercel():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         response = await client.get(
             "/health",
             headers={
@@ -44,10 +37,7 @@ async def test_cors_xmlhttprequest_production_vercel():
             },
         )
         assert response.status_code == 200
-        assert (
-            response.headers.get("access-control-allow-origin")
-            == "https://electric-vehicle-showroom-erp.vercel.app"
-        )
+        assert response.headers.get("access-control-allow-origin") == "https://electric-vehicle-showroom-erp.vercel.app"
         assert response.headers.get("access-control-allow-credentials") == "true"
 
 
@@ -60,9 +50,7 @@ async def test_cors_xmlhttprequest_production_vercel():
     ],
 )
 async def test_cors_local_development_origins(origin: str):
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         # Preflight OPTIONS
         res_opt = await client.options(
             "/health",
@@ -83,9 +71,7 @@ async def test_cors_local_development_origins(origin: str):
 
 @pytest.mark.asyncio
 async def test_cors_unallowed_origin_blocked():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         res = await client.get(
             "/health",
             headers={"Origin": "https://malicious-site.example.com"},

@@ -19,52 +19,32 @@ class SalesInvoice(Base, AuditMixin, SoftDeleteMixin):
     invoice_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
     sale_id: Mapped[int] = mapped_column(
-        BigInteger,
-        nullable=False,
-        unique=True,
-        index=True
-    ) # Soft link to sales module
+        BigInteger, nullable=False, unique=True, index=True
+    )  # Soft link to sales module
 
-    invoice_number: Mapped[str] = mapped_column(
-        String(50), nullable=False, unique=True
-    )
+    invoice_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
 
-    invoice_date: Mapped[datetime] = mapped_column(
-        TIMESTAMP, default=utc_now_naive
-    )
+    invoice_date: Mapped[datetime] = mapped_column(TIMESTAMP, default=utc_now_naive)
 
-    taxable_amount: Mapped[float] = mapped_column(
-        Numeric(12, 2), nullable=False
-    )
+    taxable_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
 
-    gst_rate: Mapped[float] = mapped_column(
-        Numeric(5, 2), nullable=False
-    )
+    gst_rate: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
 
-    gst_amount: Mapped[float] = mapped_column(
-        Numeric(12, 2), nullable=False
-    )
+    gst_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
 
-    total_amount: Mapped[float] = mapped_column(
-        Numeric(12, 2), nullable=False
-    )
+    total_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
 
-    is_final: Mapped[bool] = mapped_column(
-        Boolean, default=False
-    )
+    is_final: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    revision_no: Mapped[int] = mapped_column(
-        default=1
-    )
+    revision_no: Mapped[int] = mapped_column(default=1)
 
     remarks: Mapped[str | None] = mapped_column(String)
+
 
 class VehicleSubsidy(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "vehicle_subsidy"
 
-    subsidy_id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True
-    )
+    subsidy_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
     invoice_id: Mapped[int] = mapped_column(
         BigInteger,
@@ -73,21 +53,13 @@ class VehicleSubsidy(Base, AuditMixin, SoftDeleteMixin):
         unique=True,
     )
 
-    government_customer_id: Mapped[str] = mapped_column(
-        String(100), nullable=False
-    )
+    government_customer_id: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    application_status: Mapped[str] = mapped_column(
-        String(30), nullable=False
-    )
+    application_status: Mapped[str] = mapped_column(String(30), nullable=False)
     # APPLIED / APPROVED / REJECTED / PAID
 
-    document_uploaded: Mapped[bool] = mapped_column(
-        default=False
-    )
+    document_uploaded: Mapped[bool] = mapped_column(default=False)
 
-    last_updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, default=utc_now_naive
-    )
+    last_updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=utc_now_naive)
 
     remarks: Mapped[str | None] = mapped_column(String)

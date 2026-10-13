@@ -12,25 +12,17 @@ from app.modules.inventory.models import (
     PriceListItem,
     SpareCostHistory,
     SpareSellingPriceHistory,
-    SparePartCode
+    SparePartCode,
 )
 from app.modules.inventory.services import InventoryError
 
 logger = logging.getLogger(__name__)
 
 
-async def create_price_list(
-    db: AsyncSession,
-    *,
-    source_name: str,
-    remarks: Optional[str] = None
-) -> PriceList:
+async def create_price_list(db: AsyncSession, *, source_name: str, remarks: Optional[str] = None) -> PriceList:
     """Create a new pricing list header with transactional safety."""
     try:
-        pl = PriceList(
-            source_name=source_name,
-            remarks=remarks
-        )
+        pl = PriceList(source_name=source_name, remarks=remarks)
         db.add(pl)
         await db.flush()
         return pl
@@ -47,7 +39,7 @@ async def add_price_list_version(
     version_reference: str,
     effective_from: datetime,
     received_date: datetime,
-    items_data: List[Dict[str, Any]]
+    items_data: List[Dict[str, Any]],
 ) -> PriceListVersion:
     """Add a new version to an existing price list with its line items."""
     try:
@@ -60,7 +52,7 @@ async def add_price_list_version(
             version_reference=version_reference,
             effective_from=effective_from.replace(tzinfo=None) if effective_from.tzinfo else effective_from,
             received_date=received_date.replace(tzinfo=None) if received_date.tzinfo else received_date,
-            status="PUBLISHED"
+            status="PUBLISHED",
         )
         db.add(version)
         await db.flush()
@@ -72,7 +64,7 @@ async def add_price_list_version(
                 part_name=item_data.get("part_name"),
                 mrp=item_data.get("mrp"),
                 dlp=item_data.get("dlp"),
-                gst_rate=item_data.get("gst_rate")
+                gst_rate=item_data.get("gst_rate"),
             )
             db.add(item)
 
@@ -81,35 +73,36 @@ async def add_price_list_version(
     except Exception as exc:
         await db.rollback()
         logger.error(
-            "Failed to add price list version '%s' to list %s: %s",
-            version_reference, price_list_id, exc, exc_info=True
+            "Failed to add price list version '%s' to list %s: %s", version_reference, price_list_id, exc, exc_info=True
         )
         raise
 
 
 async def get_price_list(db: AsyncSession, price_list_id: int) -> Optional[PriceList]:
     """Retrieve a single price list including versions and version items."""
-    stmt = select(PriceList).options(
-        selectinload(PriceList.versions).selectinload(PriceListVersion.items)
-    ).filter(PriceList.price_list_id == price_list_id)
+    stmt = (
+        select(PriceList)
+        .options(selectinload(PriceList.versions).selectinload(PriceListVersion.items))
+        .filter(PriceList.price_list_id == price_list_id)
+    )
     result = await db.execute(stmt)
     return result.scalars().first()
 
 
 async def list_price_lists(db: AsyncSession) -> List[PriceList]:
     """List all active non-deleted price lists ordered by ID descending."""
-    stmt = select(PriceList).options(
-        selectinload(PriceList.versions)
-    ).filter(PriceList.is_deleted == False).order_by(PriceList.price_list_id.desc())
+    stmt = (
+        select(PriceList)
+        .options(selectinload(PriceList.versions))
+        .filter(PriceList.is_deleted == False)
+        .order_by(PriceList.price_list_id.desc())
+    )
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
 
 async def add_spare_selling_price(
-    db: AsyncSession,
-    spare_id: int,
-    selling_price: Decimal | float,
-    reason: Optional[str] = None
+    db: AsyncSession, spare_id: int, selling_price: Decimal | float, reason: Optional[str] = None
 ) -> SpareSellingPriceHistory:
     """Update current selling price by terminating active price and creating a new record."""
     try:
@@ -118,7 +111,7 @@ async def add_spare_selling_price(
         stmt = select(SpareSellingPriceHistory).filter(
             SpareSellingPriceHistory.spare_id == spare_id,
             SpareSellingPriceHistory.effective_to.is_(None),
-            SpareSellingPriceHistory.is_deleted == False
+            SpareSellingPriceHistory.is_deleted == False,
         )
         result = await db.execute(stmt)
         current = result.scalars().first()
@@ -126,20 +119,14 @@ async def add_spare_selling_price(
             current.effective_to = now
 
         new_price = SpareSellingPriceHistory(
-            spare_id=spare_id,
-            selling_price=selling_price,
-            effective_from=now,
-            reason=reason
+            spare_id=spare_id, selling_price=selling_price, effective_from=now, reason=reason
         )
         db.add(new_price)
         await db.flush()
         return new_price
     except Exception as exc:
         await db.rollback()
-        logger.error(
-            "Failed to set selling price for spare %s: %s",
-            spare_id, exc, exc_info=True
-        )
+        logger.error("Failed to set selling price for spare %s: %s", spare_id, exc, exc_info=True)
         raise
 
 
@@ -149,7 +136,7 @@ async def add_spare_cost(
     quantity: int,
     billed_unit_price: Decimal | float,
     additional_costs: Decimal | float = 0.0,
-    source_reference: Optional[str] = None
+    source_reference: Optional[str] = None,
 ) -> SpareCostHistory:
     """Record new landed cost item for a spare part."""
     try:
@@ -161,7 +148,7 @@ async def add_spare_cost(
             billed_unit_price=billed_unit_price,
             additional_costs=additional_costs,
             landed_cost=landed_cost,
-            source_reference=source_reference
+            source_reference=source_reference,
         )
         db.add(cost)
         await db.flush()
@@ -177,7 +164,7 @@ async def get_current_selling_price(db: AsyncSession, spare_id: int) -> Optional
     stmt = select(SpareSellingPriceHistory.selling_price).filter(
         SpareSellingPriceHistory.spare_id == spare_id,
         SpareSellingPriceHistory.effective_to.is_(None),
-        SpareSellingPriceHistory.is_deleted == False
+        SpareSellingPriceHistory.is_deleted == False,
     )
     result = await db.execute(stmt)
     return result.scalar()
@@ -185,10 +172,11 @@ async def get_current_selling_price(db: AsyncSession, spare_id: int) -> Optional
 
 async def get_current_cost(db: AsyncSession, spare_id: int) -> Optional[float]:
     """Retrieve the latest landed cost for a spare part."""
-    stmt = select(SpareCostHistory.landed_cost).filter(
-        SpareCostHistory.spare_id == spare_id,
-        SpareCostHistory.is_deleted == False
-    ).order_by(desc(SpareCostHistory.effective_date))
+    stmt = (
+        select(SpareCostHistory.landed_cost)
+        .filter(SpareCostHistory.spare_id == spare_id, SpareCostHistory.is_deleted == False)
+        .order_by(desc(SpareCostHistory.effective_date))
+    )
     result = await db.execute(stmt)
     return result.scalar()
 
@@ -199,12 +187,7 @@ async def calculate_margin(db: AsyncSession, spare_id: int) -> Dict[str, Optiona
     cost = await get_current_cost(db, spare_id)
 
     if selling_price is None or cost is None:
-        return {
-            "selling_price": selling_price,
-            "cost": cost,
-            "profit": None,
-            "profit_percentage": None
-        }
+        return {"selling_price": selling_price, "cost": cost, "profit": None, "profit_percentage": None}
 
     sp = Decimal(str(selling_price))
     c = Decimal(str(cost))
@@ -219,7 +202,7 @@ async def calculate_margin(db: AsyncSession, spare_id: int) -> Dict[str, Optiona
         "selling_price": float(sp),
         "cost": float(c),
         "profit": float(profit),
-        "profit_percentage": float(profit_percentage)
+        "profit_percentage": float(profit_percentage),
     }
 
 
@@ -232,11 +215,14 @@ async def get_price_history(db: AsyncSession, spare_id: int) -> List[PriceListIt
     if not codes:
         return []
 
-    stmt = select(PriceListItem).join(PriceListVersion).filter(
-        PriceListItem.part_code.in_(codes),
-        PriceListItem.is_deleted == False,
-        PriceListVersion.is_deleted == False
-    ).order_by(desc(PriceListVersion.effective_from))
+    stmt = (
+        select(PriceListItem)
+        .join(PriceListVersion)
+        .filter(
+            PriceListItem.part_code.in_(codes), PriceListItem.is_deleted == False, PriceListVersion.is_deleted == False
+        )
+        .order_by(desc(PriceListVersion.effective_from))
+    )
 
     result = await db.execute(stmt)
     return list(result.scalars().all())
@@ -244,19 +230,21 @@ async def get_price_history(db: AsyncSession, spare_id: int) -> List[PriceListIt
 
 async def get_selling_price_history(db: AsyncSession, spare_id: int) -> List[SpareSellingPriceHistory]:
     """Retrieve all historical selling price records for a given spare."""
-    stmt = select(SpareSellingPriceHistory).filter(
-        SpareSellingPriceHistory.spare_id == spare_id,
-        SpareSellingPriceHistory.is_deleted == False
-    ).order_by(desc(SpareSellingPriceHistory.effective_from))
+    stmt = (
+        select(SpareSellingPriceHistory)
+        .filter(SpareSellingPriceHistory.spare_id == spare_id, SpareSellingPriceHistory.is_deleted == False)
+        .order_by(desc(SpareSellingPriceHistory.effective_from))
+    )
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
 
 async def get_cost_history(db: AsyncSession, spare_id: int) -> List[SpareCostHistory]:
     """Retrieve all landed cost history records for a given spare."""
-    stmt = select(SpareCostHistory).filter(
-        SpareCostHistory.spare_id == spare_id,
-        SpareCostHistory.is_deleted == False
-    ).order_by(desc(SpareCostHistory.effective_date))
+    stmt = (
+        select(SpareCostHistory)
+        .filter(SpareCostHistory.spare_id == spare_id, SpareCostHistory.is_deleted == False)
+        .order_by(desc(SpareCostHistory.effective_date))
+    )
     result = await db.execute(stmt)
     return list(result.scalars().all())

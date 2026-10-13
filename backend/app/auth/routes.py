@@ -572,14 +572,16 @@ async def get_reset_requests(
                 req_dt = req_dt.replace(tzinfo=timezone.utc)
             hours_ago = int((now - req_dt).total_seconds() / 3600)
 
-        requests_out.append({
-            "id": req.id,
-            "staff_id": req.staff_id,
-            "staff_name": staff.full_name,
-            "staff_mobile": staff.mobile_no,
-            "requested_at": req.requested_at.isoformat() if req.requested_at else None,
-            "hours_ago": hours_ago,
-        })
+        requests_out.append(
+            {
+                "id": req.id,
+                "staff_id": req.staff_id,
+                "staff_name": staff.full_name,
+                "staff_mobile": staff.mobile_no,
+                "requested_at": req.requested_at.isoformat() if req.requested_at else None,
+                "hours_ago": hours_ago,
+            }
+        )
 
     return {"requests": requests_out}
 

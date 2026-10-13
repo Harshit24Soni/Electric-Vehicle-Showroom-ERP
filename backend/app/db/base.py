@@ -16,4 +16,5 @@ class Base(DeclarativeBase):
     Declarative Base class for all SQLAlchemy 2.0+ domain models.
     Enforces unified naming conventions across indexes, foreign keys, and unique constraints.
     """
+
     metadata = MetaData(naming_convention=POSTGRES_NAMING_CONVENTIONS)

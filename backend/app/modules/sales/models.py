@@ -22,6 +22,7 @@ from app.db.mixins import AuditMixin, SoftDeleteMixin, utc_now, utc_now_naive
 
 class SaleStage(str, enum.Enum):
     """10-stage sale lifecycle"""
+
     ENQUIRY = "ENQUIRY"
     QUOTATION = "QUOTATION"
     NEGOTIATION = "NEGOTIATION"
@@ -33,6 +34,7 @@ class SaleStage(str, enum.Enum):
     DELIVERY = "DELIVERY"
     COMPLETED = "COMPLETED"
 
+
 class Sale(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "sale"
     __table_args__ = (
@@ -41,28 +43,32 @@ class Sale(Base, AuditMixin, SoftDeleteMixin):
     )
 
     sale_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    lead_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, unique=True) # Soft link to crm.lead
-    customer_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to master.customer
+    lead_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, unique=True)  # Soft link to crm.lead
+    customer_id: Mapped[int] = mapped_column(BigInteger, nullable=False)  # Soft link to master.customer
     # Linking to specific vehicle (inventory item)
-    chassis_no: Mapped[str] = mapped_column(String(50), nullable=False, unique=True) # Soft link to master.vehicle
-    
+    chassis_no: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)  # Soft link to master.vehicle
+
     sale_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
     total_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    sale_status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING") # PENDING, INVOICED, DELIVERED, CANCELLED
-    
+    sale_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="PENDING"
+    )  # PENDING, INVOICED, DELIVERED, CANCELLED
+
     invoice_number: Mapped[str | None] = mapped_column(String(50), unique=True)
-    pay_receipt_number: Mapped[str | None] = mapped_column(String(50)) # If single receipt per sale, but we have multiple receipts table
+    pay_receipt_number: Mapped[str | None] = mapped_column(
+        String(50)
+    )  # If single receipt per sale, but we have multiple receipts table
     delivery_challan_number: Mapped[str | None] = mapped_column(String(50), unique=True)
-    
+
     # Document Generation Flags
     is_invoice_generated: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_receipt_generated: Mapped[bool] = mapped_column(Boolean, default=False) # At least one receipt?
+    is_receipt_generated: Mapped[bool] = mapped_column(Boolean, default=False)  # At least one receipt?
     is_challan_generated: Mapped[bool] = mapped_column(Boolean, default=False)
     is_insurance_generated: Mapped[bool] = mapped_column(Boolean, default=False)
     is_service_schedule_generated: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+
     remarks: Mapped[str | None] = mapped_column(Text)
-    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to master.staff
+    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False)  # Soft link to master.staff
 
     # --- NEW workflow columns ---
     sale_stage: Mapped[str | None] = mapped_column(String(50), nullable=True, default=SaleStage.ENQUIRY)
@@ -73,7 +79,12 @@ class Sale(Base, AuditMixin, SoftDeleteMixin):
     receipts = relationship("PaymentReceipt", back_populates="sale")
     delivery_checklist = relationship("DeliveryChecklist", uselist=False, back_populates="sale")
     service_schedules = relationship("ServiceSchedule", back_populates="sale", cascade="all, delete-orphan")
-    stage_history = relationship("SaleStageHistory", back_populates="sale", cascade="all, delete-orphan", order_by="SaleStageHistory.created_at.desc()")
+    stage_history = relationship(
+        "SaleStageHistory",
+        back_populates="sale",
+        cascade="all, delete-orphan",
+        order_by="SaleStageHistory.created_at.desc()",
+    )
     sale_payments = relationship("SalePayment", back_populates="sale", cascade="all, delete-orphan")
     sale_documents = relationship("SaleDocument", back_populates="sale", cascade="all, delete-orphan")
     portal_tracking = relationship("SalePortalTracking", uselist=False, back_populates="sale")
@@ -113,11 +124,11 @@ class PaymentReceipt(Base, AuditMixin, SoftDeleteMixin):
     receipt_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sale.sale_id"), nullable=False)
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    payment_mode: Mapped[str] = mapped_column(String(20), nullable=False) # CASH, UPI, CARD, CHEQUE, FINANCE
+    payment_mode: Mapped[str] = mapped_column(String(20), nullable=False)  # CASH, UPI, CARD, CHEQUE, FINANCE
     transaction_ref: Mapped[str | None] = mapped_column(String(100))
     receipt_date: Mapped[date] = mapped_column(Date, default=date.today)
-    
-    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to master.staff
+
+    created_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False)  # Soft link to master.staff
 
     sale = relationship("Sale", back_populates="receipts")
 
@@ -127,20 +138,20 @@ class DeliveryChecklist(Base, AuditMixin, SoftDeleteMixin):
 
     checklist_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sale.sale_id"), nullable=False, unique=True)
-    
+
     insurance_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     insurance_details: Mapped[str | None] = mapped_column(Text)
-    
+
     subsidy_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     subsidy_details: Mapped[str | None] = mapped_column(Text)
-    
+
     rto_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     rto_details: Mapped[str | None] = mapped_column(Text)
-    
+
     celex_plate_ordered: Mapped[bool] = mapped_column(Boolean, default=False)
     celex_subsidy_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     celex_details: Mapped[str | None] = mapped_column(Text)
-    
+
     plate_fixation_date: Mapped[datetime | None] = mapped_column(Date)
 
     sale = relationship("Sale", back_populates="delivery_checklist")
@@ -151,19 +162,18 @@ class ServiceSchedule(Base, AuditMixin, SoftDeleteMixin):
 
     schedule_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sale.sale_id"), nullable=False)
-    
-    service_number: Mapped[int] = mapped_column(nullable=False) # 1, 2, 3...
-    service_type: Mapped[str] = mapped_column(String(20), nullable=False) # FREE, PAID
-    due_date: Mapped[Date] = mapped_column(Date, nullable=False)
-    status: Mapped[str] = mapped_column(String(20), default="PENDING") # PENDING, COMPLETED, SKIPPED
-    
 
-    
+    service_number: Mapped[int] = mapped_column(nullable=False)  # 1, 2, 3...
+    service_type: Mapped[str] = mapped_column(String(20), nullable=False)  # FREE, PAID
+    due_date: Mapped[Date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")  # PENDING, COMPLETED, SKIPPED
+
     sale = relationship("Sale", back_populates="service_schedules")
 
 
 class SaleStageHistory(Base, AuditMixin, SoftDeleteMixin):
     """Audit trail for sale stage transitions"""
+
     __tablename__ = "sale_stage_history"
 
     stage_history_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -177,15 +187,15 @@ class SaleStageHistory(Base, AuditMixin, SoftDeleteMixin):
     changed_by_staff_id: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
-    ) # Soft link to master.staff
+    )  # Soft link to master.staff
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
-
 
     sale = relationship("Sale", back_populates="stage_history")
 
 
 class SalePayment(Base, AuditMixin, SoftDeleteMixin):
     """Payment tracking for sales with type and mode"""
+
     __tablename__ = "sale_payment"
 
     sale_payment_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -204,14 +214,14 @@ class SalePayment(Base, AuditMixin, SoftDeleteMixin):
     created_by_staff_id: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
-    ) # Soft link to master.staff
-
+    )  # Soft link to master.staff
 
     sale = relationship("Sale", back_populates="sale_payments")
 
 
 class SaleDocument(Base, AuditMixin, SoftDeleteMixin):
     """Generated documents for a sale (invoice, challan, receipt, etc.)"""
+
     __tablename__ = "sale_document"
 
     sale_document_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -220,13 +230,15 @@ class SaleDocument(Base, AuditMixin, SoftDeleteMixin):
         ForeignKey("sale.sale_id", ondelete="CASCADE"),
         nullable=False,
     )
-    document_type: Mapped[str] = mapped_column(String(50), nullable=False)  # INVOICE, RECEIPT, CHALLAN, INSURANCE, SERVICE_SCHEDULE
+    document_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # INVOICE, RECEIPT, CHALLAN, INSURANCE, SERVICE_SCHEDULE
     document_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     generated_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False, default=utc_now_naive)
     generated_by_staff_id: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
-    ) # Soft link to master.staff
+    )  # Soft link to master.staff
     is_printed: Mapped[bool] = mapped_column(Boolean, default=False)
     print_count: Mapped[int] = mapped_column(Integer, default=0)
     last_printed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True)
@@ -236,6 +248,7 @@ class SaleDocument(Base, AuditMixin, SoftDeleteMixin):
 
 class SalePortalTracking(Base, AuditMixin, SoftDeleteMixin):
     """Portal work tracking: insurance, subsidy, RTO, CELEX, num-plate"""
+
     __tablename__ = "sale_portal_tracking"
 
     portal_tracking_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -274,63 +287,63 @@ class SalePortalTracking(Base, AuditMixin, SoftDeleteMixin):
     helmet_invoice_generated: Mapped[bool] = mapped_column(Boolean, default=False)
     all_portals_completed: Mapped[bool] = mapped_column(Boolean, default=False)
 
-
-
     sale = relationship("Sale", back_populates="portal_tracking")
 
     def check_completion(self) -> bool:
         """Check if all portal work is complete and update flag."""
-        all_done = all([
-            self.insurance_status == "COMPLETED",
-            self.subsidy_status == "COMPLETED",
-            self.rto_status == "COMPLETED",
-            self.celex_status == "COMPLETED",
-        ])
+        all_done = all(
+            [
+                self.insurance_status == "COMPLETED",
+                self.subsidy_status == "COMPLETED",
+                self.rto_status == "COMPLETED",
+                self.celex_status == "COMPLETED",
+            ]
+        )
         self.all_portals_completed = all_done
         return all_done
 
 
 class SpareSale(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_sale"
-    
+
     sale_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    customer_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to master.customer
+    customer_id: Mapped[int] = mapped_column(BigInteger, nullable=False)  # Soft link to master.customer
     sale_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
-    
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="DRAFT") # DRAFT, CONFIRMED, CANCELLED
-    
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="DRAFT")  # DRAFT, CONFIRMED, CANCELLED
+
     subtotal: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
     discount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
     tax: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
     grand_total: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
-    
+
     invoice_number: Mapped[str | None] = mapped_column(String(50), unique=True)
     remarks: Mapped[str | None] = mapped_column(Text)
     created_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    
+
     items = relationship("SpareSaleItem", back_populates="sale", cascade="all, delete-orphan")
 
 
 class SpareSaleItem(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "spare_sale_item"
-    
+
     sale_item_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     sale_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("spare_sale.sale_id"), nullable=False)
-    
-    spare_id: Mapped[int] = mapped_column(BigInteger, nullable=False) # Soft link to inventory.spare_master
+
+    spare_id: Mapped[int] = mapped_column(BigInteger, nullable=False)  # Soft link to inventory.spare_master
     part_code: Mapped[str] = mapped_column(String(50), nullable=False)
     spare_name: Mapped[str] = mapped_column(String(255), nullable=False)
     tracking_mode: Mapped[str] = mapped_column(String(20), nullable=False)
-    
+
     batch_id: Mapped[int | None] = mapped_column(BigInteger)
     serial_id: Mapped[int | None] = mapped_column(BigInteger)
-    
+
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_selling_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     discount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
     tax: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
     line_total: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    
-    unit_cost: Mapped[float | None] = mapped_column(Numeric(12, 2)) # Cost snapshot for profit
-    
+
+    unit_cost: Mapped[float | None] = mapped_column(Numeric(12, 2))  # Cost snapshot for profit
+
     sale = relationship("SpareSale", back_populates="items")
