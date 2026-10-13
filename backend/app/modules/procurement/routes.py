@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
 from app.auth.roles import require_roles
-from app.modules.procurement import schemas, services, models
+from app.modules.procurement import schemas, services
 from app.modules.procurement.ocr_service import OCRService
 
 router = APIRouter(prefix="/procurement", tags=["Procurement"])

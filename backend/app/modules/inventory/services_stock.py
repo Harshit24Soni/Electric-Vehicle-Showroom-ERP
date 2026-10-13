@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_, desc
+from sqlalchemy import select, func, desc
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta, timezone
 

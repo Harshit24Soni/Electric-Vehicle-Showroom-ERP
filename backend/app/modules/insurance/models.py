@@ -1,9 +1,7 @@
 from sqlalchemy import (
     BigInteger,
     String,
-    Text,
     Date,
-    TIMESTAMP,
     ForeignKey,
     Boolean,
     Index,

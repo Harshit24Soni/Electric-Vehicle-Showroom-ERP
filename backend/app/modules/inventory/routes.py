@@ -1,3 +1,4 @@
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -5,7 +6,8 @@ from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
 from app.auth.roles import require_roles
 
-from app.modules.inventory import services
+from app.modules.inventory import pricing_services, schemas_stock, services, services_stock
+from app.modules.inventory.routes_tags import router as tags_router
 from app.modules.inventory.schemas import (
     VehicleMovementCreate,
     SpareMovementCreate,
@@ -26,7 +28,6 @@ from app.modules.inventory.schemas import (
     SpareSellingPriceCreate,
     PriceListItemResponse,
 )
-from app.modules.inventory import pricing_services
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
@@ -235,10 +236,6 @@ async def get_spare_stock(
     }
 
 
-from app.modules.inventory import schemas_stock, services_stock
-from typing import List, Optional
-
-
 @router.get("/dashboard/stats", response_model=schemas_stock.InventoryDashboardResponse)
 async def get_inventory_dashboard(db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)):
     return await services_stock.get_inventory_dashboard(db)
@@ -385,7 +382,5 @@ async def get_spare_selling_price_history_api(
 ):
     return await pricing_services.get_selling_price_history(db, spare_id)
 
-
-from app.modules.inventory.routes_tags import router as tags_router
 
 router.include_router(tags_router)

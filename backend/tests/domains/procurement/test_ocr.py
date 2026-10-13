@@ -1,9 +1,5 @@
 import pytest
 from httpx import AsyncClient
-from decimal import Decimal
-from datetime import datetime
-
-from app.modules.procurement.models import SparePurchase, SparePurchaseItem
 
 
 @pytest.fixture

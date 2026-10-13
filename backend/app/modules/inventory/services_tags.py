@@ -3,13 +3,11 @@ import logging
 from typing import List, Optional
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, desc, func
+from sqlalchemy import select, desc, func
 from fastapi import HTTPException
 import qrcode
 import base64
 import io
-
-logger = logging.getLogger(__name__)
 
 from app.modules.inventory.models import (
     InventoryTag,
@@ -20,7 +18,9 @@ from app.modules.inventory.models import (
     SpareStockBalance,
     SparePartCode,
 )
-from app.modules.inventory.schemas_tags import TagCreateRequest, BulkTagCreateRequest, InventoryTagResponse
+from app.modules.inventory.schemas_tags import BulkTagCreateRequest, InventoryTagResponse
+
+logger = logging.getLogger(__name__)
 
 
 def _generate_opaque_identifier() -> str:
@@ -34,7 +34,7 @@ async def _enrich_tag(db: AsyncSession, tag: InventoryTag) -> InventoryTagRespon
     spare = spare_res.scalar_one_or_none()
 
     code_res = await db.execute(
-        select(SparePartCode.code).where(SparePartCode.spare_id == tag.spare_id, SparePartCode.is_current == True)
+        select(SparePartCode.code).where(SparePartCode.spare_id == tag.spare_id, SparePartCode.is_current.is_(True))
     )
     current_code = code_res.scalar_one_or_none()
 

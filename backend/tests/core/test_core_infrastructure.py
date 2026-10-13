@@ -1,5 +1,4 @@
-import asyncio
-from datetime import datetime, timezone
+from datetime import timezone
 import pytest
 from pydantic import ValidationError
 

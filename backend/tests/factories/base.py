@@ -1,4 +1,3 @@
-import asyncio
 from faker import Faker
 
 fake = Faker()

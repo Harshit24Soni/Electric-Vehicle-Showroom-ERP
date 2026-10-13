@@ -94,7 +94,7 @@ async def list_price_lists(db: AsyncSession) -> List[PriceList]:
     stmt = (
         select(PriceList)
         .options(selectinload(PriceList.versions))
-        .filter(PriceList.is_deleted == False)
+        .filter(PriceList.is_deleted.is_(False))
         .order_by(PriceList.price_list_id.desc())
     )
     result = await db.execute(stmt)
@@ -111,7 +111,7 @@ async def add_spare_selling_price(
         stmt = select(SpareSellingPriceHistory).filter(
             SpareSellingPriceHistory.spare_id == spare_id,
             SpareSellingPriceHistory.effective_to.is_(None),
-            SpareSellingPriceHistory.is_deleted == False,
+            SpareSellingPriceHistory.is_deleted.is_(False),
         )
         result = await db.execute(stmt)
         current = result.scalars().first()
@@ -164,7 +164,7 @@ async def get_current_selling_price(db: AsyncSession, spare_id: int) -> Optional
     stmt = select(SpareSellingPriceHistory.selling_price).filter(
         SpareSellingPriceHistory.spare_id == spare_id,
         SpareSellingPriceHistory.effective_to.is_(None),
-        SpareSellingPriceHistory.is_deleted == False,
+        SpareSellingPriceHistory.is_deleted.is_(False),
     )
     result = await db.execute(stmt)
     return result.scalar()
@@ -174,7 +174,7 @@ async def get_current_cost(db: AsyncSession, spare_id: int) -> Optional[float]:
     """Retrieve the latest landed cost for a spare part."""
     stmt = (
         select(SpareCostHistory.landed_cost)
-        .filter(SpareCostHistory.spare_id == spare_id, SpareCostHistory.is_deleted == False)
+        .filter(SpareCostHistory.spare_id == spare_id, SpareCostHistory.is_deleted.is_(False))
         .order_by(desc(SpareCostHistory.effective_date))
     )
     result = await db.execute(stmt)
@@ -219,7 +219,9 @@ async def get_price_history(db: AsyncSession, spare_id: int) -> List[PriceListIt
         select(PriceListItem)
         .join(PriceListVersion)
         .filter(
-            PriceListItem.part_code.in_(codes), PriceListItem.is_deleted == False, PriceListVersion.is_deleted == False
+            PriceListItem.part_code.in_(codes),
+            PriceListItem.is_deleted.is_(False),
+            PriceListVersion.is_deleted.is_(False),
         )
         .order_by(desc(PriceListVersion.effective_from))
     )
@@ -232,7 +234,7 @@ async def get_selling_price_history(db: AsyncSession, spare_id: int) -> List[Spa
     """Retrieve all historical selling price records for a given spare."""
     stmt = (
         select(SpareSellingPriceHistory)
-        .filter(SpareSellingPriceHistory.spare_id == spare_id, SpareSellingPriceHistory.is_deleted == False)
+        .filter(SpareSellingPriceHistory.spare_id == spare_id, SpareSellingPriceHistory.is_deleted.is_(False))
         .order_by(desc(SpareSellingPriceHistory.effective_from))
     )
     result = await db.execute(stmt)
@@ -243,7 +245,7 @@ async def get_cost_history(db: AsyncSession, spare_id: int) -> List[SpareCostHis
     """Retrieve all landed cost history records for a given spare."""
     stmt = (
         select(SpareCostHistory)
-        .filter(SpareCostHistory.spare_id == spare_id, SpareCostHistory.is_deleted == False)
+        .filter(SpareCostHistory.spare_id == spare_id, SpareCostHistory.is_deleted.is_(False))
         .order_by(desc(SpareCostHistory.effective_date))
     )
     result = await db.execute(stmt)

@@ -8,7 +8,6 @@ from sqlalchemy import (
     CheckConstraint,
     Index,
     Boolean,
-    Enum,
     Numeric,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym

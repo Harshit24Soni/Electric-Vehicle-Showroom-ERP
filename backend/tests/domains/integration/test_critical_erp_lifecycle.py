@@ -3,17 +3,15 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.modules.master.models import Staff, Brand, VehicleModel, Vehicle
-from app.modules.crm.models import Lead
+from app.modules.master.models import Vehicle
 from app.modules.inventory.models import SpareStockBalance, SpareCostHistory
 from app.modules.sales.models import Sale
 from app.modules.billing import services as billing_services
-from app.modules.billing.models import SalesInvoice
 from app.modules.finance.models import VehicleFinance
-from app.core.event_bus import event_bus, SaleTransactionCompletedEvent
+from app.core.event_bus import SaleTransactionCompletedEvent
 from tests.factories.customer import CustomerFactory
 from tests.factories.spare import VendorFactory, SpareMasterFactory
-from tests.factories.vehicle import BrandFactory, VehicleModelFactory, VehicleFactory
+from tests.factories.vehicle import BrandFactory, VehicleModelFactory
 
 
 @pytest.mark.asyncio

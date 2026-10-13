@@ -1,8 +1,7 @@
 import logging
 from datetime import date, datetime, timedelta, timezone
-from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, extract, and_, or_
+from sqlalchemy import select, func, extract
 
 from app.modules.billing.models import SalesInvoice
 from app.modules.sales.models import Sale, ServiceSchedule
@@ -91,25 +90,27 @@ async def get_dashboard_stats(db: AsyncSession) -> DashboardStatsResponse:
     revenue_query = select(func.sum(SalesInvoice.total_amount)).where(
         extract("month", SalesInvoice.invoice_date) == today.month,
         extract("year", SalesInvoice.invoice_date) == today.year,
-        SalesInvoice.is_final == True,
-        SalesInvoice.is_deleted == False,
+        SalesInvoice.is_final.is_(True),
+        SalesInvoice.is_deleted.is_(False),
     )
     revenue = await db.scalar(revenue_query)
     revenue = revenue or 0.0
 
     # 2. Active Leads
     active_leads_query = select(func.count(Lead.lead_id)).where(
-        Lead.lead_status.notin_(["LOST", "SOLD", "CONVERTED"]), Lead.is_deleted == False
+        Lead.lead_status.notin_(["LOST", "SOLD", "CONVERTED"]), Lead.is_deleted.is_(False)
     )
     active_leads = await db.scalar(active_leads_query)
     active_leads = active_leads or 0
 
     # 3. Lead Conversion Ratio
-    total_leads_query = select(func.count(Lead.lead_id)).where(Lead.is_deleted == False)
+    total_leads_query = select(func.count(Lead.lead_id)).where(Lead.is_deleted.is_(False))
     total_leads = await db.scalar(total_leads_query)
     total_leads = total_leads or 0
 
-    converted_leads_query = select(func.count(Lead.lead_id)).where(Lead.is_converted == True, Lead.is_deleted == False)
+    converted_leads_query = select(func.count(Lead.lead_id)).where(
+        Lead.is_converted.is_(True), Lead.is_deleted.is_(False)
+    )
     converted_leads = await db.scalar(converted_leads_query)
     converted_leads = converted_leads or 0
 
@@ -119,7 +120,7 @@ async def get_dashboard_stats(db: AsyncSession) -> DashboardStatsResponse:
 
     # 4. Available Inventory
     inventory_query = select(func.count(Vehicle.chassis_no)).where(
-        Vehicle.current_status == "IN_STOCK", Vehicle.is_deleted == False
+        Vehicle.current_status == "IN_STOCK", Vehicle.is_deleted.is_(False)
     )
     in_stock_inventory = await db.scalar(inventory_query)
     in_stock_inventory = in_stock_inventory or 0
@@ -140,7 +141,7 @@ async def get_dashboard_alerts(db: AsyncSession) -> DashboardAlertsResponse:
     aging_query = (
         select(Vehicle, VehicleModel.model_name)
         .join(VehicleModel, Vehicle.vehicle_model_id == VehicleModel.vehicle_model_id)
-        .where(Vehicle.current_status == "IN_STOCK", Vehicle.is_deleted == False)
+        .where(Vehicle.current_status == "IN_STOCK", Vehicle.is_deleted.is_(False))
     )
 
     aging_results = await db.execute(aging_query)
@@ -179,7 +180,9 @@ async def get_dashboard_alerts(db: AsyncSession) -> DashboardAlertsResponse:
 
     # Insurance Policies
     policy_query = select(Policy).where(
-        Policy.policy_end_date.between(today, thirty_days_later), Policy.is_active == True, Policy.is_deleted == False
+        Policy.policy_end_date.between(today, thirty_days_later),
+        Policy.is_active.is_(True),
+        Policy.is_deleted.is_(False),
     )
     policies = (await db.execute(policy_query)).scalars().all()
     for policy in policies:
@@ -199,7 +202,7 @@ async def get_dashboard_alerts(db: AsyncSession) -> DashboardAlertsResponse:
         .where(
             ServiceSchedule.due_date.between(today, thirty_days_later),
             ServiceSchedule.status.notin_(["COMPLETED", "CANCELLED", "SKIPPED"]),
-            ServiceSchedule.is_deleted == False,
+            ServiceSchedule.is_deleted.is_(False),
         )
     )
     schedules = (await db.execute(schedule_query)).all()

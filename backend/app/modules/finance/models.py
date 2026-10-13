@@ -1,12 +1,5 @@
-from sqlalchemy import (
-    BigInteger,
-    String,
-    ForeignKey,
-    Numeric,
-    TIMESTAMP,
-)
+from sqlalchemy import BigInteger, String, Numeric
 from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
 
 from app.db.base import Base
 from app.db.mixins import AuditMixin, SoftDeleteMixin

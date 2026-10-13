@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.exc import IntegrityError
@@ -35,14 +34,14 @@ class InvoiceNotFinalizableError(BillingError):
 
 async def get_invoice(db: AsyncSession, invoice_id: int) -> SalesInvoice | None:
     """Get an invoice by ID (excludes soft-deleted)"""
-    stmt = select(SalesInvoice).filter(SalesInvoice.invoice_id == invoice_id, SalesInvoice.is_deleted == False)
+    stmt = select(SalesInvoice).filter(SalesInvoice.invoice_id == invoice_id, SalesInvoice.is_deleted.is_(False))
     result = await db.execute(stmt)
     return result.scalars().first()
 
 
 async def list_invoices(db: AsyncSession) -> list[SalesInvoice]:
     """List all invoices (excludes soft-deleted)"""
-    stmt = select(SalesInvoice).filter(SalesInvoice.is_deleted == False).order_by(desc(SalesInvoice.invoice_id))
+    stmt = select(SalesInvoice).filter(SalesInvoice.is_deleted.is_(False)).order_by(desc(SalesInvoice.invoice_id))
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -60,7 +59,7 @@ async def generate_invoice(
     if not sale or getattr(sale, "sale_status", None) != "DELIVERED":
         raise BillingError("Invoice can only be generated after vehicle delivery")
 
-    existing_stmt = select(SalesInvoice).filter(SalesInvoice.sale_id == sale_id, SalesInvoice.is_deleted == False)
+    existing_stmt = select(SalesInvoice).filter(SalesInvoice.sale_id == sale_id, SalesInvoice.is_deleted.is_(False))
     result = await db.execute(existing_stmt)
     existing = result.scalars().first()
     if existing:

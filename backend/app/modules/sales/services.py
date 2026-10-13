@@ -1,6 +1,5 @@
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
@@ -8,7 +7,7 @@ from fastapi import HTTPException
 
 from app.modules.sales import models
 from app.modules.sales import schemas as sales_schemas
-from app.core.event_bus import event_bus, VehicleDeliveredEvent, SaleCompleted, SaleCompletedEvent
+from app.core.event_bus import event_bus, VehicleDeliveredEvent, SaleCompleted
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +219,7 @@ async def create_sale_transaction(
                 payment_mode=payload.payment_mode,
                 amount=float(payload.down_payment_amount),
                 bank_name=payload.financier_name if payload.payment_mode == "FINANCE" else None,
-                remarks=f"Down payment at sale creation",
+                remarks="Down payment at sale creation",
                 created_by_staff_id=staff_id,
                 payment_date=_utc_now_naive(),
             )
@@ -307,7 +306,7 @@ async def get_sale(db: AsyncSession, sale_id: int) -> models.Sale | None:
             selectinload(models.Sale.sale_documents),
             selectinload(models.Sale.portal_tracking),
         )
-        .filter(models.Sale.sale_id == sale_id, models.Sale.is_deleted == False)
+        .filter(models.Sale.sale_id == sale_id, models.Sale.is_deleted.is_(False))
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -318,7 +317,7 @@ async def list_sales(db: AsyncSession) -> list[models.Sale]:
     stmt = (
         select(models.Sale)
         .options(selectinload(models.Sale.customer), selectinload(models.Sale.vehicle))
-        .filter(models.Sale.is_deleted == False)
+        .filter(models.Sale.is_deleted.is_(False))
         .order_by(desc(models.Sale.created_at))
     )
     result = await db.execute(stmt)
@@ -378,9 +377,6 @@ async def generate_challan(db: AsyncSession, sale_id: int) -> models.Sale:
 
     await db.flush()
     return sale
-
-
-from datetime import datetime, timedelta
 
 
 async def generate_service_schedule(db: AsyncSession, sale_id: int):

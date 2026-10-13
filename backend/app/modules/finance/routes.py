@@ -3,10 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.finance import services
 from app.modules.finance import schemas
-from app.modules.finance.models import VehicleFinance
 from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
-from app.auth.roles import require_roles
 
 router = APIRouter(
     prefix="/finance",

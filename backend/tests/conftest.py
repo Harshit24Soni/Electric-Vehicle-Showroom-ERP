@@ -1,9 +1,8 @@
 import asyncio
 import os
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from pathlib import Path
@@ -18,9 +17,9 @@ for env_candidate in [Path(".env.test"), Path("backend/.env.test"), Path(".env")
         load_dotenv(dotenv_path=env_candidate, override=False)
         break
 
-from app.main import app
-from app.db.session import get_db, engine
-from app.db.base import Base
+from app.main import app  # noqa: E402
+from app.db.session import get_db, engine  # noqa: E402
+from app.db.base import Base  # noqa: E402
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)

@@ -91,7 +91,7 @@ async def list_claims(db: AsyncSession, skip: int = 0, limit: int = 50) -> List[
     """List all warranty claims (excludes soft-deleted)."""
     stmt = (
         select(wm.Claim)
-        .filter(wm.Claim.is_deleted == False)
+        .filter(wm.Claim.is_deleted.is_(False))
         .offset(skip)
         .limit(limit)
         .order_by(desc(wm.Claim.created_at))
@@ -102,7 +102,7 @@ async def list_claims(db: AsyncSession, skip: int = 0, limit: int = 50) -> List[
 
 async def get_claim(db: AsyncSession, claim_id: int) -> Optional[wm.Claim]:
     """Get a claim by ID (excludes soft-deleted)."""
-    stmt = select(wm.Claim).filter(wm.Claim.claim_id == claim_id, wm.Claim.is_deleted == False)
+    stmt = select(wm.Claim).filter(wm.Claim.claim_id == claim_id, wm.Claim.is_deleted.is_(False))
     result = await db.execute(stmt)
     return result.scalars().first()
 

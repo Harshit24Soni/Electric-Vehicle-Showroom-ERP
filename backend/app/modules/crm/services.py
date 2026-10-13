@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
 from datetime import datetime, date, timezone
-from typing import Optional
 from fastapi import HTTPException
 
 from app.modules.crm import models
@@ -56,7 +55,7 @@ async def list_leads(db: AsyncSession, status_id: int = None, owner_id: int = No
     stmt = (
         select(models.Lead)
         .options(selectinload(models.Lead.vehicle_model), selectinload(models.Lead.lead_status_ref))
-        .filter(models.Lead.is_deleted == False)
+        .filter(models.Lead.is_deleted.is_(False))
     )
 
     if status_id:
@@ -81,7 +80,7 @@ async def get_lead(db: AsyncSession, lead_id: int) -> models.Lead | None:
             selectinload(models.Lead.test_rides),
             selectinload(models.Lead.lead_followups),
         )
-        .filter(models.Lead.lead_id == lead_id, models.Lead.is_deleted == False)
+        .filter(models.Lead.lead_id == lead_id, models.Lead.is_deleted.is_(False))
     )
 
     result = await db.execute(stmt)
@@ -253,7 +252,7 @@ async def get_lead_activities(db: AsyncSession, lead_id: int) -> list[models.Lea
     """Get all activities for a lead (excludes soft-deleted)"""
     stmt = (
         select(models.LeadActivity)
-        .filter(models.LeadActivity.lead_id == lead_id, models.LeadActivity.is_deleted == False)
+        .filter(models.LeadActivity.lead_id == lead_id, models.LeadActivity.is_deleted.is_(False))
         .order_by(desc(models.LeadActivity.activity_time))
     )
     result = await db.execute(stmt)
@@ -290,7 +289,7 @@ async def list_enquiries(db: AsyncSession, status_id: int = None) -> list[models
     stmt = (
         select(models.Enquiry)
         .options(selectinload(models.Enquiry.enquiry_status))
-        .filter(models.Enquiry.is_deleted == False)
+        .filter(models.Enquiry.is_deleted.is_(False))
     )
 
     if status_id:
@@ -303,7 +302,7 @@ async def list_enquiries(db: AsyncSession, status_id: int = None) -> list[models
 
 async def get_enquiry(db: AsyncSession, enquiry_id: int) -> models.Enquiry | None:
     """Get a single enquiry (excludes soft-deleted)"""
-    stmt = select(models.Enquiry).filter(models.Enquiry.enquiry_id == enquiry_id, models.Enquiry.is_deleted == False)
+    stmt = select(models.Enquiry).filter(models.Enquiry.enquiry_id == enquiry_id, models.Enquiry.is_deleted.is_(False))
     result = await db.execute(stmt)
     return result.scalars().first()
 
@@ -337,7 +336,7 @@ async def get_enquiry_statuses(db: AsyncSession):
 
 async def get_enquiry_stats(db: AsyncSession) -> dict:
     """Get enquiry statistics (excludes soft-deleted)"""
-    result = await db.execute(select(models.Enquiry).filter(models.Enquiry.is_deleted == False))
+    result = await db.execute(select(models.Enquiry).filter(models.Enquiry.is_deleted.is_(False)))
     total = len(result.scalars().all())
     return {"total_enquiries": total}
 
@@ -366,7 +365,7 @@ async def list_pending_followups(db: AsyncSession) -> list[models.FollowupSchedu
         select(models.FollowupSchedule)
         .filter(
             models.FollowupSchedule.followup_status.in_(("PENDING", "MISSED")),
-            models.FollowupSchedule.is_deleted == False,
+            models.FollowupSchedule.is_deleted.is_(False),
         )
         .order_by(models.FollowupSchedule.scheduled_date)
     )
@@ -377,7 +376,7 @@ async def list_pending_followups(db: AsyncSession) -> list[models.FollowupSchedu
 async def get_followup(db: AsyncSession, followup_id: int) -> models.FollowupSchedule | None:
     """Get a followup by ID (excludes soft-deleted)"""
     stmt = select(models.FollowupSchedule).filter(
-        models.FollowupSchedule.followup_id == followup_id, models.FollowupSchedule.is_deleted == False
+        models.FollowupSchedule.followup_id == followup_id, models.FollowupSchedule.is_deleted.is_(False)
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -422,7 +421,7 @@ async def get_followup_dashboard(db: AsyncSession, followup_type: str = "ALL") -
             select(models.FollowupSchedule)
             .filter(
                 models.FollowupSchedule.followup_status.in_(("PENDING", "MISSED")),
-                models.FollowupSchedule.is_deleted == False,
+                models.FollowupSchedule.is_deleted.is_(False),
             )
             .order_by(models.FollowupSchedule.scheduled_date)
         )
@@ -520,7 +519,7 @@ async def get_lead_followups(db: AsyncSession, lead_id: int) -> list[models.Lead
     """Get all followup entries for a lead (excludes soft-deleted)"""
     stmt = (
         select(models.LeadFollowup)
-        .filter(models.LeadFollowup.lead_id == lead_id, models.LeadFollowup.is_deleted == False)
+        .filter(models.LeadFollowup.lead_id == lead_id, models.LeadFollowup.is_deleted.is_(False))
         .order_by(desc(models.LeadFollowup.followup_date))
     )
     result = await db.execute(stmt)
@@ -536,7 +535,7 @@ async def get_lead_followup_dashboard(
 
     base_stmt = select(models.Lead).filter(
         models.Lead.is_converted != True,  # noqa: E712
-        models.Lead.is_deleted == False,
+        models.Lead.is_deleted.is_(False),
         models.Lead.next_followup_date.isnot(None),
     )
     if staff_id:

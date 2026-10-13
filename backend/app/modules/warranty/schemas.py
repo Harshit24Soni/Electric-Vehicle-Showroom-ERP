@@ -1,16 +1,13 @@
 from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 
 class ClaimCreate(BaseModel):
     job_spare_id: int
     so_number: str
     remarks: Optional[str] = None
-
-
-from typing import Literal
 
 
 class ComponentSwapRequest(BaseModel):

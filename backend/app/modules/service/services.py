@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, and_
+from sqlalchemy import select, and_
 from fastapi import HTTPException
 
 from app.modules.service.models import ServiceJobCard, ServiceSpareConsumption
@@ -40,7 +40,7 @@ async def open_job_card(
     stmt = select(ServiceJobCard).filter(
         ServiceJobCard.chassis_no == chassis_no,
         ServiceJobCard.closed_at.is_(None),
-        ServiceJobCard.is_deleted == False,
+        ServiceJobCard.is_deleted.is_(False),
     )
     result = await db.execute(stmt)
     existing = result.scalars().first()
@@ -61,14 +61,18 @@ async def open_job_card(
 
 async def get_job_card(db: AsyncSession, job_card_id: int) -> Optional[ServiceJobCard]:
     """Get a job card by ID (excludes soft-deleted)."""
-    stmt = select(ServiceJobCard).filter(ServiceJobCard.job_card_id == job_card_id, ServiceJobCard.is_deleted == False)
+    stmt = select(ServiceJobCard).filter(
+        ServiceJobCard.job_card_id == job_card_id, ServiceJobCard.is_deleted.is_(False)
+    )
     result = await db.execute(stmt)
     return result.scalars().first()
 
 
 async def list_job_cards(db: AsyncSession) -> List[ServiceJobCard]:
     """List all job cards (excludes soft-deleted)."""
-    stmt = select(ServiceJobCard).filter(ServiceJobCard.is_deleted == False).order_by(ServiceJobCard.opened_at.desc())
+    stmt = select(ServiceJobCard).filter(
+        ServiceJobCard.is_deleted.is_(False)
+    ).order_by(ServiceJobCard.opened_at.desc())
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
@@ -77,7 +81,7 @@ async def list_job_card_consumptions(db: AsyncSession, job_card_id: int) -> List
     """List all spare consumption records for a job card."""
     stmt = (
         select(ServiceSpareConsumption)
-        .filter(ServiceSpareConsumption.job_card_id == job_card_id, ServiceSpareConsumption.is_deleted == False)
+        .filter(ServiceSpareConsumption.job_card_id == job_card_id, ServiceSpareConsumption.is_deleted.is_(False))
         .order_by(ServiceSpareConsumption.consumption_id.desc())
     )
     result = await db.execute(stmt)
@@ -110,7 +114,7 @@ async def create_draft_consumption(
         raise ServiceError("Spare not found")
 
     part_code = "UNKNOWN"
-    code_stmt = select(SparePartCode).where(SparePartCode.spare_id == spare_id, SparePartCode.is_current == True)
+    code_stmt = select(SparePartCode).where(SparePartCode.spare_id == spare_id, SparePartCode.is_current.is_(True))
     code_result = await db.execute(code_stmt)
     current_code = code_result.scalar_one_or_none()
     if current_code:
@@ -273,7 +277,7 @@ async def reverse_consumption(db: AsyncSession, *, consumption_id: int, staff_id
             balance = SpareStockBalance(spare_id=consumption.spare_id, location="MAIN", quantity=consumption.quantity)
             db.add(balance)
 
-        movement = await add_spare_movement(
+        await add_spare_movement(
             db=db,
             spare_id=consumption.spare_id,
             quantity=consumption.quantity,

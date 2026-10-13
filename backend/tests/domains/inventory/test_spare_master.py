@@ -1,9 +1,7 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-from app.modules.inventory.models import SpareMaster, SparePartCode, SparePartVehicleCompatibility
+from app.modules.inventory.models import SpareMaster
 from app.modules.master.models import VehicleModel
 
 pytestmark = pytest.mark.asyncio
@@ -71,8 +69,8 @@ async def test_add_retire_part_code(admin_client: AsyncClient, db_session: Async
     assert resp3.status_code == 200
     data = resp3.json()
     codes = sorted(data["codes"], key=lambda c: c["code_id"])
-    assert codes[0]["is_current"] == False  # Old code
-    assert codes[1]["is_current"] == True  # New code
+    assert codes[0]["is_current"] is False  # Old code
+    assert codes[1]["is_current"] is True  # New code
 
 
 async def test_compatibility(admin_client: AsyncClient, db_session: AsyncSession):

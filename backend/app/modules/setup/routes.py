@@ -331,8 +331,8 @@ async def restore_document_type(document_type_id: int, db: AsyncSession = Depend
 @router.get("/staff-summary")
 async def get_staff_summary(db: AsyncSession = Depends(get_db)):
     """Returns active staff count for the Setup → Staff tab summary card."""
-    active_stmt = select(func.count(Staff.staff_id)).where(Staff.is_active == True)
-    inactive_stmt = select(func.count(Staff.staff_id)).where(Staff.is_active == False)
+    active_stmt = select(func.count(Staff.staff_id)).where(Staff.is_active.is_(True))
+    inactive_stmt = select(func.count(Staff.staff_id)).where(Staff.is_active.is_(False))
     total_stmt = select(func.count(Staff.staff_id))
 
     active_count = await db.scalar(active_stmt)

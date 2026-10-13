@@ -3,14 +3,12 @@ from sqlalchemy import (
     String,
     Text,
     Date,
-    TIMESTAMP,
     Integer,
     Numeric,
     ForeignKey,
     Index,
 )
 from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
 
 from app.db.base import Base
 from app.db.mixins import AuditMixin, SoftDeleteMixin

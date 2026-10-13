@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Decoupling Strategy (DDD Phase 1):

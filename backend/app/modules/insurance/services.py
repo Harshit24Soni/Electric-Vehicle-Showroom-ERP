@@ -1,8 +1,7 @@
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select
 from fastapi import HTTPException
 
 from app.modules.insurance import models
@@ -41,7 +40,7 @@ async def create_company(db: AsyncSession, payload) -> models.InsuranceCompany:
 async def get_company(db: AsyncSession, company_id: int) -> models.InsuranceCompany | None:
     """Get an insurance company by ID (excludes soft-deleted)"""
     stmt = select(models.InsuranceCompany).filter(
-        models.InsuranceCompany.insurance_company_id == company_id, models.InsuranceCompany.is_deleted == False
+        models.InsuranceCompany.insurance_company_id == company_id, models.InsuranceCompany.is_deleted.is_(False)
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -51,7 +50,7 @@ async def list_companies(db: AsyncSession) -> list[models.InsuranceCompany]:
     """List all insurance companies (excludes soft-deleted)"""
     stmt = (
         select(models.InsuranceCompany)
-        .filter(models.InsuranceCompany.is_deleted == False)
+        .filter(models.InsuranceCompany.is_deleted.is_(False))
         .order_by(models.InsuranceCompany.company_name)
     )
     result = await db.execute(stmt)
@@ -67,8 +66,8 @@ async def create_policy(db: AsyncSession, payload) -> models.Policy:
         # ensure no other active policy for the same chassis exists
         existing_stmt = select(models.Policy).filter(
             models.Policy.chassis_no == payload.chassis_no,
-            models.Policy.is_active == True,
-            models.Policy.is_deleted == False,
+            models.Policy.is_active.is_(True),
+            models.Policy.is_deleted.is_(False),
         )
         result = await db.execute(existing_stmt)
         existing = result.scalars().first()
@@ -98,7 +97,7 @@ async def create_policy(db: AsyncSession, payload) -> models.Policy:
 
 async def get_policy(db: AsyncSession, policy_id: int) -> models.Policy | None:
     """Get a policy by ID (excludes soft-deleted)"""
-    stmt = select(models.Policy).filter(models.Policy.policy_id == policy_id, models.Policy.is_deleted == False)
+    stmt = select(models.Policy).filter(models.Policy.policy_id == policy_id, models.Policy.is_deleted.is_(False))
     result = await db.execute(stmt)
     return result.scalars().first()
 
@@ -106,7 +105,7 @@ async def get_policy(db: AsyncSession, policy_id: int) -> models.Policy | None:
 async def list_policies(db: AsyncSession) -> list[models.Policy]:
     """List all policies (excludes soft-deleted)"""
     stmt = (
-        select(models.Policy).filter(models.Policy.is_deleted == False).order_by(models.Policy.policy_end_date.desc())
+        select(models.Policy).filter(models.Policy.is_deleted.is_(False)).order_by(models.Policy.policy_end_date.desc())
     )
     result = await db.execute(stmt)
     return result.scalars().all()

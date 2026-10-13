@@ -1,24 +1,20 @@
 import logging
 import random
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+from jose import JWTError
 from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import (
-    ALGORITHM,
-    SECRET_KEY,
     get_current_staff,
     get_current_staff_for_pin_change,
-    security,
 )
-from app.auth.pin_utils import hash_pin, validate_pin_format, verify_pin
-from app.auth.roles import Role, require_roles
+from app.auth.pin_utils import hash_pin, verify_pin
+from app.auth.roles import require_roles
 from app.auth.token_utils import (
     create_access_token,
     create_refresh_token,

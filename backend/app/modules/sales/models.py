@@ -10,14 +10,13 @@ from sqlalchemy import (
     TIMESTAMP,
     Numeric,
     ForeignKey,
-    CheckConstraint,
     Boolean,
     Index,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.mixins import AuditMixin, SoftDeleteMixin, utc_now, utc_now_naive
+from app.db.mixins import AuditMixin, SoftDeleteMixin, utc_now_naive
 
 
 class SaleStage(str, enum.Enum):

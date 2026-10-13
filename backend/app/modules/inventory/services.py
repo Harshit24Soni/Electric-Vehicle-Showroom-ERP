@@ -4,8 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-logger = logging.getLogger(__name__)
-
 from app.modules.inventory.models import (
     VehicleStockMovement,
     SpareStockMovement,
@@ -24,6 +22,8 @@ from app.modules.inventory.contracts import (
     CheckVehicleAvailabilityRequest,
     VehicleAvailabilityResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class InventoryError(Exception):
@@ -182,7 +182,7 @@ async def list_spares(db: AsyncSession, include_deleted: bool = False) -> list[S
     """List all spare master records."""
     stmt = select(SpareMaster).options(selectinload(SpareMaster.codes), selectinload(SpareMaster.compatibilities))
     if not include_deleted:
-        stmt = stmt.filter(SpareMaster.is_deleted == False)
+        stmt = stmt.filter(SpareMaster.is_deleted.is_(False))
     stmt = stmt.order_by(SpareMaster.spare_name)
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -192,7 +192,7 @@ async def get_spare(db: AsyncSession, spare_id: int) -> SpareMaster | None:
     stmt = (
         select(SpareMaster)
         .options(selectinload(SpareMaster.codes), selectinload(SpareMaster.compatibilities))
-        .filter(SpareMaster.spare_id == spare_id, SpareMaster.is_deleted == False)
+        .filter(SpareMaster.spare_id == spare_id, SpareMaster.is_deleted.is_(False))
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -209,7 +209,7 @@ async def create_spare(
 ) -> SpareMaster:
     # Validate duplicate code across all active codes
     existing_code_stmt = select(SparePartCode).filter(
-        SparePartCode.code == initial_code, SparePartCode.is_deleted == False
+        SparePartCode.code == initial_code, SparePartCode.is_deleted.is_(False)
     )
     existing_code = await db.execute(existing_code_stmt)
     if existing_code.scalars().first():
@@ -261,7 +261,9 @@ async def add_part_code(db: AsyncSession, spare_id: int, code: str, reason: str 
     if not spare:
         raise InventoryError("Spare part not found")
 
-    existing_code_stmt = select(SparePartCode).filter(SparePartCode.code == code, SparePartCode.is_deleted == False)
+    existing_code_stmt = select(SparePartCode).filter(
+        SparePartCode.code == code, SparePartCode.is_deleted.is_(False)
+    )
     existing_code = await db.execute(existing_code_stmt)
     if existing_code.scalars().first():
         raise InventoryError(f"Part code {code} already exists.")
@@ -542,7 +544,7 @@ async def create_temporary_spare(
     Returns the created spare_id to keep ORM objects internal.
     """
     existing_code_stmt = select(SparePartCode).filter(
-        SparePartCode.code == spare_code, SparePartCode.is_deleted == False
+        SparePartCode.code == spare_code, SparePartCode.is_deleted.is_(False)
     )
     existing_code = await db.execute(existing_code_stmt)
     if existing_code.scalars().first():
@@ -576,7 +578,11 @@ async def list_temporary_spares(db: AsyncSession) -> list[SpareMaster]:
     stmt = (
         select(SpareMaster)
         .options(selectinload(SpareMaster.codes))
-        .filter(SpareMaster.is_temporary == True, SpareMaster.is_verified == False, SpareMaster.is_deleted == False)
+        .filter(
+            SpareMaster.is_temporary.is_(True),
+            SpareMaster.is_verified.is_(False),
+            SpareMaster.is_deleted.is_(False),
+        )
     )
     result = await db.execute(stmt)
     return result.scalars().all()

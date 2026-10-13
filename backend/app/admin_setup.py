@@ -1,7 +1,9 @@
 from typing import Optional
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 from sqlalchemy import select, or_, func
 from sqladmin import ModelView
+from sqladmin.application import Admin as _Admin
 from sqladmin.authentication import AuthenticationBackend
 
 from app.db.session import async_session_maker
@@ -118,9 +120,6 @@ class SparePartAdmin(ModelView, model=SparePart):
 
 
 # Safe AJAX lookup handling to return HTTP 200 with empty results rather than 400 on sub-requests
-from starlette.responses import JSONResponse
-from sqladmin.application import Admin as _Admin
-
 _orig_ajax_lookup = _Admin.ajax_lookup
 
 

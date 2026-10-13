@@ -3,10 +3,10 @@ import random
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, desc, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.staff.schemas import StaffCreate, StaffUpdate, StaffResponse, StaffDesignation
+from app.modules.staff.schemas import StaffCreate, StaffUpdate, StaffResponse
 from app.modules.master.models import Staff
 from app.auth.dependencies import get_current_staff
 from app.auth.pin_utils import hash_pin
@@ -128,7 +128,7 @@ async def list_staff(
     stmt = select(Staff).order_by(Staff.staff_id)
 
     if not include_deleted:
-        stmt = stmt.filter(Staff.is_deleted == False)
+        stmt = stmt.filter(Staff.is_deleted.is_(False))
 
     if current_staff["designation"] == "DEALER":
         stmt = stmt.filter(Staff.dealer_id == current_staff["staff_id"])

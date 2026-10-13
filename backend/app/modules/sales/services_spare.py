@@ -1,14 +1,13 @@
 import logging
-import uuid
 from decimal import Decimal
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
 from sqlalchemy.orm import joinedload
 
 from app.modules.sales.models import SpareSale, SpareSaleItem
-from app.modules.sales.schemas_spare import SpareSaleCreate, SpareSaleItemCreate
-from app.modules.inventory.models import SpareMaster, SpareStockBalance, SpareBatch, SpareSerial, SpareStockMovement
+from app.modules.sales.schemas_spare import SpareSaleCreate
+from app.modules.inventory.models import SpareStockBalance, SpareBatch, SpareSerial
 from app.modules.inventory.services import add_spare_movement
 
 logger = logging.getLogger(__name__)

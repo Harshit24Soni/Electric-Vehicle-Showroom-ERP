@@ -3,13 +3,6 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone, timedelta
 from app.modules.inventory import pricing_services, services
-from app.modules.inventory.models import (
-    SpareMaster,
-    SparePartCode,
-    PriceList,
-    SpareSellingPriceHistory,
-    SpareCostHistory,
-)
 from decimal import Decimal
 
 
@@ -53,7 +46,7 @@ async def test_price_history_never_overwritten(db_session: AsyncSession):
 
     pl = await pricing_services.create_price_list(db_session, source_name="OEM")
 
-    v1 = await pricing_services.add_price_list_version(
+    await pricing_services.add_price_list_version(
         db_session,
         price_list_id=pl.price_list_id,
         version_reference="v1",
@@ -62,7 +55,7 @@ async def test_price_history_never_overwritten(db_session: AsyncSession):
         items_data=[{"part_code": "HISTORY-CODE", "mrp": 1000, "dlp": 800, "gst_rate": 18}],
     )
 
-    v2 = await pricing_services.add_price_list_version(
+    await pricing_services.add_price_list_version(
         db_session,
         price_list_id=pl.price_list_id,
         version_reference="v2",

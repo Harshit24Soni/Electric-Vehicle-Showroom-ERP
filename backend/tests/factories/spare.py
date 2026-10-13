@@ -1,4 +1,4 @@
-from app.modules.inventory.models import SpareMaster, SparePartCode, SpareStockBalance
+from app.modules.inventory.models import SpareMaster
 from app.modules.master.models import Vendor
 from .base import BaseFactory, fake
 

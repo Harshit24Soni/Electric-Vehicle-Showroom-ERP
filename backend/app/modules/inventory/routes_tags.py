@@ -6,7 +6,6 @@ from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
 from app.auth.roles import require_roles
 from app.modules.inventory.schemas_tags import (
-    TagCreateRequest,
     BulkTagCreateRequest,
     InventoryTagResponse,
     TagScanResult,

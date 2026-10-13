@@ -1,5 +1,4 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from dotenv import load_dotenv
@@ -10,31 +9,33 @@ for env_candidate in [Path(".env"), Path("backend/.env"), Path(".env.test"), Pat
         load_dotenv(dotenv_path=env_candidate)
         break
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from sqladmin import Admin  # noqa: E402
 
-from app.auth.routes import router as auth_router
-from app.modules.admin.routes import router as admin_staff_router
-from app.modules.staff.routes import router as staff_router
-from app.modules.inventory.routes import router as inventory_router
-from app.modules.billing.routes import router as billing_router
-from app.modules.finance.routes import router as finance_router
-from app.modules.master.routes import router as master_router
-from app.modules.reports.routes import router as reports_router
-from app.modules.sales.routes import router as sales_router
-from app.modules.sales.routes_spare import router as spare_sales_router
-from app.modules.service.routes import router as service_router
-from app.modules.crm.routes import router as crm_router
-from app.modules.insurance.routes import router as insurance_router
-from app.modules.warranty.routes import router as warranty_router
-from app.modules.procurement.routes import router as procurement_router
-from app.modules.followup.routes import router as followup_router
-from app.modules.setup.routes import router as setup_router
-from app.bootstrap import init_models, init_listeners
-from app.core.config import settings
-from app.core.redis import redis_manager
-from app.core.event_bus import event_bus
-from app.db.session import engine, dispose_engine
+from app.admin_setup import AdminAuth, StaffAdmin, SparePartAdmin  # noqa: E402
+from app.auth.routes import router as auth_router  # noqa: E402
+from app.modules.admin.routes import router as admin_staff_router  # noqa: E402
+from app.modules.staff.routes import router as staff_router  # noqa: E402
+from app.modules.inventory.routes import router as inventory_router  # noqa: E402
+from app.modules.billing.routes import router as billing_router  # noqa: E402
+from app.modules.finance.routes import router as finance_router  # noqa: E402
+from app.modules.master.routes import router as master_router  # noqa: E402
+from app.modules.reports.routes import router as reports_router  # noqa: E402
+from app.modules.sales.routes import router as sales_router  # noqa: E402
+from app.modules.sales.routes_spare import router as spare_sales_router  # noqa: E402
+from app.modules.service.routes import router as service_router  # noqa: E402
+from app.modules.crm.routes import router as crm_router  # noqa: E402
+from app.modules.insurance.routes import router as insurance_router  # noqa: E402
+from app.modules.warranty.routes import router as warranty_router  # noqa: E402
+from app.modules.procurement.routes import router as procurement_router  # noqa: E402
+from app.modules.followup.routes import router as followup_router  # noqa: E402
+from app.modules.setup.routes import router as setup_router  # noqa: E402
+from app.bootstrap import init_models, init_listeners  # noqa: E402
+from app.core.config import settings  # noqa: E402
+from app.core.redis import redis_manager  # noqa: E402
+from app.core.event_bus import event_bus  # noqa: E402
+from app.db.session import engine, dispose_engine  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -116,9 +117,6 @@ app.include_router(followup_router)
 app.include_router(setup_router)
 
 # SQLAdmin Panel
-from sqladmin import Admin
-from app.admin_setup import AdminAuth, StaffAdmin, SparePartAdmin
-
 admin_auth = AdminAuth(secret_key=settings.JWT_SECRET_KEY)
 admin = Admin(app=app, engine=engine, authentication_backend=admin_auth)
 admin.add_view(StaffAdmin)

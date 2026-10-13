@@ -1,7 +1,6 @@
 import pytest
 from contextlib import asynccontextmanager
 from starlette.requests import Request
-from httpx import AsyncClient
 
 from app.admin_setup import AdminAuth, StaffAdmin, SparePartAdmin
 from app.modules.staff.models import Staff

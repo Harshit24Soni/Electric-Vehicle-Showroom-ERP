@@ -1,6 +1,5 @@
 import pytest
 from httpx import AsyncClient
-from app.modules.service.models import ServiceJobCard, ServiceSpareConsumption
 from app.modules.inventory.models import SpareStockMovement, SpareStockBalance, SpareMaster
 from sqlalchemy import select
 

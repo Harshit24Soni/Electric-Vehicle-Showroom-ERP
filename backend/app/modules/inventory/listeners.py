@@ -15,7 +15,6 @@ from app.core.event_bus import (
 from app.modules.inventory.services import (
     add_spare_movement,
     add_vehicle_movement,
-    create_temporary_spare,
     get_latest_vehicle_movement,
 )
 from app.db.session import AsyncSessionLocal

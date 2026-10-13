@@ -1,8 +1,6 @@
 import os
 import asyncio
 import pytest
-from alembic.config import Config
-from alembic import command
 from sqlalchemy import text
 from app.db.session import engine
 

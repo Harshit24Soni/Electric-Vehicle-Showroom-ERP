@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, insert, update
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 
@@ -315,7 +315,7 @@ async def get_spare_purchase(db: AsyncSession, spare_purchase_id: int):
         .options(selectinload(procurement_models.SparePurchase.items))
         .filter(
             procurement_models.SparePurchase.spare_purchase_id == spare_purchase_id,
-            procurement_models.SparePurchase.is_deleted == False,
+            procurement_models.SparePurchase.is_deleted.is_(False),
         )
     )
     result = await db.execute(stmt)
@@ -373,7 +373,7 @@ async def get_vehicle_purchase(db: AsyncSession, vehicle_purchase_id: int):
         .options(selectinload(procurement_models.VehiclePurchase.details))
         .filter(
             procurement_models.VehiclePurchase.vehicle_purchase_id == vehicle_purchase_id,
-            procurement_models.VehiclePurchase.is_deleted == False,
+            procurement_models.VehiclePurchase.is_deleted.is_(False),
         )
     )
     result = await db.execute(stmt)

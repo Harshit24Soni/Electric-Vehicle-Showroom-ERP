@@ -1,7 +1,7 @@
 import asyncio
 import inspect
 import logging
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Type
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)

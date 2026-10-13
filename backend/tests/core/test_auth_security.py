@@ -1,4 +1,3 @@
-from datetime import timedelta
 import pyotp
 import pytest
 from fastapi import HTTPException
@@ -10,7 +9,7 @@ from app.auth.pin_utils import (
     validate_pin_format,
     verify_pin,
 )
-from app.auth.roles import Role, has_role, require_roles
+from app.auth.roles import has_role, require_roles
 from app.auth.token_utils import (
     create_access_token,
     create_refresh_token,
@@ -22,7 +21,7 @@ from app.auth.totp_utils import (
     get_totp_uri,
     verify_totp_code,
 )
-from app.middleware.rate_limit import extract_client_ip, rate_limit
+from app.middleware.rate_limit import extract_client_ip
 
 
 # ------------------------------------------------------------------------------

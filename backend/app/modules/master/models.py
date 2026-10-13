@@ -10,7 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Numeric,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
+from sqlalchemy.orm import Mapped, mapped_column, synonym
 from datetime import datetime, date
 
 from app.db.base import Base

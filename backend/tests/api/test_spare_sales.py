@@ -2,11 +2,8 @@ import pytest
 from httpx import AsyncClient
 from app.modules.sales.models import SpareSale, SpareSaleItem
 from sqlalchemy import select
-from decimal import Decimal
 from app.modules.inventory.models import (
     SpareStockBalance,
-    SpareBatch,
-    SpareSerial,
     SpareStockMovement,
     SpareMaster,
     SparePartCode,
