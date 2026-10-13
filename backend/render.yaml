@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: your-site-name
+    env: static
+    # Your build command and publish path go here
+    buildCommand: npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
