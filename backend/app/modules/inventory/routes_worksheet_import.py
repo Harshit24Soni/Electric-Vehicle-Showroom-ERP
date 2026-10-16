@@ -152,9 +152,12 @@ async def inspect_default_workbook(
     """
     default_path = find_default_workbook_path()
     if not default_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No default inventory workbook found in workspace. Please upload an Excel workbook via /upload.",
+        return WorkbookInspectionResponse(
+            file_name="No workbook loaded",
+            file_size=0,
+            file_token="default",
+            sheet_count=0,
+            sheets=[],
         )
 
     try:

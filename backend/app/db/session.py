@@ -13,12 +13,12 @@ if db_url.startswith("postgresql://"):
 # Configure SQLAlchemy 2.0 Async Engine with production pooling parameters
 engine = create_async_engine(
     db_url,
-    echo=settings.DEBUG,
+    echo=getattr(settings, "DB_ECHO", False),
     pool_pre_ping=True,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
-    pool_recycle=getattr(settings, "DB_POOL_RECYCLE", 3600),
-    pool_timeout=getattr(settings, "DB_POOL_TIMEOUT", 30),
+    pool_recycle=getattr(settings, "DB_POOL_RECYCLE", 1800),
+    pool_timeout=getattr(settings, "DB_POOL_TIMEOUT", 15),
 )
 
 # Async Session Factory using SQLAlchemy 2.0+ standard async_sessionmaker

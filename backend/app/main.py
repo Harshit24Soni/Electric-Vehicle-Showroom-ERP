@@ -1,7 +1,11 @@
 import logging
+import warnings
 from contextlib import asynccontextmanager
 from pathlib import Path
 from dotenv import load_dotenv
+
+# Filter out openpyxl user warnings globally (e.g., malformed date serials)
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 # Optional local environment initialization for development
 for env_candidate in [

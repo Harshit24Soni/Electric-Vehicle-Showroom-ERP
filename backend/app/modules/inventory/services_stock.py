@@ -28,28 +28,28 @@ from app.modules.inventory.schemas_stock import (
 
 async def get_inventory_dashboard(db: AsyncSession) -> InventoryDashboardResponse:
     # total active spares
-    active_spares = await db.scalar(select(func.count(SpareMaster.spare_id)).filter_by(status="ACTIVE"))
+    active_spares = await db.scalar(
+        select(func.count(SpareMaster.spare_id)).filter(
+            SpareMaster.status == "ACTIVE",
+            SpareMaster.is_deleted.is_(False),
+        )
+    )
 
-    # total stock value: sum of (balance.quantity * latest_wac)
-    # This is a bit complex in a single query since WAC is in CostHistory.
-    # Let's compute it in python for simplicity if not too many, or do an approximation.
-
-    # Actually, SpareCostHistory has the wac_cost.
-    # For now, let's just return 0 for value if too complex, but let's try a simple query.
-    # We will compute it simply:
-    spares = await db.scalars(select(SpareMaster).filter_by(status="ACTIVE"))
-    total_val = 0.0
-    for spare in spares:
-        stock = await db.scalar(select(func.sum(SpareStockBalance.quantity)).filter_by(spare_id=spare.spare_id)) or 0
-        if stock > 0:
-            last_cost = await db.scalar(
-                select(SpareCostHistory.wac_cost)
-                .filter_by(spare_id=spare.spare_id)
-                .order_by(SpareCostHistory.effective_date.desc())
-                .limit(1)
+    # Compute total stock value efficiently in 1 SQL query using database aggregation (eliminating N+1 loops)
+    stock_value_stmt = (
+        select(
+            func.coalesce(
+                func.sum(
+                    SpareStockBalance.quantity
+                    * func.coalesce(SpareMaster.base_dlp, SpareMaster.base_cost, 0.0)
+                ),
+                0.0,
             )
-            wac = float(last_cost) if last_cost else 0.0
-            total_val += stock * wac
+        )
+        .join(SpareMaster, SpareStockBalance.spare_id == SpareMaster.spare_id)
+        .filter(SpareMaster.status == "ACTIVE", SpareMaster.is_deleted.is_(False))
+    )
+    total_val = float(await db.scalar(stock_value_stmt) or 0.0)
 
     # movements last 30 days
     last_30d = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
@@ -58,7 +58,7 @@ async def get_inventory_dashboard(db: AsyncSession) -> InventoryDashboardRespons
     )
 
     return InventoryDashboardResponse(
-        total_active_spares=active_spares or 0, total_stock_value=total_val, total_movements_last_30d=movements_30d or 0
+        total_active_spares=active_spares or 0, total_stock_value=round(total_val, 2), total_movements_last_30d=movements_30d or 0
     )
 
 
@@ -78,14 +78,14 @@ async def get_stock_by_location(db: AsyncSession, location: str = None) -> list[
     for row in rows:
         loc = row.location
         qty = row.total_qty
-        # Compute value roughly. For a real ERP we'd have a materialized view.
-        # We will set total_value to 0 for this aggregate endpoint to avoid N+1 issues.
         out.append(StockByLocationResponse(location=loc, total_quantity=qty, total_value=0))
     return out
 
 
 async def list_stock(db: AsyncSession, spare_id: int = None, location: str = None) -> StockListResponse:
-    query = select(SpareStockBalance).options(selectinload(SpareStockBalance.spare))
+    query = select(SpareStockBalance).options(
+        selectinload(SpareStockBalance.spare).selectinload(SpareMaster.codes)
+    )
     if spare_id:
         query = query.filter_by(spare_id=spare_id)
     if location:
@@ -96,56 +96,56 @@ async def list_stock(db: AsyncSession, spare_id: int = None, location: str = Non
 
     items = []
     for bal in balances:
-        last_cost = await db.scalar(
-            select(SpareCostHistory.wac_cost)
-            .filter_by(spare_id=bal.spare_id)
-            .order_by(SpareCostHistory.effective_date.desc())
-            .limit(1)
-        )
-        wac = float(last_cost) if last_cost else 0.0
-
-        part_code_obj = await db.scalar(select(SparePartCode.code).filter_by(spare_id=bal.spare_id).limit(1))
+        spare = bal.spare
+        wac = float(spare.base_dlp if spare.base_dlp is not None else (spare.base_cost or 0.0))
+        part_code_str = spare.part_number
 
         items.append(
             StockItemResponse(
                 spare_id=bal.spare_id,
-                spare_name=bal.spare.spare_name,
-                part_code=part_code_obj,
-                tracking_mode=bal.spare.tracking_mode,
+                spare_name=spare.spare_name,
+                part_code=part_code_str,
+                tracking_mode=spare.tracking_mode,
                 location=bal.location,
                 quantity=bal.quantity,
                 unit_cost=wac,
-                total_value=wac * bal.quantity,
+                total_value=round(wac * bal.quantity, 2),
             )
         )
     return StockListResponse(items=items)
 
 
 async def list_batches(db: AsyncSession, spare_id: int = None, location: str = None) -> BatchListResponse:
-    # Actually batches don't inherently have a location in SpareBatch model,
-    # but the stock is in SpareStockBalance. Let's return batches.
     query = select(SpareBatch).options(selectinload(SpareBatch.spare))
     if spare_id:
         query = query.filter_by(spare_id=spare_id)
 
     result = await db.execute(query)
     batches = result.scalars().all()
+    if not batches:
+        return BatchListResponse(items=[])
+
+    batch_ids = [b.batch_id for b in batches]
+    move_stmt = (
+        select(
+            SpareStockMovement.batch_id,
+            SpareStockMovement.to_location,
+            func.sum(SpareStockMovement.quantity).label("qty"),
+        )
+        .filter(SpareStockMovement.batch_id.in_(batch_ids))
+        .group_by(SpareStockMovement.batch_id, SpareStockMovement.to_location)
+    )
+    move_res = await db.execute(move_stmt)
+    batch_moves: dict[int, list] = {}
+    for row in move_res.all():
+        batch_moves.setdefault(row.batch_id, []).append((row.to_location, row.qty))
 
     items = []
     for b in batches:
-        # Get stock for this batch. Wait, SpareStockBalance is per spare_id & location.
-        # To get batch stock, we'd need to look at movements or a BatchStockBalance table.
-        # Since Phase 4 backend didn't add BatchStockBalance, we can compute it from movements.
-        move_res = await db.execute(
-            select(SpareStockMovement.to_location, func.sum(SpareStockMovement.quantity).label("qty"))
-            .filter_by(batch_id=b.batch_id)
-            .group_by(SpareStockMovement.to_location)
-        )
-
-        for m_row in move_res.all():
-            qty = m_row.qty
+        moves = batch_moves.get(b.batch_id, [])
+        for to_loc, qty in moves:
             if qty > 0:
-                if location and m_row.to_location != location:
+                if location and to_loc != location:
                     continue
                 items.append(
                     BatchItemResponse(
@@ -153,7 +153,7 @@ async def list_batches(db: AsyncSession, spare_id: int = None, location: str = N
                         spare_id=b.spare_id,
                         spare_name=b.spare.spare_name,
                         batch_number=b.batch_number,
-                        location=m_row.to_location,
+                        location=to_loc,
                         quantity=qty,
                         unit_cost=b.unit_cost,
                         total_value=float(b.unit_cost) * qty,
