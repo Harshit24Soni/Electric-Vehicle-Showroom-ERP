@@ -12,9 +12,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-# Filter out openpyxl user warnings (e.g., malformed date serials or unsupported cell features)
-warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
-
 from app.db.mixins import utc_now_naive
 from app.modules.inventory.models import (
     PriceList,
@@ -28,8 +25,11 @@ from app.modules.inventory.models import (
     SpareStockBalance,
     SpareStockMovement,
 )
-from app.modules.master.models import Brand, VehicleModel
 from app.modules.inventory.pricing_engine import calculate_observed_margin
+from app.modules.master.models import Brand, VehicleModel
+
+# Filter out openpyxl user warnings (e.g., malformed date serials or unsupported cell features)
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 logger = logging.getLogger(__name__)
 
@@ -947,19 +947,21 @@ async def execute_batch_import(
                     profit_margin_percent=observed_margin,
                 )
                 db.add(new_spare)
-                pending_new_spares.append({
-                    "spare": new_spare,
-                    "part_code": part_code,
-                    "description": description,
-                    "cost": cost,
-                    "dlp": dlp,
-                    "selling": selling,
-                    "mrp": mrp,
-                    "observed_margin": observed_margin,
-                    "gst_rate": gst_rate,
-                    "stock_qty": stock_qty,
-                    "model_prices": model_prices,
-                })
+                pending_new_spares.append(
+                    {
+                        "spare": new_spare,
+                        "part_code": part_code,
+                        "description": description,
+                        "cost": cost,
+                        "dlp": dlp,
+                        "selling": selling,
+                        "mrp": mrp,
+                        "observed_margin": observed_margin,
+                        "gst_rate": gst_rate,
+                        "stock_qty": stock_qty,
+                        "model_prices": model_prices,
+                    }
+                )
 
         # Process new spares in batch: allocate all spare_ids in 1 single flush per chunk
         if pending_new_spares:

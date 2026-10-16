@@ -9,8 +9,6 @@ from app.modules.inventory.models import (
     SpareBatch,
     SpareSerial,
     SpareStockMovement,
-    SpareCostHistory,
-    SparePartCode,
 )
 from app.modules.inventory.schemas_stock import (
     InventoryDashboardResponse,
@@ -39,10 +37,7 @@ async def get_inventory_dashboard(db: AsyncSession) -> InventoryDashboardRespons
     stock_value_stmt = (
         select(
             func.coalesce(
-                func.sum(
-                    SpareStockBalance.quantity
-                    * func.coalesce(SpareMaster.base_dlp, SpareMaster.base_cost, 0.0)
-                ),
+                func.sum(SpareStockBalance.quantity * func.coalesce(SpareMaster.base_dlp, SpareMaster.base_cost, 0.0)),
                 0.0,
             )
         )
@@ -58,7 +53,9 @@ async def get_inventory_dashboard(db: AsyncSession) -> InventoryDashboardRespons
     )
 
     return InventoryDashboardResponse(
-        total_active_spares=active_spares or 0, total_stock_value=round(total_val, 2), total_movements_last_30d=movements_30d or 0
+        total_active_spares=active_spares or 0,
+        total_stock_value=round(total_val, 2),
+        total_movements_last_30d=movements_30d or 0,
     )
 
 
@@ -83,9 +80,7 @@ async def get_stock_by_location(db: AsyncSession, location: str = None) -> list[
 
 
 async def list_stock(db: AsyncSession, spare_id: int = None, location: str = None) -> StockListResponse:
-    query = select(SpareStockBalance).options(
-        selectinload(SpareStockBalance.spare).selectinload(SpareMaster.codes)
-    )
+    query = select(SpareStockBalance).options(selectinload(SpareStockBalance.spare).selectinload(SpareMaster.codes))
     if spare_id:
         query = query.filter_by(spare_id=spare_id)
     if location:
