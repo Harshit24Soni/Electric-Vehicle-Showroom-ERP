@@ -33,10 +33,11 @@ class Settings(BaseSettings):
     # Database Settings (Strictly Required - Zero Hardcoded Fallbacks)
     # --------------------------------------------------------------------------
     DATABASE_URL: str
-    DB_POOL_SIZE: int = 10
-    DB_MAX_OVERFLOW: int = 20
-    DB_POOL_RECYCLE: int = 3600
-    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 5
+    DB_POOL_RECYCLE: int = 1800
+    DB_POOL_TIMEOUT: int = 15
+    DB_ECHO: bool = False
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

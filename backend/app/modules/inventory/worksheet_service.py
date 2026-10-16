@@ -5,6 +5,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import warnings
+
 import openpyxl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,8 +25,11 @@ from app.modules.inventory.models import (
     SpareStockBalance,
     SpareStockMovement,
 )
-from app.modules.master.models import Brand, VehicleModel
 from app.modules.inventory.pricing_engine import calculate_observed_margin
+from app.modules.master.models import Brand, VehicleModel
+
+# Filter out openpyxl user warnings (e.g., malformed date serials or unsupported cell features)
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +42,16 @@ WORKBOOK_CACHE: Dict[str, Dict[str, Any]] = {}
 
 def get_candidate_default_paths() -> List[Path]:
     """Returns candidate paths for the default inventory Excel workbook."""
-    base_dir = Path(__file__).resolve().parents[3]  # root of repo
+    repo_root = Path(__file__).resolve().parents[4]
+    backend_dir = Path(__file__).resolve().parents[3]
     paths: List[Path] = []
     env_path = os.getenv("DEFAULT_INVENTORY_WORKBOOK_PATH")
     if env_path:
         paths.append(Path(env_path))
     paths.extend(
         [
-            base_dir / "Inventory (22-09-25).xlsx",
+            repo_root / "Inventory (22-09-25).xlsx",
+            backend_dir / "Inventory (22-09-25).xlsx",
             Path.cwd() / "Inventory (22-09-25).xlsx",
             Path.cwd().parent / "Inventory (22-09-25).xlsx",
         ]
@@ -53,10 +60,19 @@ def get_candidate_default_paths() -> List[Path]:
 
 
 def find_default_workbook_path() -> Optional[Path]:
-    """Finds the default Inventory workbook if it exists on disk."""
+    """Finds the default Inventory workbook if it exists on disk, or falls back to the most recent upload."""
     for p in get_candidate_default_paths():
         if p.exists() and p.is_file():
             return p
+    # Fallback to the most recent workbook in TEMP_UPLOAD_DIR if available
+    if TEMP_UPLOAD_DIR.exists():
+        recent_uploads = sorted(
+            [f for f in TEMP_UPLOAD_DIR.glob("*.*") if f.suffix.lower() in (".xlsx", ".xls", ".xlsm")],
+            key=lambda f: f.stat().st_mtime,
+            reverse=True,
+        )
+        if recent_uploads:
+            return recent_uploads[0]
     return None
 
 
@@ -720,6 +736,17 @@ async def execute_batch_import(
         sp_code_res = await db.execute(sp_code_stmt)
         existing_codes_map = {sc.code: sc for sc in sp_code_res.scalars().all()}
 
+        # Batch pre-fetch PriceListItems for all codes in this chunk (O(1) queries instead of N queries)
+        pli_stmt = select(PriceListItem).where(
+            PriceListItem.part_code.in_(codes_in_chunk),
+            PriceListItem.version_id == version.version_id,
+            PriceListItem.is_deleted.is_(False),
+        )
+        pli_res = await db.execute(pli_stmt)
+        existing_pli_map = {pli.part_code: pli for pli in pli_res.scalars().all()}
+
+        pending_new_spares: List[Dict[str, Any]] = []
+
         for row in chunk:
             part_code = str(row.get("part_code") or "").strip()
             description = str(row.get("description") or "").strip()
@@ -770,14 +797,8 @@ async def execute_batch_import(
                         spare.profit_margin_percent = observed_margin
                     spare.updated_at = utc_now_naive()
 
-                    # Update price list item
-                    pli_stmt = select(PriceListItem).where(
-                        PriceListItem.part_code == part_code,
-                        PriceListItem.version_id == version.version_id,
-                        PriceListItem.is_deleted.is_(False),
-                    )
-                    pli_res = await db.execute(pli_stmt)
-                    pli = pli_res.scalar_one_or_none()
+                    # Update price list item from pre-fetched map
+                    pli = existing_pli_map.get(part_code)
                     if pli:
                         if mrp is not None:
                             pli.mrp = mrp
@@ -787,16 +808,16 @@ async def execute_batch_import(
                             pli.gst_rate = gst_rate
                         pli.part_name = description
                     else:
-                        db.add(
-                            PriceListItem(
-                                version_id=version.version_id,
-                                part_code=part_code,
-                                part_name=description,
-                                mrp=mrp,
-                                dlp=dlp,
-                                gst_rate=gst_rate,
-                            )
+                        new_pli = PriceListItem(
+                            version_id=version.version_id,
+                            part_code=part_code,
+                            part_name=description,
+                            mrp=mrp,
+                            dlp=dlp,
+                            gst_rate=gst_rate,
                         )
+                        db.add(new_pli)
+                        existing_pli_map[part_code] = new_pli
 
                     # Selling price history
                     if mrp is not None:
@@ -909,7 +930,7 @@ async def execute_batch_import(
 
                     updated_count += 1
             else:
-                # Create brand new SpareMaster with full relational properties
+                # Stage brand new SpareMaster without immediate individual flush
                 new_spare = SpareMaster(
                     spare_name=description,
                     category=category,
@@ -926,7 +947,38 @@ async def execute_batch_import(
                     profit_margin_percent=observed_margin,
                 )
                 db.add(new_spare)
-                await db.flush()
+                pending_new_spares.append(
+                    {
+                        "spare": new_spare,
+                        "part_code": part_code,
+                        "description": description,
+                        "cost": cost,
+                        "dlp": dlp,
+                        "selling": selling,
+                        "mrp": mrp,
+                        "observed_margin": observed_margin,
+                        "gst_rate": gst_rate,
+                        "stock_qty": stock_qty,
+                        "model_prices": model_prices,
+                    }
+                )
+
+        # Process new spares in batch: allocate all spare_ids in 1 single flush per chunk
+        if pending_new_spares:
+            await db.flush()
+
+            for item in pending_new_spares:
+                new_spare = item["spare"]
+                part_code = item["part_code"]
+                description = item["description"]
+                cost = item["cost"]
+                dlp = item["dlp"]
+                selling = item["selling"]
+                mrp = item["mrp"]
+                observed_margin = item["observed_margin"]
+                gst_rate = item["gst_rate"]
+                stock_qty = item["stock_qty"]
+                model_prices = item["model_prices"]
 
                 # Add part code
                 new_code = SparePartCode(
@@ -939,16 +991,16 @@ async def execute_batch_import(
                 db.add(new_code)
 
                 # Add PriceListItem
-                db.add(
-                    PriceListItem(
-                        version_id=version.version_id,
-                        part_code=part_code,
-                        part_name=description,
-                        mrp=mrp,
-                        dlp=dlp,
-                        gst_rate=gst_rate,
-                    )
+                new_pli = PriceListItem(
+                    version_id=version.version_id,
+                    part_code=part_code,
+                    part_name=description,
+                    mrp=mrp,
+                    dlp=dlp,
+                    gst_rate=gst_rate,
                 )
+                db.add(new_pli)
+                existing_pli_map[part_code] = new_pli
 
                 # Price histories
                 if mrp is not None:
