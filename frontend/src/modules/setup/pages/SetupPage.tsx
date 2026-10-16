@@ -6,7 +6,7 @@ import type {
     InsuranceCompany, Bank, DocumentType, Brand,
     ShowroomConfig
 } from '../api/setupApi'
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
+	 
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -33,17 +33,17 @@ interface CrudField {
 
 interface CrudTableProps<T> {
     title: string
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
     icon: any
     queryKey: string
     fetchFn: () => Promise<T[]>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
     createFn: (data: any) => Promise<T>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
     updateFn: (id: number, data: any) => Promise<T>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
     deleteFn: (id: number, hardDelete?: boolean) => Promise<any>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
     restoreFn?: (id: number) => Promise<any>
     idField: string
     nameField: string
@@ -52,7 +52,7 @@ interface CrudTableProps<T> {
     enableSoftDelete?: boolean
 }
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
 function CrudTable<T extends Record<string, any>>({
     title, icon: Icon, queryKey, fetchFn, createFn, updateFn, deleteFn, restoreFn,
     idField, nameField, fields, columns, enableSoftDelete
@@ -60,7 +60,7 @@ function CrudTable<T extends Record<string, any>>({
     const queryClient = useQueryClient()
     const [showForm, setShowForm] = useState(false)
     const [editingItem, setEditingItem] = useState<T | null>(null)
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
     const [formData, setFormData] = useState<Record<string, any>>({})
     const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
 
@@ -70,7 +70,7 @@ function CrudTable<T extends Record<string, any>>({
     })
 
     const createMut = useMutation({
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         mutationFn: (data: any) => createFn(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [queryKey] })
@@ -81,7 +81,7 @@ function CrudTable<T extends Record<string, any>>({
     })
 
     const updateMut = useMutation({
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         mutationFn: ({ id, data }: { id: number; data: any }) => updateFn(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [queryKey] })
@@ -123,7 +123,7 @@ function CrudTable<T extends Record<string, any>>({
 
     const openEdit = (item: T) => {
         setEditingItem(item)
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         const data: Record<string, any> = {}
         fields.forEach(f => { data[f.key] = item[f.key] ?? '' })
         setFormData(data)

@@ -58,6 +58,18 @@ export default function JobCardDetailPage() {
     },
   })
 
+  const closeJobMutation = useMutation({
+    mutationFn: () => serviceApi.closeJobCard(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-card', id] })
+      queryClient.invalidateQueries({ queryKey: ['job-cards'] })
+      toast.success('Job card closed successfully')
+    },
+    onError: (err: AxiosError<{ detail?: string }>) => {
+      toast.error(err.response?.data?.detail || 'Failed to close job card')
+    },
+  })
+
   if (loadingJob) return <div className="p-8">Loading Job Card...</div>
   if (!jobCard) return <div className="p-8">Job Card not found</div>
 
@@ -107,9 +119,20 @@ export default function JobCardDetailPage() {
                    <p className="text-sm text-gray-500 mt-1">Out Time: {formatDateTime(outTime)}</p>
                 </div>
             ) : (
-                <div>
+                <div className="space-y-3">
                    <h3 className="font-semibold text-lg text-yellow-700">Service In Progress</h3>
                    <p className="text-sm text-gray-500 mt-1">Spares can be added and consumed</p>
+                   <button
+                      onClick={() => {
+                        if (confirm('Close this job card and mark service as completed?')) {
+                          closeJobMutation.mutate()
+                        }
+                      }}
+                      disabled={closeJobMutation.isPending}
+                      className="btn btn-secondary text-sm"
+                   >
+                      {closeJobMutation.isPending ? 'Closing...' : 'Close Job Card'}
+                   </button>
                 </div>
             )}
          </div>

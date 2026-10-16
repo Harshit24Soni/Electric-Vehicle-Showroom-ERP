@@ -194,10 +194,11 @@ class VehicleIntakeResponse(BaseModel):
 
 class PostPurchaseItemData(BaseModel):
     purchase_item_id: int
-    location: str
+    location: Optional[str] = None
     batch_number: Optional[str] = None
     serial_numbers: Optional[List[str]] = None
 
 
 class PostPurchaseReceiptRequest(BaseModel):
+    location: Optional[str] = "MAIN_WAREHOUSE"
     items: List[PostPurchaseItemData]

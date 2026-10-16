@@ -65,14 +65,14 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
         setVehicles(vehicles.filter((_, i) => i !== idx))
     }
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
     const updateRow = (idx: number, field: keyof VehicleRow, value: any) => {
         const updated = [...vehicles]
         updated[idx] = { ...updated[idx], [field]: value }
 
         // Auto-fill color from selected VehicleModel
         if (field === 'vehicle_model_id' && value) {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
             const selectedModel = activeModels.find((m: any) => m.vehicle_model_id === Number(value))
             if (selectedModel?.colour && !updated[idx].color) {
                 updated[idx].color = selectedModel.colour
@@ -89,7 +89,7 @@ export default function VehicleIntakeModal({ onClose }: VehicleIntakeModalProps)
             queryClient.invalidateQueries({ queryKey: ['vehicles'] })
             onClose()
         },
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         onError: (err: any) => {
             setError(err?.response?.data?.detail || 'Failed to process vehicle intake.')
         },

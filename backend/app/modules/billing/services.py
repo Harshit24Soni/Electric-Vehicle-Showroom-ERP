@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.exc import IntegrityError
@@ -7,13 +6,11 @@ from fastapi import HTTPException
 
 from app.modules.billing.models import SalesInvoice
 from app.modules.sales.models import Sale
+from app.db.mixins import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
-
-def _utc_now_naive() -> datetime:
-    """Return current naive UTC datetime for standard TIMESTAMP storage."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+_utc_now_naive = utc_now_naive
 
 
 class BillingError(Exception):

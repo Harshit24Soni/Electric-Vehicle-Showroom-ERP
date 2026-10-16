@@ -109,7 +109,7 @@ export default function ProcurementPage() {
     )
 }
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
 function PurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void }) {
     const [activeTab, setActiveTab] = useState<'spares' | 'vehicles'>('spares')
 
@@ -135,7 +135,7 @@ function PurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void }) {
     )
 }
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
 function SparePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void }) {
     const navigate = useNavigate()
     const { data: purchases = [], isLoading } = useQuery({
@@ -225,7 +225,7 @@ function SparePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void
     )
 }
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
 function VehiclePurchaseList({ onSetDelete }: { onSetDelete: (target: any) => void }) {
     const { data: purchases = [], isLoading } = useQuery({
         queryKey: ['vehicle-purchases'],

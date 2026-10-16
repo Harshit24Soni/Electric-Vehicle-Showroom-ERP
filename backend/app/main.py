@@ -4,13 +4,21 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Optional local environment initialization for development
-for env_candidate in [Path(".env"), Path("backend/.env"), Path(".env.test"), Path("backend/.env.test")]:
+for env_candidate in [
+    Path("../.env"),
+    Path(".env"),
+    Path("backend/.env"),
+    Path("../.env.test"),
+    Path(".env.test"),
+    Path("backend/.env.test"),
+]:
     if env_candidate.is_file():
         load_dotenv(dotenv_path=env_candidate)
         break
 
-from fastapi import FastAPI  # noqa: E402
+from fastapi import FastAPI, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
 from sqladmin import Admin  # noqa: E402
 
 from app.admin_setup import AdminAuth, StaffAdmin, SparePartAdmin  # noqa: E402
@@ -18,6 +26,8 @@ from app.auth.routes import router as auth_router  # noqa: E402
 from app.modules.admin.routes import router as admin_staff_router  # noqa: E402
 from app.modules.staff.routes import router as staff_router  # noqa: E402
 from app.modules.inventory.routes import router as inventory_router  # noqa: E402
+from app.modules.inventory.routes_master_sheet import router as master_sheet_router  # noqa: E402
+from app.modules.inventory.routes_worksheet_import import router as worksheet_import_router  # noqa: E402
 from app.modules.billing.routes import router as billing_router  # noqa: E402
 from app.modules.finance.routes import router as finance_router  # noqa: E402
 from app.modules.master.routes import router as master_router  # noqa: E402
@@ -67,19 +77,55 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
-# CORS Configuration - Dynamically ingested from settings
-cors_origins = list(settings.cors_origins) if settings.cors_origins else ["http://localhost:3000"]
+# CORS Configuration - Dynamically ingested from settings with development LAN & localhost regex fallback
+default_dev_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+cors_origins = list(dict.fromkeys(list(settings.cors_origins) + default_dev_origins))
+
+# In non-production, permit all localhost, loopback, LAN IP addresses (192.168.x.x, 10.x.x.x, 172.16-31.x.x) and Vercel domains
+DEV_ORIGIN_REGEX = (
+    r"https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?|"
+    r"https:\/\/electric-vehicle-showroom-erp.*\.vercel\.app"
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_origin_regex=(
-        r"https:\/\/electric-vehicle-showroom-erp.*\.vercel\.app" if settings.ENVIRONMENT != "production" else None
-    ),
+    allow_origin_regex=DEV_ORIGIN_REGEX if settings.ENVIRONMENT != "production" else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """
+    Guarantees unhandled 500 exceptions return CORS headers so browsers do not mask
+    server errors behind deceptive generic 'CORS policy' network block errors.
+    """
+    logger.exception(f"Unhandled server error processing {request.method} {request.url.path}: {exc}")
+    origin = request.headers.get("origin")
+    headers = {
+        "Access-Control-Allow-Credentials": "true",
+    }
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error occurred.",
+            "error": str(exc) if settings.DEBUG else None,
+        },
+        headers=headers,
+    )
 
 
 @app.get("/health")
@@ -100,6 +146,12 @@ app.include_router(staff_router)
 
 # Functional domains
 app.include_router(inventory_router)
+app.include_router(master_sheet_router, prefix="/api/v1/inventory/master-sheet")
+app.include_router(master_sheet_router, prefix="/api/inventory/master-sheet")
+app.include_router(master_sheet_router, prefix="/inventory/master-sheet")
+app.include_router(worksheet_import_router, prefix="/api/v1/inventory/worksheet-import")
+app.include_router(worksheet_import_router, prefix="/api/inventory/worksheet-import")
+app.include_router(worksheet_import_router, prefix="/inventory/worksheet-import")
 app.include_router(billing_router)
 app.include_router(finance_router)
 app.include_router(master_router)

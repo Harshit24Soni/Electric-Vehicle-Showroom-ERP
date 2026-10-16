@@ -1,21 +1,18 @@
-import os
-import sys
+from pathlib import Path
 from typing import Any, List, Literal, Optional, Tuple
 from pydantic import field_validator, model_validator, ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Project root directory where the consolidated .env lives
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _get_env_files() -> Tuple[str, ...]:
     """
     Determine the appropriate environment files to load.
-    Test files (.env.test) must only be loaded during automated testing.
-    In all other runtime modes (dev, staging, prod, migrations, seeds),
-    the primary .env configuration is loaded.
+    Always loads the consolidated .env from the project root.
     """
-    is_test = os.getenv("ENVIRONMENT") == "test" or "pytest" in sys.modules or bool(os.getenv("PYTEST_CURRENT_TEST"))
-    if is_test:
-        return (".env.test", "backend/.env.test")
-    return (".env", "backend/.env")
+    return (str(REPO_ROOT / ".env"), ".env")
 
 
 class Settings(BaseSettings):
@@ -107,7 +104,10 @@ class Settings(BaseSettings):
     # CORS Configuration
     # --------------------------------------------------------------------------
     ALLOWED_ORIGINS: str = (
-        "https://electric-vehicle-showroom-erp.vercel.app,http://localhost:3000,http://localhost:5173"
+        "https://electric-vehicle-showroom-erp.vercel.app,"
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "http://localhost:8000,http://127.0.0.1:8000"
     )
 
     @property
@@ -132,6 +132,7 @@ class Settings(BaseSettings):
     FEATURE_FLAG_SERIAL_TRACKING_VERIFICATION: bool = True
     FEATURE_FLAG_DYNAMIC_MARGIN_PRICING: bool = True
     DEFAULT_GST_RATE_PERCENT: float = 18.0
+    GOOGLE_CLOUD_VISION_API_KEY: Optional[str] = None
 
     # --------------------------------------------------------------------------
     # Cross-Field Production Validation

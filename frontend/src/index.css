@@ -2,58 +2,178 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --canvas-bg: #f8fafc;
+  --surface-bg: #ffffff;
+  --surface-elevated: #ffffff;
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --border-default: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent-cyan: #00d2ff;
+  --accent-electric: #0284c7;
+  --accent-glow: rgba(2, 132, 199, 0.15);
+}
+
+.dark {
+  --canvas-bg: #0b0f19;
+  --surface-bg: #111827;
+  --surface-elevated: #1e293b;
+  --card-bg: #111827;
+  --card-border: #1e293b;
+  --border-default: #1e293b;
+  --border-subtle: #141d2e;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-cyan: #00d2ff;
+  --accent-electric: #38bdf8;
+  --accent-glow: rgba(56, 189, 248, 0.2);
+}
+
 @layer base {
+  * {
+    border-color: var(--border-default);
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans antialiased transition-colors duration-200 selection:bg-primary-500 selection:text-white;
+    min-height: 100vh;
+  }
+
+  /* Sleek modern automotive scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #334155;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+
+  /* Dark mode global typography & legacy utility contrast normalization */
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    color: var(--text-primary);
+  }
+
+  .dark .text-gray-900 {
+    color: #f8fafc;
+  }
+  .dark .text-gray-800 {
+    color: #f1f5f9;
+  }
+  .dark .text-gray-700 {
+    color: #e2e8f0;
+  }
+  .dark .text-gray-600 {
+    color: #cbd5e1;
+  }
+  .dark .text-gray-500 {
+    color: #94a3b8;
+  }
+  .dark .text-gray-400 {
+    color: #64748b;
+  }
+
+  .dark .border-gray-100,
+  .dark .border-gray-200 {
+    border-color: #1e293b;
+  }
+  .dark .border-gray-300 {
+    border-color: #334155;
+  }
+
+  .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #1e293b;
   }
 }
 
 @layer components {
+  /* Buttons */
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center font-medium px-4 py-2 rounded-lg text-sm transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed select-none;
   }
   
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+    @apply bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-sm hover:shadow-glow-sm focus:ring-primary-500 border border-transparent;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-500;
+    @apply bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 focus:ring-slate-400;
   }
   
   .btn-danger {
-    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    @apply bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-sm focus:ring-rose-500 border border-transparent;
+  }
+
+  .btn-outline {
+    @apply bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 focus:ring-primary-500;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white focus:ring-slate-400 border border-transparent;
   }
   
+  /* Form Inputs */
   .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-3.5 py-2.5 bg-white dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700/80 rounded-lg placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:focus:border-primary-400 transition-all text-sm;
+  }
+
+  .select {
+    @apply w-full px-3.5 py-2.5 bg-white dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:focus:border-primary-400 transition-all text-sm;
   }
   
+  /* Cards & Containers */
   .card {
-    @apply bg-white rounded-lg shadow-md p-6;
+    @apply bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800/90 rounded-xl shadow-sm dark:shadow-card-dark p-6 transition-all duration-200;
+  }
+
+  .card-interactive {
+    @apply card hover:border-primary-500/40 hover:shadow-md dark:hover:shadow-glow-sm cursor-pointer;
+  }
+
+  .glass-panel {
+    @apply backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80;
   }
   
+  /* Data Tables */
   .table-container {
-    @apply overflow-x-auto;
+    @apply overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm;
   }
   
   .table {
-    @apply min-w-full divide-y divide-gray-200;
+    @apply min-w-full divide-y divide-slate-200 dark:divide-slate-800;
   }
   
   .table thead {
-    @apply bg-gray-50;
+    @apply bg-slate-50/80 dark:bg-slate-900/80;
   }
   
   .table th {
-    @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+    @apply px-5 py-3.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800;
   }
   
   .table td {
-    @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+    @apply px-5 py-3.5 whitespace-nowrap text-sm text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800/60;
   }
   
   .table tbody tr {
-    @apply hover:bg-gray-50;
+    @apply hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors;
   }
 }

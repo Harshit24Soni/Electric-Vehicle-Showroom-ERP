@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -8,12 +7,11 @@ from fastapi import HTTPException
 
 from app.modules.finance.models import VehicleFinance
 from app.modules.sales.models import Sale
+from app.db.mixins import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
-
-def _utc_now_naive() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+_utc_now_naive = utc_now_naive
 
 
 class FinanceError(Exception):

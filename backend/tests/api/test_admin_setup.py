@@ -3,9 +3,9 @@ from contextlib import asynccontextmanager
 from starlette.requests import Request
 
 from app.admin_setup import AdminAuth, StaffAdmin, SparePartAdmin
-from app.modules.staff.models import Staff
+from app.modules.master.models import Staff
 from app.modules.inventory.models import SparePart, SparePartCode, SpareStockBalance
-from app.modules.auth.pin_utils import hash_pin
+from app.auth.pin_utils import hash_pin
 
 
 @pytest.fixture

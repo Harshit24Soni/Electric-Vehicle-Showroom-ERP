@@ -93,7 +93,7 @@ export default function DealerManagementPage() {
 
 	// eslint-disable-next-line react-hooks/rules-of-hooks -- TODO(Phase1.1 Baseline): Legacy warning
     const createMutation = useMutation({
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         mutationFn: (data: any) => api.post<Staff>('/admin/staff', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['dealers'] })
@@ -138,7 +138,7 @@ export default function DealerManagementPage() {
                 setShowModal(false)
                 setCreatedPin('')
             }, 3000)
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         } catch (err: any) {
             setCreateError(err?.response?.data?.detail || err?.message || 'Failed to create dealer')
         }

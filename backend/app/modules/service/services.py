@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,12 +8,11 @@ from fastapi import HTTPException
 from app.modules.service.models import ServiceJobCard, ServiceSpareConsumption
 from app.modules.inventory.models import SpareStockBalance, SpareBatch, SpareSerial, SpareMaster, SparePartCode
 from app.modules.inventory.services import add_spare_movement
+from app.db.mixins import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
-
-def _utc_now_naive() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+_utc_now_naive = utc_now_naive
 
 
 class ServiceError(Exception):

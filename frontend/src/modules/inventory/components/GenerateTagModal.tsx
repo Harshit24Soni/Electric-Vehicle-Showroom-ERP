@@ -5,6 +5,7 @@ import { BatchItem, SerialItem, BatchListResponse, SerialListResponse } from '..
 import { api } from '@/lib/api'
 import { X, QrCode } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { Button } from '@/components/ui/Button'
 
 interface GenerateTagModalProps {
   onClose: () => void
@@ -81,23 +82,36 @@ export default function GenerateTagModal({ onClose, defaultSpareId, defaultBatch
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <QrCode className="w-5 h-5" />
-          Generate Tags
-        </h2>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800/90 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 border border-primary-200/50 dark:border-primary-800/50 rounded-xl">
+              <QrCode className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white font-heading">
+                Generate Inventory Tags
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Print barcode and optical QR identifiers for parts and bins
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Spare Part</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+              Spare Part *
+            </label>
             <select
               value={spareId}
               onChange={(e) => {
@@ -105,30 +119,36 @@ export default function GenerateTagModal({ onClose, defaultSpareId, defaultBatch
                 setBatchId('')
                 setSerialId('')
               }}
-              className="input"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-colors text-sm"
               required
               disabled={!!defaultSpareId}
             >
               <option value="">Select Spare Part</option>
-              {spares?.map(s => (
-                <option key={s.spare_id} value={s.spare_id}>{s.spare_name} ({s.tracking_mode})</option>
+              {spares?.map((s) => (
+                <option key={s.spare_id} value={s.spare_id}>
+                  {s.spare_name} ({s.tracking_mode})
+                </option>
               ))}
             </select>
           </div>
 
           {selectedSpare?.tracking_mode === 'BATCH' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Batch</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+                Select Lot / Batch *
+              </label>
               <select
                 value={batchId}
                 onChange={(e) => setBatchId(e.target.value ? Number(e.target.value) : '')}
-                className="input"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-colors text-sm"
                 required
                 disabled={!!defaultBatchId}
               >
                 <option value="">Select a batch</option>
                 {batches?.items?.map((b: BatchItem) => (
-                  <option key={b.batch_id} value={b.batch_id}>{b.batch_number} (Qty: {b.quantity})</option>
+                  <option key={b.batch_id} value={b.batch_id}>
+                    {b.batch_number} (Qty: {b.quantity})
+                  </option>
                 ))}
               </select>
             </div>
@@ -136,67 +156,83 @@ export default function GenerateTagModal({ onClose, defaultSpareId, defaultBatch
 
           {selectedSpare?.tracking_mode === 'SERIALIZED' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Serial</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+                Select Serial Unit *
+              </label>
               <select
                 value={serialId}
                 onChange={(e) => setSerialId(e.target.value ? Number(e.target.value) : '')}
-                className="input"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-colors text-sm"
                 required
                 disabled={!!defaultSerialId}
               >
                 <option value="">Select a serial</option>
-                {serials?.items?.filter((s: SerialItem) => s.status === 'IN_STOCK').map((s: SerialItem) => (
-                  <option key={s.serial_id} value={s.serial_id}>{s.serial_number}</option>
-                ))}
+                {serials?.items
+                  ?.filter((s: SerialItem) => s.status === 'IN_STOCK')
+                  .map((s: SerialItem) => (
+                    <option key={s.serial_id} value={s.serial_id}>
+                      {s.serial_number}
+                    </option>
+                  ))}
               </select>
             </div>
           )}
 
           {selectedSpare?.tracking_mode === 'QUANTITY' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Quantity per Tag</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+                Quantity per Tag *
+              </label>
               <input
                 type="number"
                 min="1"
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
-                className="input"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-colors text-sm font-mono"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">Number of units this tag represents.</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Number of physical units this bin/pack tag represents.
+              </p>
             </div>
           )}
 
           {selectedSpare?.tracking_mode !== 'SERIALIZED' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Number of Tags to Generate</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+                Number of Tags to Generate *
+              </label>
               <input
                 type="number"
                 min="1"
                 max="100"
                 value={tagCount}
                 onChange={(e) => setTagCount(Number(e.target.value))}
-                className="input"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-colors text-sm font-mono"
                 required
               />
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <Button
               type="button"
+              variant="outline"
+              size="md"
               onClick={onClose}
-              className="btn btn-secondary"
+              disabled={generateMutation.isPending}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant="primary"
+              size="md"
               disabled={generateMutation.isPending || !spareId}
-              className="btn btn-primary"
+              isLoading={generateMutation.isPending}
             >
-              {generateMutation.isPending ? 'Generating...' : 'Generate Tags'}
-            </button>
+              Generate Tags
+            </Button>
           </div>
         </form>
       </div>

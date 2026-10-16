@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { masterApi, Customer, CustomerCreate } from '../api/masterApi'
-import { customersApi } from '../api/customers'
 import { Plus, Search, Edit, Eye, Trash2 } from 'lucide-react'
 import { formatDate } from '../../../lib/utils'
 import CustomerForm from '../components/CustomerForm'
@@ -34,7 +33,7 @@ export default function CustomersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) =>
-      customersApi.delete(id, hardDelete),
+      masterApi.deleteCustomer(id, hardDelete),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setDeleteTarget(null)

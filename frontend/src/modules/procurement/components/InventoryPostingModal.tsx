@@ -79,7 +79,8 @@ export default function InventoryPostingModal({ purchase, onClose }: Props) {
       if (!data) continue
 
       const payloadItem: PostPurchaseItemData = {
-        purchase_item_id: item.purchase_item_id
+        purchase_item_id: item.purchase_item_id,
+        location: location,
       }
 
       if (data.tracking_mode === 'BATCH') {

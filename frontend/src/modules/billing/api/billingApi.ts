@@ -42,6 +42,7 @@ export interface InvoiceResponse {
 
 export const billingApi = {
   createInvoice: (data: InvoiceCreate) => api.post<InvoiceResponse>('/billing/invoice', data),
+  getInvoices: () => api.get<InvoiceResponse[]>('/billing/invoices'),
   updateInvoice: (invoiceId: number, data: InvoiceUpdate) =>
     api.put(`/billing/invoice/${invoiceId}`, data),
   finalizeInvoice: (invoiceId: number) => api.post(`/billing/invoice/${invoiceId}/finalize`),
