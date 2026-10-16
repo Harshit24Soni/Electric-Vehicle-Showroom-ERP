@@ -66,7 +66,7 @@ export default function NewSaleModal({ onClose }: NewSaleModalProps) {
             queryClient.invalidateQueries({ queryKey: ['customers'] })
             onClose()
         },
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         onError: (err: any) => {
             setError(err?.response?.data?.detail || 'Failed to create sale.')
         },

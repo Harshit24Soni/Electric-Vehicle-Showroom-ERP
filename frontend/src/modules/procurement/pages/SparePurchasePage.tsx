@@ -4,13 +4,13 @@ import { useQuery } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { masterApi, Vendor } from '../../master/api/masterApi'
 import { procurementApi } from '../api/procurementApi'
-import { ArrowLeft, Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, Upload, FileText, CheckCircle2, AlertCircle, Loader2, Image as ImageIcon, Trash2, Plus, Layers } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function SparePurchasePage() {
     const navigate = useNavigate()
     const [vendorId, setVendorId] = useState<string>('')
-    const [file, setFile] = useState<File | null>(null)
+    const [files, setFiles] = useState<File[]>([])
     const [isUploading, setIsUploading] = useState(false)
     const [ocrState, setOcrState] = useState<'idle' | 'uploading' | 'processing' | 'extracting' | 'matching' | 'ready'>('idle')
 
@@ -23,29 +23,49 @@ export default function SparePurchasePage() {
         (v: Vendor) => !v.is_deleted && v.is_active !== false
     )
 
+    const validateAndAddFiles = (newFiles: FileList | File[]) => {
+        const validTypes = ['application/pdf', 'image/jpeg', 'image/png']
+        const added: File[] = []
+        let invalidCount = 0
+
+        Array.from(newFiles).forEach((f) => {
+            if (!validTypes.includes(f.type)) {
+                invalidCount++
+            } else {
+                // Avoid duplicate by name and size
+                const exists = files.some(existing => existing.name === f.name && existing.size === f.size)
+                if (!exists) {
+                    added.push(f)
+                }
+            }
+        })
+
+        if (invalidCount > 0) {
+            toast.error(`${invalidCount} file(s) ignored. Only PDF, JPG, and PNG are supported.`)
+        }
+
+        if (added.length > 0) {
+            setFiles(prev => [...prev, ...added])
+            toast.success(`Added ${added.length} page(s)/file(s)`)
+        }
+    }
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            const selectedFile = e.target.files[0]
-            const validTypes = ['application/pdf', 'image/jpeg', 'image/png']
-            if (!validTypes.includes(selectedFile.type)) {
-                toast.error('Invalid file type. Only PDF, JPG, and PNG are supported.')
-                return
-            }
-            setFile(selectedFile)
+            validateAndAddFiles(e.target.files)
+            e.target.value = ''
         }
     }
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault()
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const droppedFile = e.dataTransfer.files[0]
-            const validTypes = ['application/pdf', 'image/jpeg', 'image/png']
-            if (!validTypes.includes(droppedFile.type)) {
-                toast.error('Invalid file type. Only PDF, JPG, and PNG are supported.')
-                return
-            }
-            setFile(droppedFile)
+            validateAndAddFiles(e.dataTransfer.files)
         }
+    }
+
+    const removeFile = (index: number) => {
+        setFiles(prev => prev.filter((_, i) => i !== index))
     }
 
     const handleUpload = async () => {
@@ -53,8 +73,8 @@ export default function SparePurchasePage() {
             toast.error('Please select a vendor first')
             return
         }
-        if (!file) {
-            toast.error('Please select an invoice file')
+        if (files.length === 0) {
+            toast.error('Please select at least one invoice file/page')
             return
         }
 
@@ -62,24 +82,30 @@ export default function SparePurchasePage() {
         setOcrState('uploading')
 
         try {
-            // Fake animation progression to communicate process
-            setTimeout(() => setOcrState('processing'), 800)
-            setTimeout(() => setOcrState('extracting'), 1600)
-            setTimeout(() => setOcrState('matching'), 2400)
+            // Simulated stage progression to communicate OCR phases
+            setTimeout(() => setOcrState('processing'), 1000)
+            setTimeout(() => setOcrState('extracting'), 2200)
+            setTimeout(() => setOcrState('matching'), 3500)
 
             const formData = new FormData()
             formData.append('vendor_id', vendorId)
-            formData.append('file', file)
+            
+            // Append all files under 'files' key, and first file under 'file' for backwards compatibility
+            files.forEach((f) => {
+                formData.append('files', f)
+            })
+            if (files.length > 0) {
+                formData.append('file', files[0])
+            }
 
             const response = await procurementApi.uploadOcrInvoice(formData)
             
             setOcrState('ready')
-            toast.success('Invoice processed successfully')
+            toast.success('All invoice pages accumulated and processed successfully')
             
-            // Wait a moment so user sees the success state
             setTimeout(() => {
                 navigate(`/procurement/spares/${response.spare_purchase_id}`)
-            }, 1000)
+            }, 1200)
 
         } catch (error: unknown) {
             console.error('OCR Upload error', error)
@@ -91,15 +117,17 @@ export default function SparePurchasePage() {
         }
     }
 
+    const totalBytes = files.reduce((acc, f) => acc + f.size, 0)
+
     return (
-        <div className="space-y-6 max-w-3xl mx-auto">
+        <div className="space-y-6 max-w-4xl mx-auto">
             <div className="flex items-center gap-4">
                 <button onClick={() => navigate('/procurement')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <ArrowLeft className="w-6 h-6" />
                 </button>
                 <div>
-                    <h1 className="text-2xl font-bold">New Purchase Receipt</h1>
-                    <p className="text-gray-500">Upload vendor invoice for automated OCR processing</p>
+                    <h1 className="text-2xl font-bold">New Purchase Receipt (OCR)</h1>
+                    <p className="text-gray-500">Accumulate single or multi-page invoices & photos into one consolidated receipt</p>
                 </div>
             </div>
 
@@ -119,96 +147,155 @@ export default function SparePurchasePage() {
                     </select>
                 </div>
 
+                {/* Dropzone */}
                 <div 
-                    className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center transition-colors ${
-                        file ? 'border-primary-500 bg-primary-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'
+                    className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-colors ${
+                        files.length > 0 ? 'border-primary-400 bg-primary-50/30' : 'border-gray-300 hover:border-gray-400 bg-gray-50'
                     }`}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={handleDrop}
                 >
-                    {file ? (
-                        <div className="flex flex-col items-center">
-                            <FileText className="w-12 h-12 text-primary-600 mb-3" />
-                            <p className="text-lg font-medium text-gray-900">{file.name}</p>
-                            <p className="text-sm text-gray-500 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <Upload className="w-10 h-10 text-primary-600 mb-2" />
+                    <p className="text-base font-semibold text-gray-900">
+                        {files.length === 0 ? 'Click or drag files here to upload' : 'Drag more invoice pages / photos here'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Upload multi-page PDFs or multiple images (front/back photos, continuation sheets). They will be accumulated into one purchase.
+                    </p>
+                    
+                    <input 
+                        type="file" 
+                        className="hidden" 
+                        id="file-upload" 
+                        multiple
+                        accept="application/pdf,image/jpeg,image/png"
+                        onChange={handleFileChange}
+                        disabled={isUploading}
+                    />
+                    <label 
+                        htmlFor="file-upload" 
+                        className="mt-4 btn btn-outline btn-sm cursor-pointer flex items-center gap-1.5"
+                    >
+                        <Plus className="w-4 h-4" />
+                        {files.length === 0 ? 'Browse Invoices / Photos' : 'Add More Files / Pages'}
+                    </label>
+                </div>
+
+                {/* Selected Files List */}
+                {files.length > 0 && (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between text-sm font-medium text-gray-700">
+                            <span className="flex items-center gap-2">
+                                <Layers className="w-4 h-4 text-primary-600" />
+                                Invoice Pages & Attachments ({files.length} {files.length === 1 ? 'file' : 'files'} • {(totalBytes / 1024 / 1024).toFixed(2)} MB)
+                            </span>
                             {!isUploading && (
                                 <button 
-                                    onClick={() => setFile(null)} 
-                                    className="mt-4 text-sm text-red-600 hover:text-red-800"
+                                    onClick={() => setFiles([])}
+                                    className="text-xs text-red-600 hover:text-red-700 underline"
                                 >
-                                    Remove File
+                                    Clear all
                                 </button>
                             )}
                         </div>
-                    ) : (
-                        <>
-                            <Upload className="w-12 h-12 text-gray-400 mb-4" />
-                            <p className="text-lg font-medium text-gray-900">Click to upload or drag and drop</p>
-                            <p className="text-sm text-gray-500 mt-2">PDF, PNG, JPG up to 10MB</p>
-                            <input 
-                                type="file" 
-                                className="hidden" 
-                                id="file-upload" 
-                                accept="application/pdf,image/jpeg,image/png"
-                                onChange={handleFileChange}
-                            />
-                            <label 
-                                htmlFor="file-upload" 
-                                className="mt-6 btn btn-outline cursor-pointer"
-                            >
-                                Browse Files
-                            </label>
-                        </>
-                    )}
-                </div>
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto p-1">
+                            {files.map((f, idx) => {
+                                const isPdf = f.type === 'application/pdf'
+                                return (
+                                    <div 
+                                        key={`${f.name}-${idx}`} 
+                                        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-gray-300 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="p-2 bg-primary-50 text-primary-600 rounded-lg flex-shrink-0">
+                                                {isPdf ? <FileText className="w-5 h-5" /> : <ImageIcon className="w-5 h-5" />}
+                                            </div>
+                                            <div className="truncate">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-semibold px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                                        Page {idx + 1}
+                                                    </span>
+                                                    <p className="text-sm font-medium text-gray-900 truncate" title={f.name}>
+                                                        {f.name}
+                                                    </p>
+                                                </div>
+                                                <p className="text-xs text-gray-400 mt-0.5">
+                                                    {(f.size / 1024).toFixed(0)} KB • {isPdf ? 'PDF Document' : 'Image'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {!isUploading && (
+                                            <button 
+                                                onClick={() => removeFile(idx)}
+                                                className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                                                title="Remove this page"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Progress Status */}
                 {ocrState !== 'idle' && (
                     <div className="bg-gray-50 rounded-lg p-6 border border-gray-100">
-                        <h4 className="font-semibold text-gray-900 mb-4">OCR Processing Status</h4>
+                        <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <Layers className="w-5 h-5 text-primary-600" />
+                            Multi-Page OCR & Consolidation Pipeline
+                        </h4>
                         <div className="space-y-4">
                             <Step 
-                                label="Uploading Invoice..." 
+                                label={`Uploading ${files.length} document page(s)...`} 
                                 status={ocrState === 'uploading' ? 'loading' : 'done'} 
                             />
                             <Step 
-                                label="Processing Document Structure..." 
+                                label="Processing Document Geometry & Multi-Page Vision OCR..." 
                                 status={['idle', 'uploading'].includes(ocrState) ? 'pending' : ocrState === 'processing' ? 'loading' : 'done'} 
                             />
                             <Step 
-                                label="Extracting Data & Line Items..." 
+                                label="Accumulating Line Items, GSTINs, IRN, HSN & Tax Breakdown..." 
                                 status={['idle', 'uploading', 'processing'].includes(ocrState) ? 'pending' : ocrState === 'extracting' ? 'loading' : 'done'} 
                             />
                             <Step 
-                                label="Matching Parts with Master Data..." 
+                                label="Matching OEM Part Codes with Spare Inventory Master..." 
                                 status={['idle', 'uploading', 'processing', 'extracting'].includes(ocrState) ? 'pending' : ocrState === 'matching' ? 'loading' : 'done'} 
                             />
                         </div>
                     </div>
                 )}
 
-                <div className="flex justify-end pt-4 border-t">
+                <div className="flex justify-between items-center pt-4 border-t">
+                    <p className="text-xs text-gray-500">
+                        {files.length > 0 ? `${files.length} file(s) will be accumulated into 1 unified purchase` : 'No files selected'}
+                    </p>
                     <button 
-                        className="btn btn-primary min-w-[150px]"
-                        disabled={!file || !vendorId || isUploading}
+                        className="btn btn-primary min-w-[170px]"
+                        disabled={files.length === 0 || !vendorId || isUploading}
                         onClick={handleUpload}
                     >
                         {isUploading ? (
                             <span className="flex items-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin" /> Processing...
+                                <Loader2 className="w-4 h-4 animate-spin" /> Processing OCR...
                             </span>
-                        ) : 'Process Invoice'}
+                        ) : `Process ${files.length > 1 ? `All ${files.length} Pages` : 'Invoice'}`}
                     </button>
                 </div>
             </div>
             
-            <div className="mt-8 bg-blue-50 text-blue-800 p-4 rounded-lg flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                <div>
-                    <h4 className="font-semibold">How it works</h4>
-                    <p className="text-sm mt-1 text-blue-700">
-                        Our intelligent OCR system will extract line items, quantities, and pricing from your vendor invoice.
-                        After extraction, you will be able to review the digitized data, resolve any unmatched part codes, 
-                        and verify pricing variances before creating the final purchase receipt.
+            <div className="mt-8 bg-blue-50 text-blue-900 p-4 rounded-xl flex items-start gap-3 border border-blue-200">
+                <AlertCircle className="w-5 h-5 mt-0.5 text-blue-600 flex-shrink-0" />
+                <div className="text-sm">
+                    <h4 className="font-semibold text-blue-900">Consolidated Multi-Page & GST Compliance Processing</h4>
+                    <p className="mt-1 text-blue-800">
+                        • <strong>Multiple Pages & Images:</strong> If an invoice has multiple pages or photos, upload them all together. The OCR engine merges all pages and line items into a single purchase receipt.
+                    </p>
+                    <p className="mt-1 text-blue-800">
+                        • <strong>Complete Data Capture:</strong> We extract and structure GSTINs (Supplier & Buyer), PAN numbers, E-Invoice IRN, Date/Time of Supply, Incoterms, Dispatch Plant, Sales Office, Bank Virtual Account, HSN Codes, GST rates (18%), and exact tax amounts without omitting any compliance detail.
                     </p>
                 </div>
             </div>

@@ -49,11 +49,11 @@ services:
       DEBUG: ${DEBUG:-false}
       PROJECT_NAME: ${PROJECT_NAME:-EV Showroom ERP}
       API_V1_STR: ${API_V1_STR:-/api/v1}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ev_showroom_erp}}
+      DATABASE_URL: ${CONTAINER_DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ev_showroom_erp}}
       DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
       DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_URL: ${CONTAINER_REDIS_URL:-redis://redis:6379/0}
+      REDIS_HOST: ${CONTAINER_REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_DB: ${REDIS_DB:-0}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change_this_to_a_cryptographically_secure_random_key_in_production}

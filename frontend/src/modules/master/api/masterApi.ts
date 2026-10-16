@@ -165,12 +165,16 @@ export interface CustomerDetailed extends Customer {
   warranty_status?: string
 }
 
+export type CustomerUpdate = Partial<CustomerCreate>
+
 export const masterApi = {
   // Customers
   getCustomers: () => api.get<Customer[]>('/master/customers'),
   getCustomer: (id: number) => api.get<CustomerDetailed>(`/master/customers/${id}`),
   createCustomer: (data: CustomerCreate) => api.post<Customer>('/master/customers', data),
   updateCustomer: (id: number, data: Partial<CustomerCreate>) => api.put<Customer>(`/master/customers/${id}`, data),
+  deleteCustomer: (id: number, hardDelete?: boolean) =>
+    api.delete(`/master/customers/${id}`, { params: { hard_delete: hardDelete } }),
 
   // Nominees
   getNominees: (customerId: number) => api.get<Nominee[]>(`/master/customers/${customerId}/nominees`),
@@ -204,4 +208,47 @@ export const masterApi = {
   deleteVendor: (id: number, hardDelete?: boolean) =>
     api.delete(`/master/vendors/${id}`, { params: { hard_delete: hardDelete } }),
   restoreVendor: (id: number) => api.post(`/master/vendors/${id}/restore`),
+
+  // Pricing
+  updateVehiclePrice: (vehicleModelId: number, data: VehiclePriceUpdate) =>
+    api.post<VehiclePriceHistoryResponse>(`/master/pricing/vehicles/${vehicleModelId}`, data),
+  getVehiclePriceHistory: (vehicleModelId: number) =>
+    api.get<VehiclePriceHistoryResponse[]>(`/master/pricing/vehicles/${vehicleModelId}/history`),
+  updateSparePrice: (spareId: number, data: SparePriceUpdate) =>
+    api.post<SparePriceHistoryResponse>(`/master/pricing/spares/${spareId}`, data),
+  getSparePriceHistory: (spareId: number) =>
+    api.get<SparePriceHistoryResponse[]>(`/master/pricing/spares/${spareId}/history`),
 }
+
+export interface VehiclePriceUpdate {
+  price: number
+  effective_from?: string
+}
+
+export interface VehiclePriceHistoryResponse {
+  history_id: number
+  vehicle_model_id: number
+  price: number
+  effective_from: string
+  effective_to?: string
+  created_at: string
+  created_by?: number
+}
+
+export interface SparePriceUpdate {
+  price: number
+  margin: number
+  effective_from?: string
+}
+
+export interface SparePriceHistoryResponse {
+  history_id: number
+  spare_id: number
+  price: number
+  margin: number
+  effective_from: string
+  effective_to?: string
+  created_at: string
+  created_by?: number
+}
+

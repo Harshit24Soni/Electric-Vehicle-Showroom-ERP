@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import '@testing-library/jest-dom'
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
+	 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import SaleForm from './SaleForm'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'

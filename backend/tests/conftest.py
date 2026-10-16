@@ -2,17 +2,20 @@ import asyncio
 import os
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from pathlib import Path
 from dotenv import load_dotenv
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 # Force test environment BEFORE loading app
 os.environ["ENVIRONMENT"] = "test"
 
-# Load environment configuration dynamically without hardcoded credentials
-for env_candidate in [Path(".env.test"), Path("backend/.env.test"), Path(".env"), Path("backend/.env")]:
+# Load consolidated environment configuration dynamically
+for env_candidate in [REPO_ROOT / ".env", Path(".env")]:
     if env_candidate.is_file():
         load_dotenv(dotenv_path=env_candidate, override=False)
         break
@@ -26,12 +29,11 @@ from app.db.base import Base  # noqa: E402
 async def setup_test_db():
     """Create all tables in the test database once per session."""
     try:
-        async with asyncio.timeout(2):
+        async with asyncio.timeout(30):
             async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.drop_all)
                 await conn.run_sync(Base.metadata.create_all)
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"Warning: Failed to setup test DB: {exc}")
     yield
     try:
         from app.core.redis import redis_manager
@@ -41,12 +43,7 @@ async def setup_test_db():
         await redis_manager.close()
     except Exception:
         pass
-    try:
-        async with asyncio.timeout(2):
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.drop_all)
-    except Exception:
-        pass
+    # Avoid dropping development database tables on teardown
 
 
 @pytest_asyncio.fixture
@@ -89,13 +86,13 @@ async def admin_client(client, db_session):
     from app.modules.master.models import Staff
     from app.auth.dependencies import get_current_staff
 
-    staff = await db_session.get(Staff, 1)
+    stmt = select(Staff).where(Staff.designation == "ADMIN")
+    staff = (await db_session.execute(stmt)).scalars().first()
     if not staff:
         staff = Staff(
-            staff_id=1,
             full_name="System Admin",
-            mobile_no="9000000001",
-            email="admin@erp.test",
+            mobile_no="9000999999",
+            email="admin_test@erp.test",
             designation="ADMIN",
             pin_hash="dummy",
         )
@@ -103,7 +100,7 @@ async def admin_client(client, db_session):
         await db_session.flush()
 
     async def override_get_current_staff():
-        return {"staff_id": 1, "designation": "ADMIN", "dealer_id": 1}
+        return {"staff_id": staff.staff_id, "designation": "ADMIN", "dealer_id": 1}
 
     app.dependency_overrides[get_current_staff] = override_get_current_staff
     yield client

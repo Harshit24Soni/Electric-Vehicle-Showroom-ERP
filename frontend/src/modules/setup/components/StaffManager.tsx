@@ -2,6 +2,8 @@ import { useAuthStore } from '@/store/authStore'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { setupApi } from '../api/setupApi'
+import { Users, UserCheck, UserX } from 'lucide-react'
 import { Plus, Search, RotateCcw, X } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import TempPinModal from '../../admin/components/TempPinModal'
@@ -81,6 +83,11 @@ export default function StaffManager() {
     const isDealer = user?.designation === 'DEALER'
 
     // Always fetch ALL staff (including deleted)
+        const { data: summary } = useQuery({
+        queryKey: ['staff-summary'],
+        queryFn: setupApi.getStaffSummary,
+    })
+
     const { data: staff = [], isLoading } = useQuery({
         queryKey: ['staff'],
         queryFn: () => api.get<Staff[]>('/admin/staff?include_deleted=true'),
@@ -99,16 +106,16 @@ export default function StaffManager() {
     const deleteMutation = useMutation({
         mutationFn: ({ id, hardDelete }: { id: number; hardDelete?: boolean }) =>
             api.delete(`/admin/staff/${id}`, { params: { hard_delete: hardDelete } }),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['staff'] }),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['staff'] }); queryClient.invalidateQueries({ queryKey: ['staff-summary'] }) },
     })
 
     const restoreMutation = useMutation({
         mutationFn: (id: number) => api.post(`/admin/staff/${id}/restore`, {}),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['staff'] }),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['staff'] }); queryClient.invalidateQueries({ queryKey: ['staff-summary'] }) },
     })
 
     const createMutation = useMutation({
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         mutationFn: (data: CreateStaffForm) => api.post<any>('/admin/staff', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['staff'] })
@@ -116,7 +123,7 @@ export default function StaffManager() {
     })
 
     const resetPinMutation = useMutation({
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         mutationFn: (staffId: number) => api.post<any>('/auth/reset-pin', { staff_id: staffId }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['staff'] })
@@ -149,7 +156,7 @@ export default function StaffManager() {
             setTempPin(result.temporary_pin)
             setTempPinStaffName(staffName)
             setShowPinModal(true)
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         } catch (err: any) {
             alert(err?.response?.data?.detail || 'Failed to reset PIN')
         }
@@ -173,7 +180,7 @@ export default function StaffManager() {
                 setTempPinStaffName(result.full_name || form.full_name)
                 setShowPinModal(true)
             }
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
         } catch (err: any) {
             setCreateError(err?.response?.data?.detail || err?.message || 'Failed to create staff')
         }
@@ -206,11 +213,44 @@ export default function StaffManager() {
                 </div>
             </div>
 
+            {/* Staff Summary KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                        <UserCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <p className="text-2xl font-bold text-gray-900">{summary?.active_count ?? '-'}</p>
+                        <p className="text-xs text-gray-500 font-medium">Active Staff Members</p>
+                    </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                    <div className="p-3 bg-rose-50 text-rose-600 rounded-lg">
+                        <UserX className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <p className="text-2xl font-bold text-gray-900">{summary?.deleted_count ?? '-'}</p>
+                        <p className="text-xs text-gray-500 font-medium">Deactivated Staff</p>
+                    </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                        <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <p className="text-2xl font-bold text-gray-900">{summary?.total_count ?? '-'}</p>
+                        <p className="text-xs text-gray-500 font-medium">Total Staff Enrolled</p>
+                    </div>
+                </div>
+            </div>
+
             <div className="card">
                 <div className="mb-4 flex gap-3">
                     <select
                         value={roleFilter}
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
                         onChange={(e) => setRoleFilter(e.target.value as any)}
                         className="input w-auto"
                     >

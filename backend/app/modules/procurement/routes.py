@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,17 +24,31 @@ async def create_spare_purchase(
 @router.post("/purchases/spares/ocr", response_model=schemas.SparePurchaseResponse, status_code=status.HTTP_201_CREATED)
 async def ocr_upload_invoice(
     vendor_id: int = Form(...),
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = File(None),
     db: AsyncSession = Depends(get_db),
     current_staff=Depends(require_roles("DEALER", "ADMIN")),
 ):
-    """Upload an A4 Invoice and trigger OCR to create a Draft Purchase Receipt"""
-    if not file.filename.lower().endswith((".pdf", ".png", ".jpg", ".jpeg")):
-        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: pdf, png, jpg, jpeg")
+    """Upload one or more invoice files/pages and trigger OCR to create an accumulated Draft Purchase Receipt"""
+    uploaded_files: List[UploadFile] = []
+    if files:
+        uploaded_files.extend(files)
+    elif file:
+        uploaded_files.append(file)
+
+    if not uploaded_files:
+        raise HTTPException(status_code=400, detail="No invoice files provided.")
+
+    for f in uploaded_files:
+        if not f.filename.lower().endswith((".pdf", ".png", ".jpg", ".jpeg")):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file type for {f.filename}. Allowed: pdf, png, jpg, jpeg",
+            )
 
     ocr_service = OCRService()
     try:
-        purchase = await ocr_service.process_invoice(db, vendor_id, file)
+        purchase = await ocr_service.process_invoices(db, vendor_id, uploaded_files)
         return purchase
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")

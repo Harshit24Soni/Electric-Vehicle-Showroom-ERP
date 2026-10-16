@@ -122,16 +122,36 @@ export interface SparePurchaseVerifyItem {
     verification_status?: string
 }
 
+export interface InvoiceGSTManifest {
+    supplier_gstin?: string
+    supplier_pan?: string
+    buyer_gstin?: string
+    buyer_pan?: string
+    irn?: string
+    supply_date_time?: string
+    dispatch_plant?: string
+    sales_office?: string
+    incoterms?: string
+    terms_of_payment?: string
+    virtual_account_no?: string
+    subtotal?: number
+    tax_total?: number
+    invoice_total?: number
+    raw_metadata?: Record<string, any>
+}
+
 export interface SparePurchaseVerifyPayload {
     vendor_id: number
     vendor_invoice_no?: string
     vendor_invoice_date?: string
     purchase_date: string
     remarks?: string
+    docket_reference?: string
     include_in_accounting: boolean
     status?: string
     subtotal?: number
     tax_total?: number
+    additional_charges?: number
     landed_cost_total?: number
     items: SparePurchaseVerifyItem[]
 }

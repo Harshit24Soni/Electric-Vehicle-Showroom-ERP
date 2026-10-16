@@ -15,6 +15,8 @@ import SalesPage from './modules/sales/pages/SalesPage'
 import SaleDetailPage from './modules/sales/pages/SaleDetailPage'
 import SpareSalesPage from './modules/sales/pages/SpareSalesPage'
 import InventoryPage from './modules/inventory/pages/InventoryPage'
+import InventoryTablePage from './modules/inventory/pages/InventoryTablePage'
+import WorksheetImportPage from './modules/inventory/pages/WorksheetImportPage'
 import ServicePage from './modules/service/pages/ServicePage'
 import JobCardDetailPage from './modules/service/pages/JobCardDetailPage'
 import FollowupDashboardPage from './modules/followup/pages/FollowupDashboardPage'
@@ -31,9 +33,18 @@ import SparePurchasePage from './modules/procurement/pages/SparePurchasePage'
 import SparePurchaseDetailPage from './modules/procurement/pages/SparePurchaseDetailPage'
 import TemporaryItemPage from './modules/procurement/pages/TemporaryItemPage'
 
-// Admin
+// Billing & Finance
+import BillingPage from './modules/billing/pages/BillingPage'
+import FinancePage from './modules/finance/pages/FinancePage'
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
+// Insurance & Warranty
+import InsurancePage from './modules/insurance/pages/InsurancePage'
+import WarrantyPage from './modules/warranty/pages/WarrantyPage'
+
+// Reports
+import ReportsPage from './modules/reports/pages/ReportsPage'
+
+// Admin
 import DealerManagementPage from './modules/admin/pages/DealerManagementPage'
 import StaffProfilePage from './modules/staff/pages/StaffProfilePage'
 import SetupPage from './modules/setup/pages/SetupPage'
@@ -43,6 +54,8 @@ import PrintInvoicePage from './modules/sales/pages/print/PrintInvoicePage'
 import PrintChallanPage from './modules/sales/pages/print/PrintChallanPage'
 import PrintSchedulePage from './modules/sales/pages/print/PrintSchedulePage'
 
+import { LoadingState } from './components/ui/LoadingState'
+
 function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const hydrated = useAuthHydration()
@@ -50,8 +63,8 @@ function App() {
   // Wait for auth state to hydrate from localStorage before rendering routes
   if (!hydrated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-gray-500">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0B0F19]">
+        <LoadingState message="Initializing EV Showroom ERP..." />
       </div>
     )
   }
@@ -83,6 +96,9 @@ function App() {
           <Route path="sales/:saleId" element={<SaleDetailPage />} />
           <Route path="spare-sales" element={<SpareSalesPage />} />
           <Route path="inventory" element={<InventoryPage />} />
+          <Route path="inventory/master-sheet" element={<InventoryTablePage />} />
+          <Route path="inventory/table" element={<InventoryTablePage />} />
+          <Route path="inventory/import" element={<WorksheetImportPage />} />
           <Route path="service" element={<ServicePage />} />
           <Route path="service/:jobCardId" element={<JobCardDetailPage />} />
 
@@ -122,8 +138,24 @@ function App() {
             </ProtectedRoute>
           } />
 
+          {/* Billing & Finance */}
+          <Route path="billing" element={<BillingPage />} />
+          <Route path="finance" element={<FinancePage />} />
+
+          {/* Insurance & Warranty */}
+          <Route path="insurance" element={<InsurancePage />} />
+          <Route path="warranty" element={<WarrantyPage />} />
+
+          {/* Reports */}
+          <Route path="reports" element={<ReportsPage />} />
+
           {/* Admin & Profile */}
           <Route path="admin/dealers" element={<Navigate to="/admin/staff" replace />} />
+          <Route path="admin/staff" element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'DEALER']}>
+              <DealerManagementPage />
+            </ProtectedRoute>
+          } />
 
           <Route path="staff/profile" element={<StaffProfilePage />} />
           <Route path="setup" element={

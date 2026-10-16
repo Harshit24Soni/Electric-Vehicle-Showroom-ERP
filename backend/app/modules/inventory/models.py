@@ -9,6 +9,8 @@ from sqlalchemy import (
     Index,
     Boolean,
     Numeric,
+    JSON,
+    DateTime,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 from datetime import datetime, timezone
@@ -92,11 +94,20 @@ class SpareMaster(Base, AuditMixin, SoftDeleteMixin):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=True)
     remarks: Mapped[str | None] = mapped_column(Text)
 
+    # First-class pricing, tax and margin attributes
+    hsn_code: Mapped[str | None] = mapped_column(String(20), index=True)
+    gst_rate: Mapped[float | None] = mapped_column(Numeric(5, 2), default=18.0)
+    base_cost: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    base_dlp: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    base_ex_showroom: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    base_mrp: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    profit_margin_percent: Mapped[float | None] = mapped_column(Numeric(6, 2))
+
     codes: Mapped[list["SparePartCode"]] = relationship(
         "SparePartCode", back_populates="spare", cascade="all, delete-orphan", lazy="selectin"
     )
     compatibilities: Mapped[list["SparePartVehicleCompatibility"]] = relationship(
-        "SparePartVehicleCompatibility", back_populates="spare", cascade="all, delete-orphan"
+        "SparePartVehicleCompatibility", back_populates="spare", cascade="all, delete-orphan", lazy="selectin"
     )
     balances: Mapped[list["SpareStockBalance"]] = relationship(
         "SpareStockBalance", back_populates="spare", foreign_keys="[SpareStockBalance.spare_id]", lazy="selectin"
@@ -151,6 +162,15 @@ class SparePartVehicleCompatibility(Base, AuditMixin):
         BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="CASCADE"), nullable=False
     )
     vehicle_model_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+    # Model-specific pricing and margins
+    ex_factory_price: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    dlp: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    ex_showroom_price: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    customer_mrp: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    gst_rate: Mapped[float | None] = mapped_column(Numeric(5, 2), default=18.0)
+    profit_margin_percent: Mapped[float | None] = mapped_column(Numeric(6, 2))
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
 
     spare: Mapped["SpareMaster"] = relationship("SpareMaster", back_populates="compatibilities")
 
@@ -394,3 +414,57 @@ class InventoryTag(Base, AuditMixin, SoftDeleteMixin):
 
 # Alias for unified inventory / admin interface
 SparePart = SpareMaster
+
+
+class ImportType(str, enum.Enum):
+    MASTER = "MASTER"
+    COMPATIBILITY = "COMPATIBILITY"
+    PRICING = "PRICING"
+
+
+class ImportBatchStatus(str, enum.Enum):
+    PENDING_REVIEW = "PENDING_REVIEW"
+    COMMITTED = "COMMITTED"
+    REJECTED = "REJECTED"
+
+
+class InventoryImportBatch(Base, AuditMixin):
+    __tablename__ = "inventory_import_batches"
+    __table_args__ = (
+        Index("idx_inv_import_batch_status", "status"),
+        Index("idx_inv_import_batch_type", "import_type"),
+    )
+
+    batch_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    import_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="PENDING_REVIEW", nullable=False)
+    error_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    committed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    committed_by: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("staff.staff_id", ondelete="SET NULL"), nullable=True
+    )
+
+    items: Mapped[list["InventoryImportItem"]] = relationship(
+        "InventoryImportItem", back_populates="batch", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class InventoryImportItem(Base, AuditMixin):
+    __tablename__ = "inventory_import_items"
+    __table_args__ = (
+        Index("idx_inv_import_items_batch", "batch_id"),
+        Index("idx_inv_import_items_valid", "is_valid"),
+    )
+
+    item_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    batch_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("inventory_import_batches.batch_id", ondelete="CASCADE"), nullable=False
+    )
+    raw_data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    parsed_data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    is_valid: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    batch: Mapped["InventoryImportBatch"] = relationship("InventoryImportBatch", back_populates="items")

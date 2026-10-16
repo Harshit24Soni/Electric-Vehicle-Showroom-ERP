@@ -7,9 +7,9 @@ from sqladmin.application import Admin as _Admin
 from sqladmin.authentication import AuthenticationBackend
 
 from app.db.session import async_session_maker
-from app.modules.staff.models import Staff
+from app.modules.master.models import Staff
 from app.modules.inventory.models import SparePart
-from app.modules.auth.pin_utils import verify_pin
+from app.auth.pin_utils import verify_pin
 
 
 class AdminAuth(AuthenticationBackend):

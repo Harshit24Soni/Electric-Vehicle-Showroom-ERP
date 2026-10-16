@@ -1,8 +1,8 @@
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
+	 
 import { useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
+	 
 import { salesApi, SaleProgress, PortalTracking } from '../api/salesApi'
 import {
   ArrowLeft, Truck, CreditCard, ChevronRight, Globe, FileText,
@@ -27,7 +27,7 @@ const STAGES = [
 function buildDocumentHtml(
   title: string,
   number: string | undefined,
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
   sale: any,
   extra?: string,
 ): string {
@@ -222,7 +222,7 @@ export default function SaleDetailPage() {
       setStageRemarks('')
       toast.success('Stage advanced successfully')
     },
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
     onError: (err: any) => {
       toast.error(err?.response?.data?.detail || 'Failed to advance stage')
     },
@@ -235,7 +235,7 @@ export default function SaleDetailPage() {
       invalidateAll()
       toast.success('Tracking updated')
     },
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
     onError: (err: any) => {
       toast.error(err?.response?.data?.detail || 'Failed to update tracking')
     },
@@ -621,10 +621,10 @@ export default function SaleDetailPage() {
               checked={!!portal.number_plate_fixed_date}
               onChange={(val) => {
                 if (val) {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
                   updatePortalMutation.mutate({ number_plate_fixed_date: new Date().toISOString().slice(0, 10) as any })
                 } else {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
                   updatePortalMutation.mutate({ number_plate_fixed_date: null as any })
                 }
               }}
@@ -639,7 +639,7 @@ export default function SaleDetailPage() {
                   <input
                     type="date"
                     value={typeof portal.number_plate_fixed_date === 'string' ? portal.number_plate_fixed_date.slice(0, 10) : ''}
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
                     onChange={(e) => updatePortalMutation.mutate({ number_plate_fixed_date: e.target.value as any })}
                     className="input text-sm py-1 px-2 w-auto"
                   />

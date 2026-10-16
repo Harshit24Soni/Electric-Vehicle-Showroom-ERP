@@ -4,7 +4,8 @@ export interface Enquiry {
     enquiry_id: number
     lead_id: number
     enquiry_source: string
-    enquiry_status: string
+    enquiry_status?: string
+    enquiry_status_id?: number
     owner_staff_id: number
     last_followup_date?: string | null
     last_message_date?: string | null
@@ -20,10 +21,10 @@ export interface EnquiryCreate {
 }
 
 export interface EnquiryStats {
-    active_enquiries: number
-    converted_enquiries: number
-    lost_enquiries: number
     total_enquiries: number
+    active_enquiries?: number
+    converted_enquiries?: number
+    lost_enquiries?: number
 }
 
 export const enquiriesApi = {
@@ -44,7 +45,7 @@ export const enquiriesApi = {
         return api.get(`/crm/enquiries/${id}`)
     },
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+	 
     update: async (id: number, data: any): Promise<Enquiry> => {
         return api.put(`/crm/enquiries/${id}`, data)
     },
