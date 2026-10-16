@@ -14,7 +14,33 @@ async def test_database_migrations():
     """
     Test 1 & 2: Empty DB -> Alembic Upgrade Head -> Resulting schema is usable.
     """
-    # 1. Drop all tables to simulate empty DB
+    # 1. Safety Guard: Never allow schema drop in production or remote database
+    from app.core.config import settings
+
+    db_url_str = str(settings.DATABASE_URL).lower()
+    if settings.ENVIRONMENT in ("production", "prod", "staging"):
+        pytest.skip(f"Destructive migration test skipped: ENVIRONMENT is '{settings.ENVIRONMENT}'")
+
+    prohibited_hosts = ["supabase.co", "pooler.supabase.com", "rds.amazonaws.com", "render.com"]
+    for host in prohibited_hosts:
+        if host in db_url_str:
+            raise RuntimeError(
+                f"SAFETY GUARD TRIGGERED: Refusing to drop schema. DATABASE_URL points to remote host '{host}'"
+            )
+
+    is_safe_test_db = (
+        "localhost" in db_url_str
+        or "127.0.0.1" in db_url_str
+        or "postgres" in db_url_str
+        or "_test" in db_url_str
+        or "test" in db_url_str
+    )
+    if not is_safe_test_db:
+        raise RuntimeError(
+            f"SAFETY GUARD TRIGGERED: DATABASE_URL '{db_url_str}' does not appear to be an isolated test database."
+        )
+
+    # Drop all tables to simulate empty DB
     async with engine.begin() as conn:
 
         def recreate_schema(sync_conn):
