@@ -6,10 +6,12 @@ import process from 'node:process'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  const rootDir = fileURLToPath(new URL('..', import.meta.url))
+  const env = loadEnv(mode, rootDir, '')
   const apiBaseUrl = env.VITE_API_BASE_URL || process.env.VITE_API_BASE_URL
 
   return {
+    envDir: rootDir,
     plugins: [react()],
     resolve: {
       alias: {

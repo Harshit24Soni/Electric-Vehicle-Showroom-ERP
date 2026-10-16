@@ -149,14 +149,20 @@ async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(admin_client:
     # 3. Customer Creation
     customer = await CustomerFactory.create(db_session, name="Vikram Mehta", primary_phone="9988776655")
 
+    # Fetch admin staff
+    from app.modules.master.models import Staff
+    staff_res = await db_session.execute(select(Staff).where(Staff.designation == "ADMIN"))
+    staff = staff_res.scalars().first()
+    staff_id = staff.staff_id if staff else 1
+
     # 4. Create Sale
     sale = Sale(
         customer_id=customer.customer_id,
         chassis_no=chassis_code,
         total_amount=150000.0,
         sale_status="PENDING",
-        created_by_staff_id=1,
-        created_by=1,
+        created_by_staff_id=staff_id,
+        created_by=staff_id,
     )
     db_session.add(sale)
     await db_session.flush()
@@ -187,7 +193,7 @@ async def test_vehicle_intake_to_sale_and_finance_ledger_lifecycle(admin_client:
         sale_id=sale.sale_id,
         customer_id=customer.customer_id,
         chassis_no=chassis_code,
-        staff_id=1,
+        staff_id=staff_id,
         payment_mode="FINANCE",
         financier_name="Tata Capital EV Finance",
         total_amount=150000.0,

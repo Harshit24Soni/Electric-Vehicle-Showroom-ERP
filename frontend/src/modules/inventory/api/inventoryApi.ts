@@ -145,6 +145,63 @@ export interface MovementHistoryListResponse {
 }
 
 
+// Master Inventory Sheet Contracts
+export interface MasterSheetItem {
+  spare_id: number
+  part_code: string
+  description: string
+  category: string
+  tracking_mode: string
+  status: string
+  hsn_code?: string | null
+  gst_rate?: number | null
+  ex_factory?: number | null
+  dlp?: number | null
+  mrp?: number | null
+  ex_showroom?: number | null
+  profit_margin_percent?: number | null
+  stock_quantity: number
+  compatible_models: string[]
+  model_prices: Record<string, number | null>
+  remarks?: string | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any
+}
+
+export interface MasterSheetItemCreate {
+  part_code: string
+  description: string
+  category?: string
+  tracking_mode?: string
+  hsn_code?: string | null
+  gst_rate?: number | null
+  ex_factory?: number | null
+  dlp?: number | null
+  mrp?: number | null
+  ex_showroom?: number | null
+  profit_margin_percent?: number | null
+  model_prices?: Record<string, number | null>
+  compatible_models?: string[]
+  remarks?: string | null
+}
+
+export interface MasterSheetItemUpdate {
+  description?: string
+  category?: string
+  tracking_mode?: string
+  status?: string
+  hsn_code?: string | null
+  gst_rate?: number | null
+  ex_factory?: number | null
+  dlp?: number | null
+  mrp?: number | null
+  ex_showroom?: number | null
+  profit_margin_percent?: number | null
+  model_prices?: Record<string, number | null>
+  compatible_models?: string[]
+  remarks?: string | null
+}
+
 export const inventoryApi = {
   getSpares: (includeDeleted = false) =>
     api.get<SpareMasterItem[]>('/inventory/spares', { params: { include_deleted: includeDeleted } }),
@@ -153,12 +210,208 @@ export const inventoryApi = {
   createSpareMovement: (data: SpareMovementCreate) => api.post<SpareMovement>('/inventory/spare/movement', data),
   createVehicleMovement: (data: VehicleMovementCreate) => api.post('/inventory/vehicle/movement', data),
   checkVehicleAvailability: (chassisNo: string) => api.get(`/inventory/vehicle/${chassisNo}/availability`),
-  
+
   // Phase 4
   getDashboardStats: () => api.get<InventoryDashboardStats>('/inventory/dashboard/stats'),
   getStockByLocation: (location?: string) => api.get<StockLocationStat[]>('/inventory/stock/locations', { params: { location } }),
   getStock: (spare_id?: number, location?: string) => api.get<StockListResponse>('/inventory/stock', { params: { spare_id, location } }),
   getBatches: (spare_id?: number, location?: string) => api.get<BatchListResponse>('/inventory/batches', { params: { spare_id, location } }),
   getSerials: (spare_id?: number, location?: string, serial_number?: string) => api.get<SerialListResponse>('/inventory/serials', { params: { spare_id, location, serial_number } }),
-  getMovements: (page: number = 1, size: number = 50, spare_id?: number) => api.get<MovementHistoryListResponse>('/inventory/movements', { params: { page, size, spare_id } })
+  getMovements: (page: number = 1, size: number = 50, spare_id?: number) => api.get<MovementHistoryListResponse>('/inventory/movements', { params: { page, size, spare_id } }),
+
+  // Master Inventory Sheet API
+  getMasterSheet: (params?: { search?: string; category?: string; include_inactive?: boolean }) =>
+    api.get<MasterSheetItem[]>('/inventory/master-sheet', { params }),
+  getActiveVehicleModels: () =>
+    api.get<string[]>('/inventory/master-sheet/models'),
+  createMasterSheetItem: (payload: MasterSheetItemCreate) =>
+    api.post<MasterSheetItem>('/inventory/master-sheet', payload),
+  updateMasterSheetItem: (partCode: string, payload: MasterSheetItemUpdate) =>
+    api.put<MasterSheetItem>(`/inventory/master-sheet/${encodeURIComponent(partCode)}`, payload),
+  deleteMasterSheetItem: (partCode: string) =>
+    api.delete<{ success: boolean; message: string }>(`/inventory/master-sheet/${encodeURIComponent(partCode)}`),
+
+  // Worksheet Import (Mail Merge) & Dynamic Pricing Engine
+  inspectDefaultWorkbook: () =>
+    api.get<WorkbookInspectionResponse>('/inventory/worksheet-import/inspect-default'),
+  uploadCustomWorkbook: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post<WorkbookInspectionResponse>('/inventory/worksheet-import/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  getSheetPreview: (req: SheetPreviewRequest) =>
+    api.post<SheetPreviewResponse>('/inventory/worksheet-import/sheet-preview', req),
+  executeWorksheetImport: (req: ExecuteImportRequest) =>
+    api.post<ExecuteImportResponse>('/inventory/worksheet-import/execute-import', req),
+  importEntireSheet: (req: ImportEntireSheetRequest) =>
+    api.post<ExecuteImportResponse>('/inventory/worksheet-import/import-entire-sheet', req),
+  applyPurchaseCost: (req: ApplyPurchaseCostRequest) =>
+    api.post<ApplyPurchaseCostResponse>('/inventory/worksheet-import/apply-purchase-cost', req),
+  getModelPricingMatrix: (params?: { vehicle_model_id?: number; search?: string }) =>
+    api.get<ModelPricingRecord[]>('/inventory/worksheet-import/model-pricing-matrix', { params }),
 }
+
+// ---------------------------------------------------------------------------
+// Worksheet Import (Mail Merge) Types
+// ---------------------------------------------------------------------------
+
+export interface SheetSummary {
+  name: string
+  row_count: number
+  col_count: number
+  has_super_header: boolean
+  data_start_row: number
+  sheet_type: 'MASTER_INVENTORY' | 'MODEL_PRICE_LIST' | 'PURCHASE_SHEET' | 'SALES_SHEET' | 'GENERAL'
+  headers: string[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sample_rows: Record<string, any>[]
+  auto_mapping: Record<string, string>
+  model_columns: { model_name: string; field_type: string; column_name: string }[]
+}
+
+export interface WorkbookInspectionResponse {
+  file_name: string
+  file_size: number
+  file_token: string
+  sheet_count: number
+  sheets: SheetSummary[]
+}
+
+export interface SheetPreviewRequest {
+  file_token?: string
+  sheet_name: string
+  field_mapping?: Record<string, string>
+  page?: number
+  limit?: number
+  search?: string
+  filter_status?: 'ALL' | 'READY' | 'WARNING' | 'ERROR'
+}
+
+export interface SheetCounts {
+  total: number
+  ready: number
+  warning: number
+  error: number
+  filtered: number
+}
+
+export interface ParsedPreviewRow {
+  row_id: number
+  part_code: string
+  description: string
+  category: string
+  tracking_mode: string
+  hsn_code?: string | null
+  gst_rate?: number | null
+  dlp?: number | null
+  mrp?: number | null
+  ex_factory?: number | null
+  stock_quantity: number
+  model_prices: Record<string, number | null>
+  status: 'READY' | 'WARNING' | 'ERROR'
+  validation_messages: string[]
+  selected?: boolean
+}
+
+export interface SheetPreviewResponse {
+  sheet_name: string
+  total_rows: number
+  page: number
+  limit: number
+  headers: string[]
+  applied_mapping: Record<string, string>
+  model_columns: { model_name: string; field_type: string; column_name: string }[]
+  counts: SheetCounts
+  rows: ParsedPreviewRow[]
+}
+
+export interface ImportRowPayload {
+  part_code: string
+  description: string
+  category?: string
+  tracking_mode?: string
+  hsn_code?: string | null
+  gst_rate?: number | null
+  ex_factory?: number | null
+  dlp?: number | null
+  mrp?: number | null
+  stock_quantity?: number
+  model_prices?: Record<string, number | null>
+  remarks?: string | null
+}
+
+export interface ExecuteImportRequest {
+  sheet_name: string
+  target_model_name?: string | null
+  update_existing: boolean
+  update_stock: boolean
+  default_category?: string
+  rows: ImportRowPayload[]
+}
+
+export interface ExecuteImportResponse {
+  success: boolean
+  total_processed: number
+  created_count: number
+  updated_count: number
+  skipped_count: number
+  errors: string[]
+  message: string
+}
+
+export interface ImportEntireSheetRequest {
+  file_token?: string
+  sheet_name: string
+  field_mapping?: Record<string, string>
+  target_model_name?: string | null
+  default_category?: string
+  update_existing?: boolean
+  update_stock?: boolean
+}
+
+export interface ApplyPurchaseCostRequest {
+  spare_id: number
+  new_cost: number
+  source_reference?: string
+}
+
+export interface ApplyPurchaseCostResponse {
+  success: boolean
+  data: {
+    spare_id: number
+    part_code: string
+    spare_name: string
+    new_cost: number
+    profit_margin_percent: number
+    new_ex_showroom: number
+    new_customer_mrp: number
+    updated_models: {
+      model_name: string
+      new_price: number
+      margin_percent: number
+    }[]
+  }
+  message: string
+}
+
+export interface ModelPricingRecord {
+  compatibility_id: number
+  spare_id: number
+  part_code?: string
+  part_name: string
+  category?: string
+  vehicle_model_id: number
+  model_name: string
+  ex_factory_price?: number | null
+  dlp?: number | null
+  ex_showroom_price?: number | null
+  customer_mrp?: number | null
+  gst_rate: number
+  profit_margin_percent?: number | null
+  stock_quantity: number
+}
+
+
+

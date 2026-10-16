@@ -2,22 +2,21 @@ import logging
 from datetime import datetime, timezone
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 
 from app.modules.procurement import models as procurement_models
 from app.modules.procurement import schemas as procurement_schemas
 from app.modules.master import models as master_models
+from app.modules.inventory.models import SparePartCode
 from app.core.event_bus import event_bus, SparePurchasedEvent, VehicleIntakeEvent
 from app.modules.inventory import services as inventory_services
-from app.modules.inventory import services as domain_inventory_services
+from app.db.mixins import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
-
-def _utc_now_naive() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+_utc_now_naive = utc_now_naive
 
 
 async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.SparePurchaseCreate):
@@ -139,6 +138,20 @@ async def verify_spare_purchase(
             )
             db.add(new_item)
 
+            # Auto-learn OEM part code alias into SparePartCode if not already present
+            clean_code = item.part_code.strip() if item.part_code else ""
+            if clean_code and item.spare_id:
+                code_stmt = select(SparePartCode).filter(func.lower(SparePartCode.code) == clean_code.lower())
+                existing_code = (await db.execute(code_stmt)).scalars().first()
+                if not existing_code:
+                    new_code = SparePartCode(
+                        spare_id=item.spare_id,
+                        code=clean_code,
+                        is_current=True,
+                        reason="Auto-learned from verified purchase invoice",
+                    )
+                    db.add(new_code)
+
         await db.commit()
         await db.refresh(purchase, ["items"])
         return purchase
@@ -196,7 +209,7 @@ async def post_spare_purchase(
             raise HTTPException(status_code=400, detail="Must be approved before posting to inventory")
 
         # Call inventory domain to process receipt
-        await domain_inventory_services.post_purchase_receipt(db, purchase, payload)
+        await inventory_services.post_purchase_receipt(db, purchase, payload)
 
         purchase.status = "POSTED"
         await db.commit()

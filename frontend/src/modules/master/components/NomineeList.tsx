@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { masterApi, Nominee, NomineeCreate } from '../api/masterApi'
-import { Plus, Trash2, Shield, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Pencil, Shield, AlertTriangle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
@@ -24,6 +24,7 @@ type NomineeFormData = z.infer<typeof nomineeSchema>
 export default function NomineeList({ customerId }: NomineeListProps) {
     const queryClient = useQueryClient()
     const [showForm, setShowForm] = useState(false)
+    const [editingNominee, setEditingNominee] = useState<Nominee | null>(null)
     const [deleteTarget, setDeleteTarget] = useState<Nominee | null>(null)
 
     const { data: nominees, isLoading } = useQuery({
@@ -38,6 +39,19 @@ export default function NomineeList({ customerId }: NomineeListProps) {
             queryClient.invalidateQueries({ queryKey: ['nominees', customerId] })
             reset()
             setShowForm(false)
+            setEditingNominee(null)
+        },
+    })
+
+    // Update Mutation
+    const updateMutation = useMutation({
+        mutationFn: (data: Partial<NomineeCreate>) =>
+            masterApi.updateNominee(customerId, editingNominee!.nominee_id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['nominees', customerId] })
+            reset()
+            setShowForm(false)
+            setEditingNominee(null)
         },
     })
 
@@ -67,8 +81,29 @@ export default function NomineeList({ customerId }: NomineeListProps) {
         resolver: zodResolver(nomineeSchema),
     })
 
+    const handleOpenCreate = () => {
+        setEditingNominee(null)
+        reset({ nominee_name: '', nominee_dob: '', relation: '', is_primary: false })
+        setShowForm(true)
+    }
+
+    const handleOpenEdit = (nominee: Nominee) => {
+        setEditingNominee(nominee)
+        reset({
+            nominee_name: nominee.nominee_name,
+            nominee_dob: nominee.nominee_dob ? nominee.nominee_dob.split('T')[0] : '',
+            relation: nominee.relation,
+            is_primary: nominee.is_primary,
+        })
+        setShowForm(true)
+    }
+
     const onSubmit = (data: NomineeFormData) => {
-        createMutation.mutate(data)
+        if (editingNominee) {
+            updateMutation.mutate(data)
+        } else {
+            createMutation.mutate(data)
+        }
     }
 
     if (isLoading) return <div>Loading nominees...</div>
@@ -82,7 +117,7 @@ export default function NomineeList({ customerId }: NomineeListProps) {
                 </h3>
                 {!showForm && (
                     <button
-                        onClick={() => setShowForm(true)}
+                        onClick={handleOpenCreate}
                         className="btn btn-sm btn-secondary flex items-center gap-1"
                     >
                         <Plus className="w-4 h-4" /> Add Nominee
@@ -92,6 +127,9 @@ export default function NomineeList({ customerId }: NomineeListProps) {
 
             {showForm && (
                 <form onSubmit={handleSubmit(onSubmit)} className="bg-gray-50 p-4 rounded-lg border border-gray-200 animate-in fade-in slide-in-from-top-2">
+                    <h4 className="text-sm font-semibold mb-3 text-gray-700">
+                        {editingNominee ? 'Edit Nominee' : 'Add New Nominee'}
+                    </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="label">Name</label>
@@ -127,17 +165,24 @@ export default function NomineeList({ customerId }: NomineeListProps) {
                     <div className="flex justify-end gap-2">
                         <button
                             type="button"
-                            onClick={() => setShowForm(false)}
+                            onClick={() => {
+                                setShowForm(false)
+                                setEditingNominee(null)
+                            }}
                             className="btn btn-sm btn-secondary"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            disabled={createMutation.isPending}
+                            disabled={createMutation.isPending || updateMutation.isPending}
                             className="btn btn-sm btn-primary"
                         >
-                            {createMutation.isPending ? 'Adding...' : 'Save Nominee'}
+                            {createMutation.isPending || updateMutation.isPending
+                                ? 'Saving...'
+                                : editingNominee
+                                ? 'Update Nominee'
+                                : 'Save Nominee'}
                         </button>
                     </div>
                 </form>
@@ -163,13 +208,22 @@ export default function NomineeList({ customerId }: NomineeListProps) {
                                     {nominee.relation} • DOB: {formatDate(nominee.nominee_dob)}
                                 </p>
                             </div>
-                            <button
-                                onClick={() => setDeleteTarget(nominee)}
-                                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
-                                title="Delete Nominee"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => handleOpenEdit(nominee)}
+                                    className="text-primary-600 hover:text-primary-800 p-1 hover:bg-primary-50 rounded"
+                                    title="Edit Nominee"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => setDeleteTarget(nominee)}
+                                    className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                                    title="Delete Nominee"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>

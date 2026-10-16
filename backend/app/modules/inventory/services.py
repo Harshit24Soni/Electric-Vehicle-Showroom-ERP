@@ -346,10 +346,13 @@ async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
     # Create mapping of purchase_item_id to items
     purchase_items = {item.purchase_item_id: item for item in purchase.items}
 
+    default_location = getattr(payload, "location", None) or "MAIN_WAREHOUSE"
+
     for item_data in payload.items:
         if item_data.purchase_item_id not in purchase_items:
             raise InventoryError(f"Purchase item {item_data.purchase_item_id} not found in purchase")
 
+        target_location = item_data.location or default_location
         p_item = purchase_items[item_data.purchase_item_id]
         spare = await get_spare(db, p_item.spare_id)
 
@@ -390,7 +393,7 @@ async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
                     spare_id=spare.spare_id,
                     serial_number=s_num,
                     status="IN_STOCK",
-                    location=item_data.location,
+                    location=target_location,
                     unit_cost=p_item.unit_cost,
                 )
                 db.add(new_ser)
@@ -410,7 +413,7 @@ async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
                     reference_id=purchase.spare_purchase_id,
                     movement_datetime=datetime.now(timezone.utc).replace(tzinfo=None),
                     remarks="Posted from Procurement",
-                    to_location=item_data.location,
+                    to_location=target_location,
                     unit_cost=p_item.unit_cost,
                     total_cost=(
                         (float(p_item.total_cost) / p_item.quantity) if p_item.quantity and p_item.total_cost else 0
@@ -428,7 +431,7 @@ async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
                 reference_id=purchase.spare_purchase_id,
                 movement_datetime=datetime.now(timezone.utc).replace(tzinfo=None),
                 remarks="Posted from Procurement",
-                to_location=item_data.location,
+                to_location=target_location,
                 unit_cost=p_item.unit_cost,
                 total_cost=float(p_item.total_cost) if p_item.total_cost else 0,
             )
@@ -436,11 +439,11 @@ async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
 
         # Update Stock Balance
         bal_res = await db.execute(
-            select(SpareStockBalance).filter_by(spare_id=spare.spare_id, location=item_data.location)
+            select(SpareStockBalance).filter_by(spare_id=spare.spare_id, location=target_location)
         )
         balance = bal_res.scalars().first()
         if not balance:
-            balance = SpareStockBalance(spare_id=spare.spare_id, location=item_data.location, quantity=p_item.quantity)
+            balance = SpareStockBalance(spare_id=spare.spare_id, location=target_location, quantity=p_item.quantity)
             db.add(balance)
         else:
             balance.quantity += p_item.quantity

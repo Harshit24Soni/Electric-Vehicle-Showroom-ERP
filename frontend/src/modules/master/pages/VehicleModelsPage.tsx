@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { masterApi, VehicleModel, VehicleModelCreate, VehicleModelUpdate } from '../api/masterApi'
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(Phase1.1 Baseline): Legacy warning
-import { Plus, Search, Pencil, Trash2, RotateCcw } from 'lucide-react'
+import { Plus, Search, Pencil, DollarSign } from 'lucide-react'
 import { formatDate } from '../../../lib/utils'
 import VehicleModelForm from '../components/VehicleModelForm'
+import VehiclePricingModal from '../components/VehiclePricingModal'
 import toast from 'react-hot-toast'
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
@@ -12,6 +12,7 @@ export default function VehicleModelsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [selectedModel, setSelectedModel] = useState<VehicleModel | null>(null)
+  const [pricingModel, setPricingModel] = useState<VehicleModel | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<VehicleModel | null>(null)
   const queryClient = useQueryClient()
@@ -108,7 +109,7 @@ export default function VehicleModelsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Vehicle Models</h1>
-          <p className="text-gray-600 mt-1">Manage vehicle model specifications</p>
+          <p className="text-gray-600 mt-1">Manage vehicle model specifications and pricing</p>
         </div>
         <button onClick={() => { setSelectedModel(null); setIsEditing(false); setShowForm(true) }} className="btn btn-primary flex items-center gap-2">
           <Plus className="w-5 h-5" />
@@ -182,17 +183,26 @@ export default function VehicleModelsPage() {
                       <td>
                         <div className="flex gap-2">
                           {!isDeleted && (
-                            <button
-                              onClick={() => {
-                                setSelectedModel(model)
-                                setIsEditing(true)
-                                setShowForm(true)
-                              }}
-                              className="p-2 text-primary-600 hover:bg-primary-50 rounded"
-                              title="Edit"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => {
+                                  setSelectedModel(model)
+                                  setIsEditing(true)
+                                  setShowForm(true)
+                                }}
+                                className="p-2 text-primary-600 hover:bg-primary-50 rounded"
+                                title="Edit"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setPricingModel(model)}
+                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded"
+                                title="Manage Pricing"
+                              >
+                                <DollarSign className="w-4 h-4" />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -216,6 +226,13 @@ export default function VehicleModelsPage() {
             setIsEditing(false)
           }}
           isLoading={createMutation.isPending || updateMutation.isPending}
+        />
+      )}
+
+      {pricingModel && (
+        <VehiclePricingModal
+          model={pricingModel}
+          onClose={() => setPricingModel(null)}
         />
       )}
 

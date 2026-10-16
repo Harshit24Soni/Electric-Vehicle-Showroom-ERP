@@ -7,12 +7,11 @@ from fastapi import HTTPException
 
 from app.modules.crm import models
 from app.modules.crm import schemas as crm_schemas
+from app.db.mixins import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
-
-def _utc_now_naive() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+_utc_now_naive = utc_now_naive
 
 
 class CRMError(Exception):

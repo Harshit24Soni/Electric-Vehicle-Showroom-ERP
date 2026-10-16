@@ -2,12 +2,16 @@ import { AxiosError } from 'axios'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { Search, QrCode, Plus, Printer, Ban } from 'lucide-react'
-import { SkeletonTable } from '@/components/ui/SkeletonTable'
+import { Search, QrCode, Plus, Printer, Ban, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import TagDetailModal from './TagDetailModal'
 import GenerateTagModal from './GenerateTagModal'
 import ScannerModal, { TagScanResult } from '@/components/common/ScannerModal'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 interface InventoryTag {
   tag_id: number
@@ -26,6 +30,7 @@ export default function InventoryTags() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [isGenerateOpen, setIsGenerateOpen] = useState(false)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [revokeTargetTagId, setRevokeTargetTagId] = useState<number | null>(null)
   const queryClient = useQueryClient()
 
   const { data: tagData, isLoading } = useQuery({
@@ -38,11 +43,13 @@ export default function InventoryTags() {
     onSuccess: () => {
       toast.success('Tag revoked successfully')
       queryClient.invalidateQueries({ queryKey: ['inventory-tags'] })
+      setRevokeTargetTagId(null)
     },
     onError: (error: unknown) => {
-      const axiosErr = error as AxiosError<{ detail?: string }>;
+      const axiosErr = error as AxiosError<{ detail?: string }>
       toast.error(axiosErr.response?.data?.detail || 'Failed to revoke tag')
-    }
+      setRevokeTargetTagId(null)
+    },
   })
 
   const handleTagScan = (tag: TagScanResult) => {
@@ -50,93 +57,150 @@ export default function InventoryTags() {
   }
 
   const tags = tagData?.items || []
-  const filteredTags = tags.filter(t => 
-    t.tag_identifier.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTags = tags.filter((t) =>
+    t.tag_identifier.toLowerCase().includes(searchTerm.toLowerCase().trim())
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="relative max-w-md w-full">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input 
-            type="text" 
-            placeholder="Search by tag identifier..." 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)} 
-            className="input pl-10" 
-          />
-        </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setIsScannerOpen(true)}
-            className="btn btn-secondary flex items-center gap-2"
-          >
-            <QrCode className="w-4 h-4" />
-            Scan Tag
-          </button>
-          <button 
-            onClick={() => setIsGenerateOpen(true)}
-            className="btn btn-primary flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Generate Tag
-          </button>
-        </div>
-      </div>
+    <div className="space-y-4 animate-fade-in">
+      {/* Space-Efficient Tags Container */}
+      <div className="rounded-xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+        {/* Compact Integrated Toolbar */}
+        <div className="p-3 sm:p-4 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="flex items-center gap-3 flex-1">
+            <span className="font-mono text-slate-400 text-xs hidden sm:inline">
+              ({filteredTags.length} registered tags)
+            </span>
 
-      <div className="card">
-        {isLoading ? (
-          <SkeletonTable rows={5} />
-        ) : filteredTags.length === 0 ? (
-          <div className="text-center py-8">
-            <QrCode className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No tags found</p>
+            <div className="relative flex-1 sm:w-64 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search tag identifier..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-8 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsScannerOpen(true)}
+              className="flex items-center gap-1.5 h-8 text-xs shrink-0"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              Scan Tag
+            </Button>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsGenerateOpen(true)}
+              className="flex items-center gap-1.5 h-8 text-xs shrink-0 shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Generate Tag
+            </Button>
+          </div>
+        </div>
+
+        {/* Content Table */}
+        {isLoading ? (
+          <div className="p-6 space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-10 w-full rounded-md" />
+            ))}
+          </div>
+        ) : filteredTags.length === 0 ? (
+          <EmptyState
+            icon={QrCode}
+            title="No inventory tags found"
+            description={
+              searchTerm
+                ? 'No tags matched your identifier search. Try another query.'
+                : 'No barcode or QR tags have been generated yet. Click "Generate Tag" to print labels.'
+            }
+            actionLabel={searchTerm ? 'Clear Search' : 'Generate New Tag'}
+            onAction={searchTerm ? () => setSearchTerm('') : () => setIsGenerateOpen(true)}
+            className="py-14"
+          />
         ) : (
           <div className="table-container">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Identifier</th>
+                  <th>Tag Identifier</th>
                   <th>Tracking Mode</th>
-                  <th>Quantity</th>
+                  <th className="text-right">Quantity</th>
                   <th>Status</th>
-                  <th>Print Count</th>
+                  <th className="text-right">Print Count</th>
                   <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTags.map((tag: InventoryTag) => (
-                  <tr key={tag.tag_id}>
-                    <td className="font-mono font-medium text-primary-600 cursor-pointer" onClick={() => setSelectedTag(tag.tag_identifier)}>
-                      {tag.tag_identifier}
-                    </td>
-                    <td>{tag.tracking_mode}</td>
-                    <td>{tag.quantity}</td>
+                  <tr
+                    key={tag.tag_id}
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                  >
                     <td>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        tag.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                        tag.status === 'REVOKED' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {tag.status}
+                      <span
+                        className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/50 cursor-pointer hover:underline"
+                        onClick={() => setSelectedTag(tag.tag_identifier)}
+                        title="Click to view QR & details"
+                      >
+                        {tag.tag_identifier}
                       </span>
                     </td>
-                    <td>{tag.print_count}</td>
+                    <td>
+                      <Badge
+                        variant={
+                          tag.tracking_mode === 'SERIALIZED'
+                            ? 'info'
+                            : tag.tracking_mode === 'BATCH'
+                            ? 'warning'
+                            : 'neutral'
+                        }
+                      >
+                        {tag.tracking_mode}
+                      </Badge>
+                    </td>
+                    <td className="text-right font-mono font-bold text-slate-900 dark:text-white text-xs">
+                      {tag.quantity}
+                    </td>
+                    <td>
+                      <Badge variant={tag.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                        {tag.status}
+                      </Badge>
+                    </td>
+                    <td className="text-right font-mono text-xs text-slate-600 dark:text-slate-400">
+                      {tag.print_count}
+                    </td>
                     <td className="text-right">
                       {tag.status === 'ACTIVE' && (
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => setSelectedTag(tag.tag_identifier)} className="p-1 hover:bg-gray-100 rounded text-gray-600" title="View & Print">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setSelectedTag(tag.tag_identifier)}
+                            className="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                            title="View & Print QR Label"
+                          >
                             <Printer className="w-4 h-4" />
                           </button>
-                          <button 
-                            onClick={() => {
-                              if (window.confirm("Are you sure you want to revoke this tag?")) {
-                                revokeMutation.mutate(tag.tag_id)
-                              }
-                            }}
-                            className="p-1 hover:bg-red-50 rounded text-red-600" title="Revoke"
+                          <button
+                            onClick={() => setRevokeTargetTagId(tag.tag_id)}
+                            className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                            title="Revoke Tag"
                           >
                             <Ban className="w-4 h-4" />
                           </button>
@@ -151,24 +215,41 @@ export default function InventoryTags() {
         )}
       </div>
 
+      {/* Tag Details Modal */}
       {selectedTag && (
-        <TagDetailModal 
-          identifier={selectedTag} 
-          onClose={() => setSelectedTag(null)} 
+        <TagDetailModal
+          identifier={selectedTag}
+          onClose={() => setSelectedTag(null)}
         />
       )}
 
+      {/* Generate Tag Modal */}
       {isGenerateOpen && (
-        <GenerateTagModal 
-          onClose={() => setIsGenerateOpen(false)} 
+        <GenerateTagModal
+          onClose={() => setIsGenerateOpen(false)}
         />
       )}
 
-      <ScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onScanSuccess={handleTagScan}
-        title="Scan Inventory Tag"
+      {/* Barcode / QR Scanner Modal */}
+      {isScannerOpen && (
+        <ScannerModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onScanSuccess={handleTagScan}
+        />
+      )}
+
+      {/* Revoke Confirmation Dialog */}
+      <DeleteConfirmModal
+        isOpen={revokeTargetTagId !== null}
+        onClose={() => setRevokeTargetTagId(null)}
+        onConfirm={() => {
+          if (revokeTargetTagId) {
+            revokeMutation.mutate(revokeTargetTagId)
+          }
+        }}
+        itemName={revokeTargetTagId ? `Inventory Tag #${revokeTargetTagId}` : 'Inventory Tag'}
+        isPending={revokeMutation.isPending}
       />
     </div>
   )

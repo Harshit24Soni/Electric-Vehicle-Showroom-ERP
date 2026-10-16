@@ -1,26 +1,7 @@
 import { api } from '@/lib/api'
+import { leadsApi, Lead, LeadCreate, LeadUpdate } from './leads'
 
-export interface LeadCreate {
-  customer_id: number
-  vehicle_model_id: number
-  lead_source: string
-  lead_status?: string
-  owner_staff_id: number
-  expected_purchase_date?: string
-  remarks?: string
-}
-
-export interface Lead {
-  lead_id: number
-  customer_id: number
-  vehicle_model_id: number
-  lead_source: string
-  lead_status: string
-  owner_staff_id: number
-  expected_purchase_date?: string
-  remarks?: string
-  created_at: string
-}
+export type { Lead, LeadCreate, LeadUpdate }
 
 export interface FollowupCreate {
   lead_id: number
@@ -50,18 +31,20 @@ export interface ActivityCreate {
 }
 
 export const crmApi = {
-  createLead: (data: LeadCreate) => api.post<Lead>('/crm/leads', data),
-  getLeads: () => api.get<Lead[]>('/crm/leads'),
-  getLead: (leadId: number) => api.get<Lead>(`/crm/leads/${leadId}`),
-  assignLead: (leadId: number, newOwnerId: number) =>
-    api.post(`/crm/leads/${leadId}/assign?new_owner_id=${newOwnerId}`),
+  // Delegate lead operations to canonical leadsApi
+  createLead: (data: LeadCreate) => leadsApi.create(data),
+  getLeads: () => leadsApi.list(),
+  getLead: (leadId: number) => leadsApi.getById(leadId),
+  assignLead: (leadId: number, newOwnerId: number) => leadsApi.assign(leadId, newOwnerId),
+  deleteLead: (leadId: number, hardDelete?: boolean) => leadsApi.delete(leadId, hardDelete),
+
+  // Follow-ups and activities
   createFollowup: (data: FollowupCreate) => api.post<Followup>('/crm/followups', data),
   getPendingFollowups: () => api.get<Followup[]>('/crm/followups/pending'),
   updateFollowup: (id: number, data: Partial<Followup>) => api.put<Followup>(`/crm/followups/${id}`, data),
-  getFollowupDashboard: (type: string = 'ALL') => api.get<{ sales_followups: Followup[] }>(`/crm/followups/dashboard?followup_type=${type}`),
+  getFollowupDashboard: (type: string = 'ALL') =>
+    api.get<{ sales_followups: Followup[] }>(`/crm/followups/dashboard?followup_type=${type}`),
   addActivity: (data: ActivityCreate) => api.post('/crm/activities', data),
-  deleteLead: (leadId: number, hardDelete?: boolean) =>
-    api.delete(`/crm/leads/${leadId}`, { params: { hard_delete: hardDelete } }),
   deleteFollowup: (id: number, hardDelete?: boolean) =>
     api.delete(`/crm/followups/${id}`, { params: { hard_delete: hardDelete } }),
 }

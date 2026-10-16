@@ -8,12 +8,11 @@ from fastapi import HTTPException
 from app.modules.sales import models
 from app.modules.sales import schemas as sales_schemas
 from app.core.event_bus import event_bus, VehicleDeliveredEvent, SaleCompleted
+from app.db.mixins import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
-
-def _utc_now_naive() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+_utc_now_naive = utc_now_naive
 
 
 class SalesError(Exception):

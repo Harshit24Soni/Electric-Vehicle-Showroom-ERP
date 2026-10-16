@@ -86,33 +86,33 @@ export const leadsApi = {
         return api.delete(`/crm/leads/${id}`, { params: { hard_delete: hardDelete } })
     },
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     convert: async (id: number, payload: LeadConvertPayload): Promise<any> => {
         return api.post(`/crm/leads/${id}/convert`, payload)
     },
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getActivities: async (id: number): Promise<any[]> => {
         return api.get(`/crm/leads/${id}/activities`)
     },
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     assign: async (id: number, newOwnerId: number): Promise<any> => {
-        return api.post(`/crm/leads/${id}/assign`, { new_owner_id: newOwnerId })
+        return api.post(`/crm/leads/${id}/assign`, null, { params: { new_owner_id: newOwnerId } })
     },
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getFollowups: async (type: string = 'ALL'): Promise<any> => {
         return api.get(`/crm/followups/dashboard?followup_type=${type}`)
     },
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getPendingFollowups: async (): Promise<any[]> => {
         return api.get('/crm/followups/pending')
     },
 
     // Test ride methods
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getTestRides: async (leadId: number): Promise<any[]> => {
         return api.get(`/crm/leads/${leadId}/test-rides`)
     },
@@ -121,7 +121,7 @@ export const leadsApi = {
         chassis_no: string
         test_ride_date: string
         customer_feedback?: string
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }): Promise<any> => {
         return api.post(`/crm/leads/${leadId}/test-rides`, data)
     },
@@ -131,8 +131,13 @@ export const leadsApi = {
         remarks: string
         outcome_status: string
         next_followup_date?: string
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO(Phase1.1 Baseline): Legacy warning
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }): Promise<any> => {
         return api.post(`/crm/leads/${leadId}/followups`, data)
+    },
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getLeadFollowupDashboard: async (staffId?: number): Promise<{ overdue: any[]; today: any[]; upcoming: any[] }> => {
+        return api.get('/crm/leads/dashboard/followups', { params: staffId ? { staff_id: staffId } : undefined })
     },
 }

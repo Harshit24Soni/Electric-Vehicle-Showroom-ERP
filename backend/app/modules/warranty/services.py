@@ -9,12 +9,11 @@ from app.modules.warranty import models as wm
 from app.modules.warranty import schemas as ws
 from app.modules.master import models as mm
 from app.core.event_bus import event_bus, DefectiveSpareReturnedEvent, WarrantyReplacementIssuedEvent
+from app.db.mixins import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
-
-def _utc_now_naive() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+_utc_now_naive = utc_now_naive
 
 
 class WarrantyError(Exception):

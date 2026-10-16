@@ -12,13 +12,9 @@ from app.auth.dependencies import get_current_staff
 from app.auth.pin_utils import hash_pin
 from app.auth.roles import require_roles
 from app.db.session import get_db
+from app.db.mixins import utc_now_naive
 
 logger = logging.getLogger(__name__)
-
-
-def _utc_now_naive() -> datetime:
-    """Return current naive UTC datetime for standard TIMESTAMP storage."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 router = APIRouter(
@@ -271,7 +267,7 @@ async def delete_staff(staff_id: int, db: AsyncSession = Depends(get_db), curren
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
 
     try:
-        staff.deleted_at = _utc_now_naive()
+        staff.deleted_at = utc_now_naive()
         staff.is_deleted = True
         staff.deleted_by = current_staff["staff_id"]
         staff.is_active = False
