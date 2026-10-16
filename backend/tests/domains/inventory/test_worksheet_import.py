@@ -8,13 +8,10 @@ from app.modules.inventory.worksheet_service import (
     clean_cell_float,
     clean_cell_int,
     clean_cell_str,
-    find_default_workbook_path,
     inspect_workbook,
     parse_and_preview_sheet_data,
 )
 from app.modules.inventory.models import SpareMaster, SparePartCode, PriceListItem
-
-pytestmark = pytest.mark.asyncio
 
 
 def test_clean_cell_utilities():
@@ -67,6 +64,8 @@ def setup_mock_workbook(tmp_path, monkeypatch):
 
     wb.save(str(wb_path))
 
+    # Set environment variable so any lookup in worksheet_service finds this test workbook
+    monkeypatch.setenv("DEFAULT_INVENTORY_WORKBOOK_PATH", str(wb_path))
     monkeypatch.setattr(
         "app.modules.inventory.worksheet_service.find_default_workbook_path",
         lambda: wb_path,
@@ -78,10 +77,10 @@ def setup_mock_workbook(tmp_path, monkeypatch):
     return wb_path
 
 
-def test_inspect_default_workbook():
+def test_inspect_default_workbook(setup_mock_workbook):
     """Inspects the default showroom workbook and validates sheet discovery."""
-    path = find_default_workbook_path()
-    assert path is not None, "Workbook should be discoverable in test fixture"
+    path = setup_mock_workbook
+    assert path is not None and path.exists(), "Workbook should be discoverable in test fixture"
 
     info = inspect_workbook(path, path.name, "default")
     assert info["sheet_count"] >= 4
@@ -98,10 +97,10 @@ def test_inspect_default_workbook():
     assert "description" in master_meta["auto_mapping"]
 
 
-def test_preview_magnus_neo_sheet():
+def test_preview_magnus_neo_sheet(setup_mock_workbook):
     """Tests parsed preview rows and auto-mapping on a model price list sheet."""
-    path = find_default_workbook_path()
-    assert path is not None
+    path = setup_mock_workbook
+    assert path is not None and path.exists()
 
     preview = parse_and_preview_sheet_data(path, "Magnus Neo", page=1, limit=10)
     assert preview["sheet_name"] == "Magnus Neo"
@@ -115,17 +114,18 @@ def test_preview_magnus_neo_sheet():
     assert first_row["selected"] is True
 
 
-def test_preview_search_filter():
+def test_preview_search_filter(setup_mock_workbook):
     """Tests search filtering within parsed sheet data."""
-    path = find_default_workbook_path()
-    assert path is not None
+    path = setup_mock_workbook
+    assert path is not None and path.exists()
 
     preview = parse_and_preview_sheet_data(path, "Magnus Neo", page=1, limit=50, search="TERMINAL")
     assert preview["counts"]["filtered"] >= 1
     assert any("TERMINAL" in r["description"].upper() for r in preview["rows"])
 
 
-async def test_api_inspect_default(admin_client: AsyncClient):
+@pytest.mark.asyncio
+async def test_api_inspect_default(admin_client: AsyncClient, setup_mock_workbook):
     """GET /api/v1/inventory/worksheet-import/inspect-default returns full workbook structure."""
     response = await admin_client.get("/api/v1/inventory/worksheet-import/inspect-default")
     assert response.status_code == 200
@@ -134,7 +134,8 @@ async def test_api_inspect_default(admin_client: AsyncClient):
     assert len(data["sheets"]) == data["sheet_count"]
 
 
-async def test_api_sheet_preview(admin_client: AsyncClient):
+@pytest.mark.asyncio
+async def test_api_sheet_preview(admin_client: AsyncClient, setup_mock_workbook):
     """POST /api/v1/inventory/worksheet-import/sheet-preview returns paginated mapped rows."""
     payload = {
         "file_token": "default",
@@ -151,6 +152,7 @@ async def test_api_sheet_preview(admin_client: AsyncClient):
     assert data["counts"]["ready"] > 0
 
 
+@pytest.mark.asyncio
 async def test_api_execute_import(admin_client: AsyncClient, db_session: AsyncSession):
     """POST /api/v1/inventory/worksheet-import/execute-import creates spares and price items atomically."""
     import_payload = {
