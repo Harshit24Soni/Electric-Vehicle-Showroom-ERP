@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from app.modules.procurement import models as procurement_models
 from app.modules.procurement import schemas as procurement_schemas
 from app.modules.master import models as master_models
-from app.modules.inventory.models import SparePartCode
+from app.modules.inventory.models import SpareMaster, SparePartCode
 from app.core.event_bus import event_bus, SparePurchasedEvent, VehicleIntakeEvent
 from app.modules.inventory import services as inventory_services
 from app.db.mixins import utc_now_naive
@@ -78,14 +78,46 @@ async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.Spar
         raise
 
 
+async def enrich_spare_purchase(db: AsyncSession, purchase: procurement_models.SparePurchase):
+    """Enrich purchase instance with vendor_name and line items with spare_name."""
+    if not purchase:
+        return purchase
+
+    if getattr(purchase, "vendor", None):
+        purchase.vendor_name = purchase.vendor.vendor_name
+    elif purchase.vendor_id:
+        v_stmt = select(master_models.Vendor).filter_by(vendor_id=purchase.vendor_id)
+        v_res = await db.execute(v_stmt)
+        v = v_res.scalars().first()
+        if v:
+            purchase.vendor_name = v.vendor_name
+
+    spare_ids = {item.spare_id for item in (purchase.items or []) if item.spare_id}
+    if spare_ids:
+        s_stmt = select(SpareMaster).filter(SpareMaster.spare_id.in_(spare_ids))
+        s_res = await db.execute(s_stmt)
+        spare_map = {s.spare_id: s for s in s_res.scalars().all()}
+        for item in purchase.items or []:
+            spare = spare_map.get(item.spare_id)
+            if spare:
+                item.spare_name = spare.spare_name
+    return purchase
+
+
 async def verify_spare_purchase(
-    db: AsyncSession, spare_purchase_id: int, data: procurement_schemas.SparePurchaseCreate
+    db: AsyncSession,
+    spare_purchase_id: int,
+    data: procurement_schemas.SparePurchaseCreate,
+    current_staff=None,
 ):
-    """Verify an OCR or draft purchase record and finalize line items."""
+    """Verify an OCR or draft purchase record and finalize line items (or update existing)."""
     try:
         stmt = (
             select(procurement_models.SparePurchase)
-            .options(selectinload(procurement_models.SparePurchase.items))
+            .options(
+                selectinload(procurement_models.SparePurchase.items),
+                selectinload(procurement_models.SparePurchase.vendor),
+            )
             .filter_by(spare_purchase_id=spare_purchase_id)
         )
         result = await db.execute(stmt)
@@ -94,8 +126,10 @@ async def verify_spare_purchase(
         if not purchase:
             raise HTTPException(status_code=404, detail="Purchase not found")
 
-        if purchase.status not in ["DRAFT", "OCR_PROCESSED", "PENDING_VERIFICATION"]:
-            raise HTTPException(status_code=400, detail="Only drafts can be verified")
+        # Allow drafts, OCR processed, verified, and approved records to be edited/verified by authorized users
+        allowed_statuses = ["DRAFT", "OCR_PROCESSED", "PENDING_VERIFICATION", "VERIFIED", "APPROVED", "POSTED"]
+        if purchase.status not in allowed_statuses:
+            raise HTTPException(status_code=400, detail=f"Cannot edit purchase in '{purchase.status}' status")
 
         purchase.vendor_id = data.vendor_id
         purchase.vendor_invoice_no = data.vendor_invoice_no
@@ -107,17 +141,24 @@ async def verify_spare_purchase(
         purchase.tax_total = data.tax_total
         purchase.additional_charges = data.additional_charges
         purchase.landed_cost_total = data.landed_cost_total
-        purchase.verification_status = "VERIFIED"
-        purchase.status = "VERIFIED"
 
-        # Delete old items and replace with verified
+        if purchase.status in ["DRAFT", "OCR_PROCESSED", "PENDING_VERIFICATION"]:
+            purchase.verification_status = "VERIFIED"
+            purchase.status = "VERIFIED"
+        elif data.status:
+            purchase.status = data.status
+            purchase.verification_status = "VERIFIED"
+        else:
+            purchase.verification_status = "VERIFIED"
+
+        # Delete old items and replace with verified/edited items
         for item in purchase.items:
             await db.delete(item)
 
         for item in data.items:
             if not item.spare_id:
                 raise HTTPException(
-                    status_code=400, detail=f"Cannot verify without resolving spare_id for {item.part_code}"
+                    status_code=400, detail=f"Cannot save without resolving spare_id for {item.part_code or 'item'}"
                 )
 
             total_cost = (item.unit_cost * item.quantity) - (item.discount or 0) + (item.tax_amount or 0)
@@ -153,10 +194,11 @@ async def verify_spare_purchase(
 
         await db.commit()
         await db.refresh(purchase, ["items"])
+        await enrich_spare_purchase(db, purchase)
         return purchase
     except Exception as exc:
         await db.rollback()
-        logger.error("Failed to verify spare purchase %s: %s", spare_purchase_id, exc, exc_info=True)
+        logger.error("Failed to verify/update spare purchase %s: %s", spare_purchase_id, exc, exc_info=True)
         raise
 
 
@@ -165,7 +207,10 @@ async def approve_spare_purchase(db: AsyncSession, spare_purchase_id: int):
     try:
         stmt = (
             select(procurement_models.SparePurchase)
-            .options(selectinload(procurement_models.SparePurchase.items))
+            .options(
+                selectinload(procurement_models.SparePurchase.items),
+                selectinload(procurement_models.SparePurchase.vendor),
+            )
             .filter_by(spare_purchase_id=spare_purchase_id)
         )
         result = await db.execute(stmt)
@@ -181,6 +226,7 @@ async def approve_spare_purchase(db: AsyncSession, spare_purchase_id: int):
 
         await db.commit()
         await db.refresh(purchase, ["items"])
+        await enrich_spare_purchase(db, purchase)
         return purchase
     except Exception as exc:
         await db.rollback()
@@ -195,7 +241,10 @@ async def post_spare_purchase(
     try:
         stmt = (
             select(procurement_models.SparePurchase)
-            .options(selectinload(procurement_models.SparePurchase.items))
+            .options(
+                selectinload(procurement_models.SparePurchase.items),
+                selectinload(procurement_models.SparePurchase.vendor),
+            )
             .filter_by(spare_purchase_id=spare_purchase_id)
         )
         result = await db.execute(stmt)
@@ -213,6 +262,7 @@ async def post_spare_purchase(
         purchase.status = "POSTED"
         await db.commit()
         await db.refresh(purchase, ["items"])
+        await enrich_spare_purchase(db, purchase)
         return purchase
     except Exception as exc:
         await db.rollback()
@@ -321,17 +371,23 @@ async def list_spare_purchases(db: AsyncSession):
 
 
 async def get_spare_purchase(db: AsyncSession, spare_purchase_id: int):
-    """Get a spare purchase by ID (excludes soft-deleted)"""
+    """Get a spare purchase by ID (excludes soft-deleted) enriched with vendor and spare details."""
     stmt = (
         select(procurement_models.SparePurchase)
-        .options(selectinload(procurement_models.SparePurchase.items))
+        .options(
+            selectinload(procurement_models.SparePurchase.items),
+            selectinload(procurement_models.SparePurchase.vendor),
+        )
         .filter(
             procurement_models.SparePurchase.spare_purchase_id == spare_purchase_id,
             procurement_models.SparePurchase.is_deleted.is_(False),
         )
     )
     result = await db.execute(stmt)
-    return result.scalars().first()
+    purchase = result.scalars().first()
+    if purchase:
+        await enrich_spare_purchase(db, purchase)
+    return purchase
 
 
 async def list_vehicle_purchases(db: AsyncSession):

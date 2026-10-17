@@ -62,7 +62,18 @@ async def verify_spare_purchase(
     current_staff=Depends(require_roles("DEALER", "ADMIN")),
 ):
     """Verify and update OCR extracted draft (Dealer/Admin)"""
-    return await services.verify_spare_purchase(db, spare_purchase_id, data)
+    return await services.verify_spare_purchase(db, spare_purchase_id, data, current_staff=current_staff)
+
+
+@router.put("/purchases/spares/{spare_purchase_id}", response_model=schemas.SparePurchaseResponse)
+async def update_spare_purchase(
+    spare_purchase_id: int,
+    data: schemas.SparePurchaseCreate,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("DEALER", "ADMIN")),
+):
+    """Update an existing spare purchase order/invoice (Dealer/Admin)"""
+    return await services.verify_spare_purchase(db, spare_purchase_id, data, current_staff=current_staff)
 
 
 @router.post("/purchases/spares/{spare_purchase_id}/approve", response_model=schemas.SparePurchaseResponse)
