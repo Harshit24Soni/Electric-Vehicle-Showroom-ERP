@@ -177,3 +177,19 @@
     @apply hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors;
   }
 }
+
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari, Edge, and Opera */
+  .no-scrollbar::-webkit-scrollbar,
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for Firefox, IE, and modern Edge */
+  .no-scrollbar,
+  .hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+}
+

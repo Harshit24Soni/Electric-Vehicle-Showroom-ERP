@@ -164,9 +164,9 @@ export function Sidebar({ onItemClick }: { onItemClick?: () => void } = {}) {
     user?.role === 'ADMIN' ? 'cyan' : user?.role === 'DEALER' ? 'success' : 'info'
 
   return (
-    <aside className="w-64 bg-slate-900 dark:bg-[#0B0F19] text-slate-100 min-h-screen flex flex-col border-r border-slate-800 dark:border-slate-800/90 select-none transition-colors duration-200">
+    <aside className="w-64 bg-slate-900 dark:bg-[#0B0F19] text-slate-100 h-screen max-h-screen flex flex-col border-r border-slate-800 dark:border-slate-800/90 select-none transition-colors duration-200">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800/80 bg-slate-950/40">
+      <div className="p-5 border-b border-slate-800/80 bg-slate-950/40 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-600 via-primary-500 to-cyan-400 p-[1.5px] shadow-glow-sm">
             <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center">
@@ -200,7 +200,7 @@ export function Sidebar({ onItemClick }: { onItemClick?: () => void } = {}) {
       </div>
 
       {/* Nav Menu Groups */}
-      <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+      <nav className="flex-1 min-h-0 p-3 space-y-4 overflow-y-auto overscroll-contain no-scrollbar">
         {menuGroups.map((group, groupIdx) => {
           const visibleItems = group.items.filter((item) => hasRole(item.roles))
           if (visibleItems.length === 0) return null
@@ -324,7 +324,7 @@ export function Sidebar({ onItemClick }: { onItemClick?: () => void } = {}) {
       </nav>
 
       {/* Staff Account & Logout Section */}
-      <div className="p-3 border-t border-slate-800/80 bg-slate-950/50 space-y-2">
+      <div className="p-3 border-t border-slate-800/80 bg-slate-950/50 space-y-2 shrink-0 mt-auto">
         <Link
           to="/staff/profile"
           onClick={onItemClick}

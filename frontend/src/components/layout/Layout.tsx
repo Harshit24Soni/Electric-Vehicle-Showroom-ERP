@@ -11,7 +11,7 @@ export function Layout() {
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-200">
       {/* Desktop Sidebar (Fixed Left) */}
-      <div className="hidden lg:block shrink-0 shadow-lg dark:shadow-none z-30">
+      <div className="hidden lg:block shrink-0 shadow-lg dark:shadow-none z-30 h-screen">
         <Sidebar />
       </div>
 
@@ -23,7 +23,7 @@ export function Layout() {
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
-          <div className="fixed left-0 top-0 bottom-0 w-64 z-50 animate-in slide-in-from-left duration-200 shadow-2xl">
+          <div className="fixed left-0 top-0 bottom-0 w-64 z-50 animate-in slide-in-from-left duration-200 shadow-2xl h-screen overflow-hidden">
             <Sidebar onItemClick={() => setSidebarOpen(false)} />
           </div>
         </div>
