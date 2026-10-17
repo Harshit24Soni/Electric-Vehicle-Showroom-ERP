@@ -243,9 +243,9 @@ jobs:
         working-directory: ./backend
         env:
           ENVIRONMENT: production
-          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-          REDIS_URL: ${{ secrets.PRODUCTION_REDIS_URL || 'redis://localhost:6379/0' }}
+          REDIS_URL: ${{ secrets.REDIS_URL || 'redis://localhost:6379/0' }}
         run: |
           echo "Applying pending Alembic migrations to Supabase..."
           alembic upgrade head
@@ -254,9 +254,9 @@ jobs:
         working-directory: ./backend
         env:
           ENVIRONMENT: production
-          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-          REDIS_URL: ${{ secrets.PRODUCTION_REDIS_URL || 'redis://localhost:6379/0' }}
+          REDIS_URL: ${{ secrets.REDIS_URL || 'redis://localhost:6379/0' }}
         run: |
           echo "Seeding and verifying catalog master data against Supabase..."
           python scripts/seed_master_data.py
@@ -265,9 +265,9 @@ jobs:
         working-directory: ./backend
         env:
           ENVIRONMENT: production
-          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-          REDIS_URL: ${{ secrets.PRODUCTION_REDIS_URL || 'redis://localhost:6379/0' }}
+          REDIS_URL: ${{ secrets.REDIS_URL || 'redis://localhost:6379/0' }}
         run: |
           echo "Ensuring required system accounts exist without modifying credentials..."
           python scripts/seed_data.py --mode minimal --preserve-pins
