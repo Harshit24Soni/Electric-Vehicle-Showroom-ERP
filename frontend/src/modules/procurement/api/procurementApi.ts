@@ -200,6 +200,10 @@ export const procurementApi = {
         return api.put<SparePurchaseResponse>(`/procurement/purchases/spares/${id}/verify`, data)
     },
 
+    updateSparePurchase: async (id: number, data: SparePurchaseVerifyPayload) => {
+        return api.put<SparePurchaseResponse>(`/procurement/purchases/spares/${id}`, data)
+    },
+
     approveSparePurchase: async (id: number) => {
         return api.post<SparePurchaseResponse>(`/procurement/purchases/spares/${id}/approve`)
     },
