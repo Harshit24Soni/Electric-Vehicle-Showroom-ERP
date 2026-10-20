@@ -2,10 +2,10 @@ import logging
 import re
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Dict
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 
 from app.core.config import settings
 from app.modules.procurement.ocr_provider import (
@@ -100,39 +100,62 @@ class OCRService:
             db.add(purchase)
             await db.flush()
 
-            # 6. Process Line Items and Attempt to Resolve Part Codes
+            # 6. Batch Process Line Items and Resolve Part Codes in O(1) DB queries
+            raw_codes = [
+                str(item.part_code.value).strip()
+                for item in ocr_result.line_items
+                if item.part_code and str(item.part_code.value).strip()
+            ]
+            unique_codes_lower = list({c.lower() for c in raw_codes if c})
+
+            code_to_spare_map: Dict[str, int] = {}
+            if unique_codes_lower:
+                stmt = select(SparePartCode).filter(func.lower(SparePartCode.code).in_(unique_codes_lower))
+                res = await db.execute(stmt)
+                for rec in res.scalars().all():
+                    code_to_spare_map[rec.code.lower()] = rec.spare_id
+
+            # Batch description fallback for items not matched by code
+            unmatched_items: List[tuple] = []
+            clean_descriptions = set()
             for item in ocr_result.line_items:
-                part_code_val = str(item.part_code.value).strip()
-
-                # Step 6a: Look up part code in SparePartCode (case-insensitive)
-                stmt = select(SparePartCode).filter(func.lower(SparePartCode.code) == part_code_val.lower())
-                result = await db.execute(stmt)
-                part_code_record = result.scalars().first()
-
-                spare_id = part_code_record.spare_id if part_code_record else None
-
-                # Step 6b: If no direct code match, attempt intelligent match by description against SpareMaster
-                if not spare_id and item.part_description and item.part_description.value:
+                p_code = str(item.part_code.value).strip()
+                if p_code.lower() not in code_to_spare_map and item.part_description and item.part_description.value:
                     raw_desc = str(item.part_description.value).strip()
                     clean_desc = re.sub(r"SO\s*NO.*?/\s*\d+\s*", "", raw_desc, flags=re.IGNORECASE).strip()
                     clean_desc = re.sub(r"PO\d+.*", "", clean_desc, flags=re.IGNORECASE).strip()
                     clean_desc = re.sub(r"^[0-9\s/_-]+", "", clean_desc).strip()
-
                     if clean_desc and len(clean_desc) >= 3:
-                        name_stmt = select(SpareMaster).filter(SpareMaster.spare_name.ilike(f"%{clean_desc}%"))
-                        name_res = await db.execute(name_stmt)
-                        matched_spare = name_res.scalars().first()
-                        if matched_spare:
-                            spare_id = matched_spare.spare_id
-                            # Auto-register this OEM code into SparePartCode
-                            new_alias = SparePartCode(
-                                spare_id=spare_id,
-                                code=part_code_val,
-                                is_current=True,
-                                reason="Auto-mapped from invoice description match",
+                        unmatched_items.append((p_code, clean_desc))
+                        clean_descriptions.add(clean_desc)
+
+            if clean_descriptions:
+                desc_clauses = [SpareMaster.spare_name.ilike(f"%{d}%") for d in clean_descriptions]
+                name_stmt = select(SpareMaster).filter(or_(*desc_clauses))
+                name_res = await db.execute(name_stmt)
+                matched_spares = list(name_res.scalars().all())
+
+                new_aliases: List[SparePartCode] = []
+                for p_code, clean_desc in unmatched_items:
+                    for sp in matched_spares:
+                        if clean_desc.lower() in sp.spare_name.lower():
+                            code_to_spare_map[p_code.lower()] = sp.spare_id
+                            new_aliases.append(
+                                SparePartCode(
+                                    spare_id=sp.spare_id,
+                                    code=p_code,
+                                    is_current=True,
+                                    reason="Auto-mapped from invoice description match",
+                                )
                             )
-                            db.add(new_alias)
-                            await db.flush()
+                            break
+                if new_aliases:
+                    db.add_all(new_aliases)
+                    await db.flush()
+
+            for item in ocr_result.line_items:
+                part_code_val = str(item.part_code.value).strip()
+                spare_id = code_to_spare_map.get(part_code_val.lower())
 
                 # Determine verification status based on confidence threshold
                 if not spare_id:

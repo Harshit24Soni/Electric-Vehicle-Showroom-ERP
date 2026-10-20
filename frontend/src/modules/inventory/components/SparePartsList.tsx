@@ -12,11 +12,17 @@ import {
   CheckCircle2,
   Tag,
   X,
+  Receipt,
+  Trash2,
+  RotateCcw,
+  History,
+  AlertCircle,
 } from 'lucide-react'
 import { AxiosError } from 'axios'
 import { inventoryApi, SpareMasterItem, SpareMasterCreate } from '../api/inventoryApi'
 import { SparePartForm } from './SparePartForm'
 import SparePricingModal from './SparePricingModal'
+import PartPurchaseHistoryModal from './PartPurchaseHistoryModal'
 import { toast } from 'react-hot-toast'
 import { MetricCard } from '@/components/ui/MetricCard'
 import { Badge } from '@/components/ui/Badge'
@@ -36,13 +42,21 @@ export function SparePartsList({ onOpenRecordMovement }: SparePartsListProps) {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [showDeleted, setShowDeleted] = useState(false)
+  const [deletingSpare, setDeletingSpare] = useState<SpareMasterItem | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [pricingSpare, setPricingSpare] = useState<SpareMasterItem | null>(null)
+  const [purchaseHistoryItem, setPurchaseHistoryItem] = useState<{
+    part_code: string
+    description?: string
+    category?: string
+    stock_quantity?: number
+  } | null>(null)
 
   const { data: spares = [], isLoading } = useQuery({
-    queryKey: ['spares-inventory'],
+    queryKey: ['spares-inventory', showDeleted],
     queryFn: async () => {
-      return await inventoryApi.getSpares()
+      return await inventoryApi.getSpares(showDeleted)
     },
   })
 
@@ -65,6 +79,35 @@ export function SparePartsList({ onOpenRecordMovement }: SparePartsListProps) {
   const handleCreateSpare = (data: SpareMasterCreate) => {
     createSpareMutation.mutate(data)
   }
+
+  const deactivateSpareMutation = useMutation({
+    mutationFn: (spareId: number) => inventoryApi.deactivateSpare(spareId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['spares-inventory'] })
+      queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['master-sheet-items'] })
+      toast.success('Spare part soft-deleted successfully')
+      setDeletingSpare(null)
+    },
+    onError: (error: unknown) => {
+      const axiosErr = error as AxiosError<{ detail?: string }>
+      toast.error(axiosErr?.response?.data?.detail || 'Failed to soft delete spare part')
+    },
+  })
+
+  const restoreSpareMutation = useMutation({
+    mutationFn: (spareId: number) => inventoryApi.restoreSpare(spareId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['spares-inventory'] })
+      queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['master-sheet-items'] })
+      toast.success('Spare part restored successfully')
+    },
+    onError: (error: unknown) => {
+      const axiosErr = error as AxiosError<{ detail?: string }>
+      toast.error(axiosErr?.response?.data?.detail || 'Failed to restore spare part')
+    },
+  })
 
   // Derive unique categories
   const categories = useMemo(() => {
@@ -194,6 +237,21 @@ export function SparePartsList({ onOpenRecordMovement }: SparePartsListProps) {
               </select>
             )}
 
+            {/* Soft-Delete / Archive Filter Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowDeleted((prev) => !prev)}
+              className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition border shrink-0 ${
+                showDeleted
+                  ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 ring-1 ring-rose-300 dark:ring-rose-800'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+              }`}
+              title="Toggle viewing soft-deleted / archived spares"
+            >
+              <History className="w-3 h-3" />
+              <span>{showDeleted ? 'Showing Soft-Deleted' : 'Show Soft-Deleted'}</span>
+            </button>
+
             {canManageSpares && (
               <Button
                 variant="primary"
@@ -251,15 +309,38 @@ export function SparePartsList({ onOpenRecordMovement }: SparePartsListProps) {
               <tbody>
                 {filteredSpares.map((spare: SpareMasterItem) => {
                   const currentCode = spare.spare_code || '—'
+                  const isDeleted = Boolean(spare.is_deleted || !spare.is_active)
                   return (
                     <tr
                       key={spare.spare_id}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                      className={`transition-colors ${
+                        isDeleted
+                          ? 'bg-rose-50/20 dark:bg-rose-950/20 opacity-75'
+                          : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/50'
+                      }`}
                     >
                       <td>
-                        <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60">
-                          {currentCode}
-                        </span>
+                        {spare.spare_code ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPurchaseHistoryItem({
+                                part_code: spare.spare_code,
+                                description: spare.spare_name,
+                                category: spare.category,
+                              })
+                            }
+                            className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200/60 dark:border-blue-800/60 transition-colors inline-flex items-center gap-1.5 cursor-pointer text-left"
+                            title="Click to view purchase bills, quantities & rates history"
+                          >
+                            <span>{currentCode}</span>
+                            <Receipt className="w-3 h-3 opacity-60 hover:opacity-100" />
+                          </button>
+                        ) : (
+                          <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60">
+                            {currentCode}
+                          </span>
+                        )}
                       </td>
                       <td>
                         <div>
@@ -297,12 +378,33 @@ export function SparePartsList({ onOpenRecordMovement }: SparePartsListProps) {
                         )}
                       </td>
                       <td>
-                        <Badge variant={spare.is_active ? 'success' : 'neutral'}>
-                          {spare.is_active ? 'Active' : 'Archived'}
-                        </Badge>
+                        {spare.is_deleted ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/50 dark:border-rose-800/50">
+                            Soft-Deleted
+                          </span>
+                        ) : (
+                          <Badge variant={spare.is_active ? 'success' : 'neutral'}>
+                            {spare.is_active ? 'Active' : 'Archived'}
+                          </Badge>
+                        )}
                       </td>
                       <td className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {spare.spare_code && (
+                            <button
+                              onClick={() =>
+                                setPurchaseHistoryItem({
+                                  part_code: spare.spare_code,
+                                  description: spare.spare_name,
+                                  category: spare.category,
+                                })
+                              }
+                              className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors border border-transparent hover:border-blue-200/50"
+                              title="View Inward Bills, Rates & Quantity Summary"
+                            >
+                              <Receipt className="w-4 h-4" />
+                            </button>
+                          )}
                           {canViewPricing && (
                             <button
                               onClick={() => setPricingSpare(spare)}
@@ -311,6 +413,28 @@ export function SparePartsList({ onOpenRecordMovement }: SparePartsListProps) {
                             >
                               <DollarSign className="w-4 h-4" />
                             </button>
+                          )}
+                          {canManageSpares && (
+                            isDeleted ? (
+                              <button
+                                type="button"
+                                onClick={() => restoreSpareMutation.mutate(spare.spare_id)}
+                                disabled={restoreSpareMutation.isPending}
+                                className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition-colors border border-transparent hover:border-emerald-200/50"
+                                title="Restore Spare Part"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setDeletingSpare(spare)}
+                                className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors border border-transparent hover:border-rose-200/50"
+                                title="Soft Delete Spare Part"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )
                           )}
                         </div>
                       </td>
@@ -336,6 +460,64 @@ export function SparePartsList({ onOpenRecordMovement }: SparePartsListProps) {
           spare={pricingSpare}
           onClose={() => setPricingSpare(null)}
         />
+      )}
+
+      {purchaseHistoryItem && (
+        <PartPurchaseHistoryModal
+          item={purchaseHistoryItem}
+          onClose={() => setPurchaseHistoryItem(null)}
+        />
+      )}
+
+      {/* SOFT DELETE CONFIRMATION MODAL */}
+      {deletingSpare && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 rounded-xl">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Soft Delete Spare Part</h3>
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">Strict Soft Delete • Safely Reversible</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Are you sure you want to soft delete spare{' '}
+              <strong className="text-slate-900 dark:text-white">{deletingSpare.spare_name}</strong>
+              {deletingSpare.spare_code ? ` (${deletingSpare.spare_code})` : ''}?
+            </p>
+
+            <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl border border-amber-200/60 dark:border-amber-800/50 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+              <p className="font-semibold flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                Audit Compliance Notice
+              </p>
+              <p>
+                In accordance with ERP data integrity policy, records are never permanently purged. This part will be archived and can be restored at any time via <strong>Show Soft-Deleted</strong>.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingSpare(null)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => deactivateSpareMutation.mutate(deletingSpare.spare_id)}
+                disabled={deactivateSpareMutation.isPending}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm rounded-xl shadow-md shadow-rose-200 dark:shadow-rose-950/50 disabled:opacity-50"
+              >
+                {deactivateSpareMutation.isPending ? 'Soft Deleting...' : 'Confirm Soft Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -6,7 +6,7 @@ from app.db.session import get_db
 from app.auth.dependencies import get_current_staff
 from app.auth.roles import require_roles
 
-from app.modules.inventory import pricing_services, schemas_stock, services, services_stock
+from app.modules.inventory import pricing_services, purchase_history_service, schemas_stock, services, services_stock
 from app.modules.inventory.routes_tags import router as tags_router
 from app.modules.inventory.schemas import (
     VehicleMovementCreate,
@@ -92,10 +92,22 @@ async def update_spare(
 async def deactivate_spare(
     spare_id: int,
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(require_roles("ADMIN", "MANAGER")),
+    _staff=Depends(require_roles("ADMIN", "MANAGER", "DEALER")),
 ):
     try:
         return await services.deactivate_spare(db, spare_id)
+    except services.InventoryError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/spares/{spare_id}/restore", response_model=SpareMasterResponse)
+async def restore_spare(
+    spare_id: int,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(require_roles("ADMIN", "MANAGER", "DEALER")),
+):
+    try:
+        return await services.restore_spare(db, spare_id)
     except services.InventoryError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -381,6 +393,14 @@ async def get_spare_selling_price_history_api(
     spare_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
 ):
     return await pricing_services.get_selling_price_history(db, spare_id)
+
+
+@router.get("/spares/{spare_id}/purchase-history", response_model=purchase_history_service.PartPurchaseSummaryResponse)
+async def get_spare_purchase_history_api(
+    spare_id: int, db: AsyncSession = Depends(get_db), _staff=Depends(get_current_staff)
+):
+    """Retrieve full purchase bill and rate summary for a spare by ID."""
+    return await purchase_history_service.get_part_purchase_history(db, str(spare_id))
 
 
 router.include_router(tags_router)

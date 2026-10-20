@@ -146,6 +146,14 @@ export interface MovementHistoryListResponse {
 
 
 // Master Inventory Sheet Contracts
+export interface MasterSheetPaginatedResponse {
+  items: MasterSheetItem[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
 export interface MasterSheetItem {
   spare_id: number
   part_code: string
@@ -153,6 +161,8 @@ export interface MasterSheetItem {
   category: string
   tracking_mode: string
   status: string
+  is_deleted?: boolean
+  deleted_at?: string | null
   hsn_code?: string | null
   gst_rate?: number | null
   ex_factory?: number | null
@@ -206,6 +216,8 @@ export const inventoryApi = {
   getSpares: (includeDeleted = false) =>
     api.get<SpareMasterItem[]>('/inventory/spares', { params: { include_deleted: includeDeleted } }),
   createSpare: (data: SpareMasterCreate) => api.post<SpareMasterItem>('/inventory/spares', data),
+  deactivateSpare: (spareId: number) => api.delete<SpareMasterItem>(`/inventory/spares/${spareId}`),
+  restoreSpare: (spareId: number) => api.post<SpareMasterItem>(`/inventory/spares/${spareId}/restore`),
   getSpareStock: (spareId: number) => api.get<SpareStock>(`/inventory/spare/${spareId}/stock`),
   createSpareMovement: (data: SpareMovementCreate) => api.post<SpareMovement>('/inventory/spare/movement', data),
   createVehicleMovement: (data: VehicleMovementCreate) => api.post('/inventory/vehicle/movement', data),
@@ -220,8 +232,17 @@ export const inventoryApi = {
   getMovements: (page: number = 1, size: number = 50, spare_id?: number) => api.get<MovementHistoryListResponse>('/inventory/movements', { params: { page, size, spare_id } }),
 
   // Master Inventory Sheet API
-  getMasterSheet: (params?: { search?: string; category?: string; include_inactive?: boolean }) =>
-    api.get<MasterSheetItem[]>('/inventory/master-sheet', { params }),
+  getMasterSheet: (params?: {
+    search?: string
+    category?: string
+    model?: string
+    page?: number
+    page_size?: number
+    include_inactive?: boolean
+  }) =>
+    api.get<MasterSheetPaginatedResponse | MasterSheetItem[]>('/inventory/master-sheet', { params }),
+  getMasterSheetCategories: () =>
+    api.get<string[]>('/inventory/master-sheet/categories'),
   getActiveVehicleModels: () =>
     api.get<string[]>('/inventory/master-sheet/models'),
   createMasterSheetItem: (payload: MasterSheetItemCreate) =>
@@ -229,7 +250,15 @@ export const inventoryApi = {
   updateMasterSheetItem: (partCode: string, payload: MasterSheetItemUpdate) =>
     api.put<MasterSheetItem>(`/inventory/master-sheet/${encodeURIComponent(partCode)}`, payload),
   deleteMasterSheetItem: (partCode: string) =>
-    api.delete<{ success: boolean; message: string }>(`/inventory/master-sheet/${encodeURIComponent(partCode)}`),
+    api.delete<{ success: boolean; message: string; part_code: string }>(`/inventory/master-sheet/${encodeURIComponent(partCode)}`),
+  restoreMasterSheetItem: (partCode: string) =>
+    api.post<{ success: boolean; message: string; part_code: string }>(`/inventory/master-sheet/${encodeURIComponent(partCode)}/restore`),
+  getItemAlterations: (partCode: string) =>
+    api.get<SparePartAlteration[]>(`/inventory/master-sheet/${encodeURIComponent(partCode)}/alterations`),
+  revertAlteration: (alterationId: number, payload: RevertAlterationPayload) =>
+    api.post<RevertAlterationResponse>(`/inventory/master-sheet/alterations/${alterationId}/revert`, payload),
+  getPartPurchaseHistory: (partCode: string) =>
+    api.get<PartPurchaseSummary>(`/inventory/master-sheet/${encodeURIComponent(partCode)}/purchase-history`),
 
   // Worksheet Import (Mail Merge) & Dynamic Pricing Engine
   inspectDefaultWorkbook: () =>
@@ -308,7 +337,9 @@ export interface ParsedPreviewRow {
   dlp?: number | null
   mrp?: number | null
   ex_factory?: number | null
-  stock_quantity: number
+  ex_showroom?: number | null
+  dealer_margin_percent?: number | null
+  stock_quantity?: number | null
   model_prices: Record<string, number | null>
   status: 'READY' | 'WARNING' | 'ERROR'
   validation_messages: string[]
@@ -336,8 +367,10 @@ export interface ImportRowPayload {
   gst_rate?: number | null
   ex_factory?: number | null
   dlp?: number | null
+  ex_showroom?: number | null
+  dealer_margin_percent?: number | null
   mrp?: number | null
-  stock_quantity?: number
+  stock_quantity?: number | null
   model_prices?: Record<string, number | null>
   remarks?: string | null
 }
@@ -411,6 +444,87 @@ export interface ModelPricingRecord {
   gst_rate: number
   profit_margin_percent?: number | null
   stock_quantity: number
+}
+
+export interface SparePartAlteration {
+  alteration_id: number
+  spare_id: number
+  part_code: string
+  timestamp: string
+  action_type: 'IMPORT_PDF' | 'IMPORT_EXCEL' | 'MANUAL_EDIT' | 'COST_INWARD' | 'REVERSION' | string
+  source_reference?: string | null
+  altered_by_id?: number | null
+  altered_by_name?: string | null
+  changes: Record<string, { old: any; new: any }>
+  snapshot_before: Record<string, any>
+  snapshot_after: Record<string, any>
+  is_reverted: boolean
+  reverted_at?: string | null
+  reverted_by_id?: number | null
+}
+
+export interface RevertAlterationPayload {
+  fields_to_revert?: string[]
+}
+
+export interface RevertAlterationResponse {
+  success: boolean
+  alteration_id: number
+  reverted_fields: string[]
+  reversion_alteration_id?: number | null
+  message: string
+}
+
+export interface PartPurchaseBillRecord {
+  purchase_item_id?: number | null
+  spare_purchase_id?: number | null
+  bill_number: string
+  bill_date?: string | null
+  vendor_name?: string | null
+  vendor_id?: number | null
+  vendor_gstin?: string | null
+  quantity: number
+  unit_rate: number
+  gst_percentage?: number | null
+  tax_amount?: number | null
+  total_amount: number
+  landed_cost_unit?: number | null
+  ex_factory_unit?: number | null
+  status: string
+  verification_status?: string | null
+  source_type: string
+  source_label?: string | null
+  is_po_bill: boolean
+  docket_reference?: string | null
+  remarks?: string | null
+}
+
+export interface PartPurchaseSummary {
+  spare_id: number
+  part_code: string
+  part_name: string
+  category?: string | null
+  hsn_code?: string | null
+  tracking_mode: string
+  current_stock: number
+  current_cost?: number | null
+  current_dlp?: number | null
+  current_mrp?: number | null
+  current_margin_percent?: number | null
+  total_bills_count: number
+  direct_entries_count: number
+  total_records_count: number
+  total_quantity_bought: number
+  total_spend: number
+  last_purchase_rate?: number | null
+  last_purchase_date?: string | null
+  last_bill_number?: string | null
+  last_vendor_name?: string | null
+  last_rate_source?: string | null
+  lowest_purchase_rate?: number | null
+  highest_purchase_rate?: number | null
+  weighted_average_cost?: number | null
+  bills: PartPurchaseBillRecord[]
 }
 
 

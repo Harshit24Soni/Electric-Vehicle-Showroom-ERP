@@ -27,13 +27,19 @@ import {
   ChevronRight,
   ExternalLink,
   SlidersHorizontal,
+  History,
+  Receipt,
+  RotateCcw,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import AlterationHistoryModal from '../components/AlterationHistoryModal'
+import PartPurchaseHistoryModal from '../components/PartPurchaseHistoryModal'
 import {
   inventoryApi,
   MasterSheetItem,
   MasterSheetItemCreate,
   MasterSheetItemUpdate,
+  MasterSheetPaginatedResponse,
   ModelPricingRecord,
 } from '../api/inventoryApi'
 
@@ -56,6 +62,7 @@ export default function InventoryTablePage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedModelFilter, setSelectedModelFilter] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
 
@@ -63,6 +70,8 @@ export default function InventoryTablePage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<MasterSheetItem | null>(null)
   const [deletingPartCode, setDeletingPartCode] = useState<string | null>(null)
+  const [historyItem, setHistoryItem] = useState<MasterSheetItem | null>(null)
+  const [purchaseHistoryItem, setPurchaseHistoryItem] = useState<MasterSheetItem | null>(null)
 
   // Dedicated Vehicle Model Matrix Filter
   const [matrixModelFilter, setMatrixModelFilter] = useState<string>('ALL')
@@ -72,24 +81,118 @@ export default function InventoryTablePage() {
   const [simulatorNewCost, setSimulatorNewCost] = useState<number>(50)
   const [simulatorSourceRef, setSimulatorSourceRef] = useState<string>('Supplier Purchase Invoice')
 
-  // 1. Fetch Master Sheet Items
+  // 1. Fetch categories via high-speed DB distinct query (< 5ms)
+  const { data: serverCategories = [] } = useQuery<string[]>({
+    queryKey: ['master-sheet-categories'],
+    queryFn: async () => {
+      try {
+        const res = await inventoryApi.getMasterSheetCategories()
+        return Array.isArray(res) ? res : []
+      } catch {
+        return []
+      }
+    },
+  })
+
+  // 2. Fetch Master Sheet Items (with server-side pagination & filtering)
   const {
-    data: items = [],
+    data: masterSheetData,
     isLoading,
     isRefetching,
     refetch,
-  } = useQuery<MasterSheetItem[]>({
-    queryKey: ['master-sheet-items'],
-    queryFn: () => inventoryApi.getMasterSheet(),
+  } = useQuery({
+    queryKey: ['master-sheet-items', currentPage, pageSize, searchTerm, selectedCategory, selectedModelFilter, showArchived],
+    queryFn: () =>
+      inventoryApi.getMasterSheet({
+        page: currentPage,
+        page_size: pageSize,
+        search: searchTerm || undefined,
+        category: selectedCategory || undefined,
+        model: selectedModelFilter || undefined,
+        include_inactive: showArchived,
+      }),
+    placeholderData: (prev) => prev,
   })
 
-  // 2. Fetch active Vehicle Models
+  // Dual-mode compatibility: handles both server-paginated response & array response (e.g. test mocks)
+  const isServerPaginated = Boolean(
+    masterSheetData && !Array.isArray(masterSheetData) && 'items' in (masterSheetData as any)
+  )
+
+  const rawItems: MasterSheetItem[] = useMemo(() => {
+    if (!masterSheetData) return []
+    if (isServerPaginated) return (masterSheetData as MasterSheetPaginatedResponse).items
+    return Array.isArray(masterSheetData) ? (masterSheetData as MasterSheetItem[]) : []
+  }, [masterSheetData, isServerPaginated])
+
+  // Backward-compatible alias
+  const items = rawItems
+
+  // Filtered rows for Catalog (applied client-side if array / test mock, otherwise direct from server)
+  const filteredItems = useMemo(() => {
+    if (isServerPaginated) {
+      return rawItems
+    }
+    return rawItems.filter((item: MasterSheetItem) => {
+      if (!showArchived && (item.is_deleted || item.status === 'INACTIVE')) {
+        return false
+      }
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase()
+        const matchesCode = item.part_code?.toLowerCase().includes(q)
+        const matchesDesc = item.description?.toLowerCase().includes(q)
+        const matchesHsn = item.hsn_code?.toLowerCase().includes(q)
+        if (!matchesCode && !matchesDesc && !matchesHsn) return false
+      }
+      if (selectedCategory && item.category !== selectedCategory) {
+        return false
+      }
+      if (selectedModelFilter) {
+        const isCompatible = item.compatible_models?.includes(selectedModelFilter)
+        if (!isCompatible) return false
+      }
+      return true
+    })
+  }, [rawItems, isServerPaginated, searchTerm, selectedCategory, selectedModelFilter, showArchived])
+
+  const totalCount = isServerPaginated
+    ? (masterSheetData as MasterSheetPaginatedResponse).total
+    : filteredItems.length
+
+  const totalPages = isServerPaginated
+    ? (masterSheetData as MasterSheetPaginatedResponse).total_pages
+    : Math.ceil(filteredItems.length / pageSize) || 1
+
+  const paginatedItems = useMemo(() => {
+    if (isServerPaginated) {
+      return rawItems
+    }
+    const start = (currentPage - 1) * pageSize
+    return filteredItems.slice(start, start + pageSize)
+  }, [isServerPaginated, rawItems, filteredItems, currentPage, pageSize])
+
+  // Reset page when filter changes
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedCategory, selectedModelFilter, pageSize, showArchived])
+
+  // Unique categories for filtering (server distinct list or fallback to item categories)
+  const categories = useMemo(() => {
+    if (serverCategories && serverCategories.length > 0) return serverCategories
+    const set = new Set<string>()
+    rawItems.forEach((item: MasterSheetItem) => {
+      if (item.category) set.add(item.category)
+    })
+    return Array.from(set).sort()
+  }, [serverCategories, rawItems])
+
+  // 3. Fetch active Vehicle Models
   const { data: vehicleModels = [] } = useQuery<string[]>({
     queryKey: ['master-sheet-models'],
     queryFn: () => inventoryApi.getActiveVehicleModels(),
   })
 
-  // 3. Fetch Model Pricing Matrix records
+  // 4. Fetch Model Pricing Matrix records
   const { data: matrixRecords = [], isLoading: isMatrixLoading, refetch: refetchMatrix } = useQuery<ModelPricingRecord[]>({
     queryKey: ['model-pricing-matrix'],
     queryFn: () => inventoryApi.getModelPricingMatrix(),
@@ -100,6 +203,7 @@ export default function InventoryTablePage() {
     mutationFn: (payload: MasterSheetItemCreate) => inventoryApi.createMasterSheetItem(payload),
     onSuccess: (data: MasterSheetItem) => {
       queryClient.invalidateQueries({ queryKey: ['master-sheet-items'] })
+      queryClient.invalidateQueries({ queryKey: ['master-sheet-categories'] })
       queryClient.invalidateQueries({ queryKey: ['model-pricing-matrix'] })
       toast.success(`Part '${data.part_code}' added successfully!`)
       setIsAddModalOpen(false)
@@ -116,6 +220,7 @@ export default function InventoryTablePage() {
       inventoryApi.updateMasterSheetItem(partCode, payload),
     onSuccess: (data: MasterSheetItem) => {
       queryClient.invalidateQueries({ queryKey: ['master-sheet-items'] })
+      queryClient.invalidateQueries({ queryKey: ['master-sheet-categories'] })
       queryClient.invalidateQueries({ queryKey: ['model-pricing-matrix'] })
       toast.success(`Part '${data.part_code}' updated successfully!`)
       setEditingItem(null)
@@ -129,15 +234,31 @@ export default function InventoryTablePage() {
 
   const deleteMutation = useMutation({
     mutationFn: (partCode: string) => inventoryApi.deleteMasterSheetItem(partCode),
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['master-sheet-items'] })
+      queryClient.invalidateQueries({ queryKey: ['master-sheet-categories'] })
       queryClient.invalidateQueries({ queryKey: ['model-pricing-matrix'] })
-      toast.success('Part deleted successfully!')
+      toast.success(res?.message || 'Part soft-deleted successfully!')
       setDeletingPartCode(null)
     },
      
     onError: (err: any) => {
       const msg = err.response?.data?.detail || 'Failed to delete part.'
+      toast.error(msg)
+    },
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: (partCode: string) => inventoryApi.restoreMasterSheetItem(partCode),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['master-sheet-items'] })
+      queryClient.invalidateQueries({ queryKey: ['master-sheet-categories'] })
+      queryClient.invalidateQueries({ queryKey: ['model-pricing-matrix'] })
+      toast.success(res?.message || 'Part restored successfully!')
+    },
+     
+    onError: (err: any) => {
+      const msg = err.response?.data?.detail || 'Failed to restore part.'
       toast.error(msg)
     },
   })
@@ -157,48 +278,6 @@ export default function InventoryTablePage() {
       toast.error(msg)
     },
   })
-
-  // Unique categories for filtering
-  const categories = useMemo(() => {
-    const set = new Set<string>()
-    items.forEach((item: MasterSheetItem) => {
-      if (item.category) set.add(item.category)
-    })
-    return Array.from(set).sort()
-  }, [items])
-
-  // Filtered rows for Catalog
-  const filteredItems = useMemo(() => {
-    return items.filter((item: MasterSheetItem) => {
-      if (searchTerm) {
-        const q = searchTerm.toLowerCase()
-        const matchesCode = item.part_code?.toLowerCase().includes(q)
-        const matchesDesc = item.description?.toLowerCase().includes(q)
-        const matchesHsn = item.hsn_code?.toLowerCase().includes(q)
-        if (!matchesCode && !matchesDesc && !matchesHsn) return false
-      }
-      if (selectedCategory && item.category !== selectedCategory) {
-        return false
-      }
-      if (selectedModelFilter) {
-        const isCompatible = item.compatible_models?.includes(selectedModelFilter)
-        if (!isCompatible) return false
-      }
-      return true
-    })
-  }, [items, searchTerm, selectedCategory, selectedModelFilter])
-
-  // Pagination for Catalog
-  const totalPages = Math.ceil(filteredItems.length / pageSize) || 1
-  const paginatedItems = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredItems.slice(start, start + pageSize)
-  }, [filteredItems, currentPage, pageSize])
-
-  // Reset page when filter changes
-  React.useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, selectedCategory, selectedModelFilter, pageSize])
 
   // Active Simulator Spare
   const simulatorSpare = useMemo(() => {
@@ -247,8 +326,25 @@ export default function InventoryTablePage() {
   }, [simulatorSpare, simulatorNewCost])
 
   // CSV Export handler
-  const handleExportCSV = () => {
-    if (!filteredItems.length) {
+  const handleExportCSV = async () => {
+    let exportSource = filteredItems
+    if (isServerPaginated) {
+      const toastId = toast.loading('Preparing complete spreadsheet export...')
+      try {
+        const res = await inventoryApi.getMasterSheet({
+          search: searchTerm || undefined,
+          category: selectedCategory || undefined,
+          model: selectedModelFilter || undefined,
+        })
+        exportSource = Array.isArray(res) ? res : (res as any).items || []
+        toast.dismiss(toastId)
+      } catch {
+        toast.dismiss(toastId)
+        exportSource = paginatedItems
+      }
+    }
+
+    if (!exportSource.length) {
       toast.error('No items to export')
       return
     }
@@ -269,7 +365,7 @@ export default function InventoryTablePage() {
       'Remarks',
     ]
 
-    const csvRows = filteredItems.map((item: MasterSheetItem) => {
+    const csvRows = exportSource.map((item: MasterSheetItem) => {
       const modelCols = vehicleModels.map((vm: string) => {
         const p = item.model_prices?.[vm] ?? item[vm]
         return p !== null && p !== undefined ? String(p) : ''
@@ -338,7 +434,7 @@ export default function InventoryTablePage() {
               Live Data Grid
             </span>
             <span className="text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700">
-              {items.length} Parts
+              {totalCount} Parts
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -400,7 +496,7 @@ export default function InventoryTablePage() {
           <Package className="w-4 h-4" />
           Spares Catalog & Pricing
           <span className="ml-1.5 px-2 py-0.5 text-xs rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">
-            {filteredItems.length}
+            {totalCount}
           </span>
         </button>
 
@@ -443,7 +539,7 @@ export default function InventoryTablePage() {
               </div>
               <div>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Part Rows</p>
-                <p className="text-xl font-bold text-slate-900 dark:text-white">{items.length}</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-white">{totalCount}</p>
               </div>
             </div>
 
@@ -473,7 +569,7 @@ export default function InventoryTablePage() {
               </div>
               <div>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Filtered View</p>
-                <p className="text-xl font-bold text-slate-900 dark:text-white">{filteredItems.length} records</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-white">{totalCount} records</p>
               </div>
             </div>
           </div>
@@ -543,6 +639,21 @@ export default function InventoryTablePage() {
                   Reset Filters
                 </button>
               )}
+
+              {/* Strict Soft-Delete / Archive Filter Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowArchived((prev) => !prev)}
+                className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border shrink-0 ${
+                  showArchived
+                    ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 ring-1 ring-rose-300 dark:ring-rose-800'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750'
+                }`}
+                title="Toggle viewing soft-deleted / archived parts"
+              >
+                <History className="w-3.5 h-3.5" />
+                <span>{showArchived ? 'Showing Soft-Deleted' : 'Show Soft-Deleted'}</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
@@ -558,7 +669,7 @@ export default function InventoryTablePage() {
               </select>
 
               <div className="text-xs text-slate-500 dark:text-slate-400 font-medium ml-2">
-                Showing <span className="text-slate-900 dark:text-white font-bold">{filteredItems.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredItems.length)}</span> of {filteredItems.length}
+                Showing <span className="text-slate-900 dark:text-white font-bold">{totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalCount)}</span> of {totalCount}
               </div>
             </div>
           </div>
@@ -617,22 +728,39 @@ export default function InventoryTablePage() {
                     paginatedItems.map((item: MasterSheetItem, idx: number) => {
                       const absoluteIdx = (currentPage - 1) * pageSize + idx + 1
                       const margin = item.profit_margin_percent
+                      const isDeleted = Boolean(item.is_deleted || item.status === 'INACTIVE')
 
                       return (
                         <tr
                           key={item.spare_id}
-                          className={`group hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 transition-colors ${
-                            idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/30 dark:bg-slate-850/40'
-                          }`}
+                          className={`group transition-colors ${
+                            isDeleted
+                              ? 'bg-rose-50/20 dark:bg-rose-950/20 opacity-75'
+                              : idx % 2 === 0
+                              ? 'bg-white dark:bg-slate-900'
+                              : 'bg-slate-50/30 dark:bg-slate-850/40'
+                          } hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30`}
                         >
                           {/* Index */}
                           <td className="py-3 px-4 text-center text-xs text-slate-400 dark:text-slate-500 font-mono">{absoluteIdx}</td>
 
                           {/* Part Code */}
                           <td className="py-3 px-4">
-                            <span className="font-mono font-semibold text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/50 px-2.5 py-1 rounded-md">
-                              {item.part_code}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                onClick={() => setPurchaseHistoryItem(item)}
+                                className="font-mono font-semibold text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 border border-indigo-200/60 dark:border-indigo-800/50 px-2.5 py-1 rounded-md transition text-left inline-flex items-center gap-1.5 group/code"
+                                title="Click to view purchase bills, quantities, and rates"
+                              >
+                                <span>{item.part_code}</span>
+                                <Receipt className="w-3 h-3 text-indigo-400 dark:text-indigo-500 opacity-60 group-hover/code:opacity-100 transition-opacity" />
+                              </button>
+                              {isDeleted && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                  SOFT-DELETED
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           {/* Description */}
@@ -734,6 +862,14 @@ export default function InventoryTablePage() {
                           <td className="py-3 px-4 text-center sticky right-0 bg-white dark:bg-slate-900 group-hover:bg-indigo-50/40 dark:group-hover:bg-indigo-950/30 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">
                             <div className="flex items-center justify-center gap-1.5">
                               <button
+                                onClick={() => setPurchaseHistoryItem(item)}
+                                className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition"
+                                title="Purchase Bills & Rate History"
+                                aria-label="Purchase Bills & Rate History"
+                              >
+                                <Receipt className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={() => {
                                   setSimulatorSelectedSpareId(item.spare_id)
                                   setActiveTab('margin-simulator')
@@ -744,19 +880,37 @@ export default function InventoryTablePage() {
                                 <Calculator className="w-4 h-4" />
                               </button>
                               <button
+                                onClick={() => setHistoryItem(item)}
+                                className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 rounded-lg transition"
+                                title="Alteration History & Reversion"
+                              >
+                                <History className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={() => setEditingItem(item)}
                                 className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-lg transition"
                                 title="Edit Part Row"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
-                              <button
-                                onClick={() => setDeletingPartCode(item.part_code)}
-                                className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition"
-                                title="Delete Part"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {isDeleted ? (
+                                <button
+                                  onClick={() => restoreMutation.mutate(item.part_code)}
+                                  disabled={restoreMutation.isPending}
+                                  className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition"
+                                  title="Restore Part"
+                                >
+                                  <RotateCcw className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setDeletingPartCode(item.part_code)}
+                                  className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition"
+                                  title="Delete Part"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1584,13 +1738,23 @@ export default function InventoryTablePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Delete Part Record</h3>
-                <p className="text-xs text-slate-500">This will soft-delete the record safely from ERP inventory</p>
+                <p className="text-xs text-rose-600 font-semibold">Strict Soft Delete • Safely Reversible</p>
               </div>
             </div>
 
             <p className="text-sm text-slate-600">
-              Are you sure you want to delete part <strong className="font-mono text-slate-900">{deletingPartCode}</strong>?
+              Are you sure you want to soft delete part <strong className="font-mono text-slate-900">{deletingPartCode}</strong>?
             </p>
+
+            <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/60 text-xs text-amber-800 space-y-1">
+              <p className="font-semibold flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                Audit Compliance Notice
+              </p>
+              <p>
+                In accordance with ERP data integrity policy, records are never permanently purged. This row will be archived and can be restored at any time via <strong>Show Soft-Deleted</strong>.
+              </p>
+            </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
@@ -1604,11 +1768,28 @@ export default function InventoryTablePage() {
                 disabled={deleteMutation.isPending}
                 className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm rounded-xl shadow-md shadow-rose-200 disabled:opacity-50"
               >
-                {deleteMutation.isPending ? 'Deleting...' : 'Confirm Delete'}
+                {deleteMutation.isPending ? 'Soft Deleting...' : 'Confirm Delete'}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ALTERATION HISTORY & REVERSION MODAL */}
+      {historyItem && (
+        <AlterationHistoryModal
+          item={historyItem}
+          onClose={() => setHistoryItem(null)}
+          onSuccess={() => refetch()}
+        />
+      )}
+
+      {/* PURCHASE BILLS & RATE HISTORY SUMMARY MODAL */}
+      {purchaseHistoryItem && (
+        <PartPurchaseHistoryModal
+          item={purchaseHistoryItem}
+          onClose={() => setPurchaseHistoryItem(null)}
+        />
       )}
     </div>
   )

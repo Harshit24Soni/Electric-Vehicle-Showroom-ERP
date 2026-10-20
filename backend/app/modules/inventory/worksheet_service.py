@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import warnings
 
 import openpyxl
+import pdfplumber
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -26,6 +27,7 @@ from app.modules.inventory.models import (
     SpareStockMovement,
 )
 from app.modules.inventory.pricing_engine import calculate_observed_margin
+from app.modules.inventory.alteration_service import capture_spare_snapshot, record_alteration
 from app.modules.master.models import Brand, VehicleModel
 
 # Filter out openpyxl user warnings (e.g., malformed date serials or unsupported cell features)
@@ -38,6 +40,7 @@ TEMP_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Simple in-memory cache for parsed workbook metadata
 WORKBOOK_CACHE: Dict[str, Dict[str, Any]] = {}
+PDF_TABLES_CACHE: Dict[str, Dict[str, Any]] = {}
 
 
 def get_candidate_default_paths() -> List[Path]:
@@ -67,7 +70,7 @@ def find_default_workbook_path() -> Optional[Path]:
     # Fallback to the most recent workbook in TEMP_UPLOAD_DIR if available
     if TEMP_UPLOAD_DIR.exists():
         recent_uploads = sorted(
-            [f for f in TEMP_UPLOAD_DIR.glob("*.*") if f.suffix.lower() in (".xlsx", ".xls", ".xlsm")],
+            [f for f in TEMP_UPLOAD_DIR.glob("*.*") if f.suffix.lower() in (".xlsx", ".xls", ".xlsm", ".pdf")],
             key=lambda f: f.stat().st_mtime,
             reverse=True,
         )
@@ -77,28 +80,26 @@ def find_default_workbook_path() -> Optional[Path]:
 
 
 def get_workbook_path(file_token: Optional[str] = None) -> Optional[Path]:
-    """Resolves the workbook path from a file token or falls back to the default file."""
+    """Resolves the workbook/PDF path from a file token or falls back to the default file."""
     if not file_token or file_token == "default":
         return find_default_workbook_path()
 
-    target = TEMP_UPLOAD_DIR / f"{file_token}.xlsx"
-    if target.exists():
-        return target
-    target_xls = TEMP_UPLOAD_DIR / f"{file_token}.xls"
-    if target_xls.exists():
-        return target_xls
+    for ext in (".xlsx", ".xls", ".xlsm", ".pdf"):
+        target = TEMP_UPLOAD_DIR / f"{file_token}{ext}"
+        if target.exists():
+            return target
     return None
 
 
 def clean_cell_str(val: Any) -> Optional[str]:
-    """Cleans a cell value into a trimmed string."""
+    """Cleans a cell value into a trimmed string, replacing linebreaks with single spaces."""
     if val is None:
         return None
     if isinstance(val, float):
         if val.is_integer():
             return str(int(val)).strip()
         return f"{val:g}".strip()
-    s = str(val).strip()
+    s = str(val).replace("\r\n", " ").replace("\n", " ").strip()
     return s if s else None
 
 
@@ -110,6 +111,10 @@ def clean_cell_float(val: Any) -> Optional[float]:
         return float(val)
     s = str(val).strip().replace(",", "")
     if not s or s.lower() in ("none", "null", "-", "na", "n/a", "—"):
+        return None
+    # Strip common currency signs, Indian notation suffixes, and percentages
+    s = s.replace("₹", "").replace("Rs.", "").replace("Rs", "").replace("INR", "").replace("/-", "").replace("%", "").strip()
+    if not s:
         return None
     # If string contains multiple numbers like '350 / 450', take the second (revised/GST) or first
     if "/" in s:
@@ -130,6 +135,16 @@ def clean_cell_int(val: Any) -> int:
     flt = clean_cell_float(val)
     if flt is None:
         return 0
+    return int(round(flt))
+
+
+def clean_cell_optional_int(val: Any) -> Optional[int]:
+    """Converts a cell value safely to an integer if present, returning None if absent or non-numeric."""
+    if val is None:
+        return None
+    flt = clean_cell_float(val)
+    if flt is None:
+        return None
     return int(round(flt))
 
 
@@ -266,41 +281,70 @@ def auto_detect_field_mappings(headers: List[str], sheet_name: str) -> Dict[str,
     # GST Rate
     gst = find_best_header(
         ["revised gst", "gst rate", "gst %", "gst percentage", "gst"],
-        exclude=["gstin", "number", "no"],
+        exclude=["value", "amount", "gstin", "number", "no"],
     )
     if gst:
         mapping["gst_rate"] = gst
 
-    # DLP (Dealer Landing Price)
-    dlp = find_best_header(["revised dlp", "old dlp", "dlp", "dealer price", "landed cost", "dealer landing price"])
+    # Ex Factory (Manufacturer Base Price before GST)
+    ex_factory = find_best_header(
+        ["ex factory", "ex-factory", "ex factory price", "factory price", "base price", "unit cost before tax"],
+        exclude=["showroom", "final", "dlp", "landing", "mrp", "gst"],
+    )
+    if ex_factory:
+        mapping["ex_factory"] = ex_factory
+
+    # DLP (Dealer Landing Price = Purchase Rate = Ex Factory + GST)
+    dlp = find_best_header(
+        ["dealer landing price", "revised dlp", "old dlp", "dlp", "dealer price", "landed cost", "dealer landing", "landing price", "purchase rate"],
+        exclude=["margin", "showroom", "factory", "mrp"],
+    )
     if dlp:
         mapping["dlp"] = dlp
 
-    # MRP (Customer Selling Price)
-    # Prefer "Final Rates - Customer Price" or "Revised MRP" or "Customer Price"
+    # Dealer Margin %
+    margin = find_best_header(
+        ["dealer margin %", "dealer margin percent", "dealer margin", "margin %", "markup %", "margin percentage"],
+        exclude=["amount", "value", "landing"],
+    )
+    if margin:
+        mapping["dealer_margin_percent"] = margin
+
+    # Ex Showroom Price (Dealer Selling Price before Customer GST = Ex Factory + Margin)
+    ex_showroom = find_best_header(
+        ["final rates - ex showroom price", "ex showroom price", "ex showroom", "ex-showroom price", "ex-showroom", "showroom price"],
+        exclude=["factory", "dlp", "mrp", "gst"],
+    )
+    if ex_showroom:
+        mapping["ex_showroom"] = ex_showroom
+
+    # MRP (Customer Selling Price = Ex Showroom + Customer GST)
     mrp = find_best_header(
-        ["final rates - customer price", "revised mrp", "customer price", "old mrp", "mrp", "selling price"],
-        exclude=["without gst"],
+        ["final rates - customer price", "revised mrp", "customer price", "old mrp", "mrp", "maximum retail price", "selling price", "retail price"],
+        exclude=["without gst", "showroom", "dlp", "factory", "cost"],
     )
     if mrp:
         mapping["mrp"] = mrp
 
-    # Ex Factory / Ex Showroom
-    ex = find_best_header(
-        ["final rates - ex showroom price", "ex showroom price", "ex factory", "ex showroom", "factory price"]
-    )
-    if ex:
-        mapping["ex_factory"] = ex
-
-    # Stock Quantity
+    # Stock Quantity - ONLY match if an exclusive stock/quantity column is explicitly present
+    # Plain 'qty' or 'quantity' in rate lists indicates packaging/per-unit spec (e.g. 1 unit), NEVER showroom inventory balance
     stock = find_best_header(
-        ["current inventory", "current stock", "available stock", "qty", "quantity", "stock quantity", "inventory"]
+        [
+            "current inventory stock", "current inventory", "current stock", "available stock", "stock quantity",
+            "physical stock", "closing stock", "opening stock", "in-stock qty", "in stock qty",
+            "stock qty", "inventory qty", "qty in stock", "quantity in stock", "units in stock",
+            "on hand stock", "stock on hand"
+        ],
+        exclude=[
+            "rate", "rates", "price", "prices", "cost", "dlp", "mrp", "value", "amount",
+            "old", "hsn", "code", "desc", "name", "category", "unit price", "unit cost", "tax", "moq", "lot"
+        ],
     )
     if stock:
         mapping["stock_quantity"] = stock
 
-    # Category
-    cat = find_best_header(["category", "part category", "group", "item type"])
+    # Category / Classification
+    cat = find_best_header(["unique/common", "category", "part category", "group", "item type", "classification"])
     if cat:
         mapping["category"] = cat
 
@@ -340,11 +384,257 @@ def detect_available_model_price_columns(headers: List[str]) -> List[Dict[str, s
     return results
 
 
+def extract_pdf_table_groups(file_path: Path) -> Dict[str, Dict[str, Any]]:
+    """Extracts tables from a PDF document using pdfplumber, handling multi-page tables,
+
+    repeated headers, and column structure grouping.
+    Returns a dictionary mapping sheet/table names to table metadata:
+    {
+        "headers": headers,
+        "data_start_row": int,
+        "has_super_header": bool,
+        "sheet_type": str,
+        "auto_mapping": Dict[str, str],
+        "model_columns": List[Dict[str, str]],
+        "rows": List[List[Any]],
+    }
+    """
+    cache_key = f"{file_path}_{os.path.getmtime(file_path)}"
+    if cache_key in PDF_TABLES_CACHE:
+        return PDF_TABLES_CACHE[cache_key]
+
+    raw_page_tables: List[Tuple[int, List[List[Any]]]] = []
+    with pdfplumber.open(str(file_path)) as pdf:
+        for page_idx, page in enumerate(pdf.pages):
+            tables = page.extract_tables()
+            if not tables:
+                tables = page.extract_tables(table_settings={"vertical_strategy": "text", "horizontal_strategy": "text"})
+            for table in (tables or []):
+                cleaned_table = []
+                for row in table:
+                    cleaned_row = [clean_cell_str(c) for c in row]
+                    if any(c is not None for c in cleaned_row):
+                        cleaned_table.append(cleaned_row)
+                if cleaned_table:
+                    raw_page_tables.append((page_idx, cleaned_table))
+
+    if not raw_page_tables:
+        PDF_TABLES_CACHE[cache_key] = {}
+        return {}
+
+    header_keywords = [
+        "part code", "item code", "part no", "part number", "part_code", "sku", "code",
+        "description", "part name", "item name", "hsn", "sac", "gst", "dlp", "mrp",
+        "price", "rate", "cost", "qty", "quantity", "stock"
+    ]
+
+    # Find the dominant price list table across all pages (even across 20+ pages)
+    dominant_col_count = None
+    for p_idx, tbl in raw_page_tables:
+        if not tbl:
+            continue
+        for row in tbl[:5]:
+            row_text = " ".join([c.lower() for c in row if c])
+            if sum(1 for kw in header_keywords if kw in row_text) >= 2 and len(tbl[0]) >= 3:
+                dominant_col_count = len(tbl[0])
+                break
+        if dominant_col_count is not None:
+            break
+
+    table_groups: Dict[str, List[Tuple[int, List[List[Any]]]]] = {}
+
+    if dominant_col_count is not None:
+        # Consolidate all price list pages into a unified "Price List Table"
+        dominant_tables = []
+        other_tables = []
+        for p_idx, tbl in raw_page_tables:
+            c_cnt = len(tbl[0])
+            # If within 1 column difference or has >= 3 columns, group into dominant table
+            if abs(c_cnt - dominant_col_count) <= 1 or c_cnt >= 4:
+                dominant_tables.append((p_idx, tbl))
+            else:
+                other_tables.append((p_idx, tbl))
+
+        table_groups["Price List Table"] = dominant_tables
+        for p_idx, tbl in other_tables:
+            c_cnt = len(tbl[0])
+            gname = f"Auxiliary Table ({c_cnt} Columns)"
+            if gname not in table_groups:
+                table_groups[gname] = []
+            table_groups[gname].append((p_idx, tbl))
+    else:
+        # Fallback grouping continuous tables by column count
+        col_counts = [len(tbl[0]) for _, tbl in raw_page_tables if tbl]
+        all_same_col_count = len(set(col_counts)) == 1
+        if all_same_col_count:
+            table_groups["Price List Table"] = raw_page_tables
+        else:
+            for p_idx, tbl in raw_page_tables:
+                c_cnt = len(tbl[0])
+                gname = f"Table ({c_cnt} Columns)"
+                if gname not in table_groups:
+                    table_groups[gname] = []
+                table_groups[gname].append((p_idx, tbl))
+
+    result: Dict[str, Dict[str, Any]] = {}
+
+    for group_name, page_tables in table_groups.items():
+        if not page_tables:
+            continue
+
+        first_p_idx, first_table = page_tables[0]
+        # Find header row in first table (within first 5 rows)
+        header_idx = 0
+        for idx, row in enumerate(first_table[:5]):
+            row_text = " ".join([c.lower() for c in row if c])
+            if any(kw in row_text for kw in header_keywords):
+                header_idx = idx
+                break
+
+        # Check for 2-row superheader
+        has_super = False
+        headers: List[str] = []
+        data_start_row = header_idx + 1
+
+        if header_idx + 1 < len(first_table):
+            r0 = first_table[header_idx]
+            r1 = first_table[header_idx + 1]
+            r1_text = " ".join([c.lower() for c in r1 if c])
+            if any(k in r1_text for k in ["part code", "description", "part name", "price", "mrp", "dlp", "gst"]):
+                has_super = True
+                data_start_row = header_idx + 2
+                seen: Dict[str, int] = {}
+                current_super = ""
+                for idx, (c0, c1) in enumerate(zip(r0, r1)):
+                    if c0 and c0 not in ["Q", "/", " ", "-", "_"]:
+                        current_super = c0
+                    col_name = ""
+                    if current_super and c1:
+                        if current_super.lower() in c1.lower():
+                            col_name = c1
+                        else:
+                            col_name = f"{current_super} - {c1}"
+                    elif c1:
+                        col_name = c1
+                    elif c0:
+                        col_name = c0
+                    else:
+                        col_name = f"Column_{idx + 1}"
+                    if col_name in seen:
+                        seen[col_name] += 1
+                        col_name = f"{col_name}_{seen[col_name]}"
+                    else:
+                        seen[col_name] = 1
+                    headers.append(col_name)
+
+        if not headers:
+            seen = {}
+            for idx, c in enumerate(first_table[header_idx]):
+                name = re.sub(r"\s+", " ", str(c)).strip() if c else f"Column_{idx + 1}"
+                if name in seen:
+                    seen[name] += 1
+                    name = f"{name}_{seen[name]}"
+                else:
+                    seen[name] = 1
+                headers.append(name)
+
+        # Collect data rows, skipping repeated headers and footers
+        normalized_headers = [h.lower().strip() for h in headers]
+        data_rows: List[List[Any]] = []
+
+        for p_idx, tbl in page_tables:
+            start_r = data_start_row if p_idx == first_p_idx else 0
+            for r in tbl[start_r:]:
+                norm_r = [c.lower().strip() for c in r if c]
+                if not norm_r:
+                    continue
+                # Use exact token comparison rather than greedy substring to prevent dropping valid parts
+                matching_header_terms = sum(1 for c in norm_r if c in normalized_headers)
+                if matching_header_terms >= max(2, len(norm_r) // 2):
+                    continue
+                first_non_empty = next((c.lower().strip() for c in r if c), "")
+                if first_non_empty in ("total", "grand total", "summary"):
+                    continue
+
+                if len(r) < len(headers):
+                    r = r + [None] * (len(headers) - len(r))
+                elif len(r) > len(headers):
+                    r = r[:len(headers)]
+                data_rows.append(r)
+
+        sheet_type = detect_sheet_type(group_name, headers)
+        auto_map = auto_detect_field_mappings(headers, group_name)
+        model_cols = detect_available_model_price_columns(headers)
+
+        result[group_name] = {
+            "headers": headers,
+            "data_start_row": data_start_row,
+            "has_super_header": has_super,
+            "sheet_type": sheet_type,
+            "auto_mapping": auto_map,
+            "model_columns": model_cols,
+            "rows": data_rows,
+        }
+
+    PDF_TABLES_CACHE[cache_key] = result
+    return result
+
+
+def inspect_pdf_document(file_path: Path, file_name: str, file_token: str) -> Dict[str, Any]:
+    """Inspects a PDF document and returns the sheet metadata structure compatible with Excel workbooks."""
+    cache_key = f"{file_path}_{os.path.getmtime(file_path)}"
+    if cache_key in WORKBOOK_CACHE:
+        return WORKBOOK_CACHE[cache_key]
+
+    table_groups = extract_pdf_table_groups(file_path)
+    sheets_info: List[Dict[str, Any]] = []
+
+    for name, grp in table_groups.items():
+        headers = grp["headers"]
+        rows = grp["rows"]
+        sample_rows: List[Dict[str, Any]] = []
+        for r in rows[:3]:
+            row_dict: Dict[str, Any] = {}
+            for col_idx, col_name in enumerate(headers):
+                if col_idx < len(r):
+                    val = r[col_idx]
+                    row_dict[col_name] = clean_cell_str(val) if val is not None else None
+            sample_rows.append(row_dict)
+
+        sheets_info.append(
+            {
+                "name": name,
+                "row_count": len(rows),
+                "col_count": len(headers),
+                "has_super_header": grp["has_super_header"],
+                "data_start_row": grp["data_start_row"],
+                "sheet_type": grp["sheet_type"],
+                "headers": headers,
+                "sample_rows": sample_rows,
+                "auto_mapping": grp["auto_mapping"],
+                "model_columns": grp["model_columns"],
+            }
+        )
+
+    result = {
+        "file_name": file_name,
+        "file_size": os.path.getsize(file_path),
+        "file_token": file_token,
+        "sheet_count": len(sheets_info),
+        "sheets": sheets_info,
+    }
+    WORKBOOK_CACHE[cache_key] = result
+    return result
+
+
 def inspect_workbook(file_path: Path, file_name: str, file_token: str) -> Dict[str, Any]:
     """Inspects all sheets in the workbook without reading all rows into memory."""
     cache_key = f"{file_path}_{os.path.getmtime(file_path)}"
     if cache_key in WORKBOOK_CACHE:
         return WORKBOOK_CACHE[cache_key]
+
+    if file_path.suffix.lower() == ".pdf":
+        return inspect_pdf_document(file_path, file_name, file_token)
 
     wb = openpyxl.load_workbook(str(file_path), read_only=True, data_only=True)
     sheets_info: List[Dict[str, Any]] = []
@@ -403,6 +693,202 @@ def inspect_workbook(file_path: Path, file_name: str, file_token: str) -> Dict[s
     return result
 
 
+def parse_and_preview_pdf_data(
+    file_path: Path,
+    sheet_name: str,
+    field_mapping: Optional[Dict[str, str]] = None,
+    page: int = 1,
+    limit: int = 50,
+    search: Optional[str] = None,
+    filter_status: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Reads rows from a specified PDF table group, applies Mail Merge mapping, validates fields,
+
+    and returns paginated preview data.
+    """
+    table_groups = extract_pdf_table_groups(file_path)
+    if sheet_name not in table_groups:
+        if table_groups:
+            sheet_name = next(iter(table_groups.keys()))
+        else:
+            raise ValueError(f"Table/Sheet '{sheet_name}' not found in PDF.")
+
+    grp = table_groups[sheet_name]
+    headers = grp["headers"]
+    auto_map = grp["auto_mapping"]
+    effective_map = {**auto_map, **(field_mapping or {})}
+    model_price_cols = grp["model_columns"]
+    header_to_idx = {h: idx for idx, h in enumerate(headers)}
+
+    col_part_code = effective_map.get("part_code")
+    col_desc = effective_map.get("description")
+    col_hsn = effective_map.get("hsn_code")
+    col_gst = effective_map.get("gst_rate")
+    col_dlp = effective_map.get("dlp")
+    col_mrp = effective_map.get("mrp")
+    col_ex = effective_map.get("ex_factory")
+    col_stock = effective_map.get("stock_quantity")
+    col_cat = effective_map.get("category")
+    col_margin = effective_map.get("dealer_margin_percent")
+    col_ex_showroom = effective_map.get("ex_showroom")
+
+    idx_part_code = header_to_idx.get(col_part_code) if col_part_code else None
+    idx_desc = header_to_idx.get(col_desc) if col_desc else None
+    idx_hsn = header_to_idx.get(col_hsn) if col_hsn else None
+    idx_gst = header_to_idx.get(col_gst) if col_gst else None
+    idx_dlp = header_to_idx.get(col_dlp) if col_dlp else None
+    idx_mrp = header_to_idx.get(col_mrp) if col_mrp else None
+    idx_ex = header_to_idx.get(col_ex) if col_ex else None
+    idx_stock = header_to_idx.get(col_stock) if col_stock else None
+    idx_cat = header_to_idx.get(col_cat) if col_cat else None
+    idx_margin = header_to_idx.get(col_margin) if col_margin else None
+    idx_ex_showroom = header_to_idx.get(col_ex_showroom) if col_ex_showroom else None
+
+    all_parsed_rows: List[Dict[str, Any]] = []
+    ready_count = 0
+    warning_count = 0
+    error_count = 0
+
+    for row_index, row in enumerate(grp["rows"], start=1):
+        row_len = len(row)
+
+        def get_val(idx: Optional[int]) -> Any:
+            if idx is not None and idx < row_len:
+                return row[idx]
+            return None
+
+        raw_pc = get_val(idx_part_code)
+        raw_desc = get_val(idx_desc)
+        raw_hsn = get_val(idx_hsn)
+        raw_gst = get_val(idx_gst)
+        raw_dlp = get_val(idx_dlp)
+        raw_mrp = get_val(idx_mrp)
+        raw_ex = get_val(idx_ex)
+        raw_margin = get_val(idx_margin)
+        raw_ex_showroom = get_val(idx_ex_showroom)
+        raw_stock = get_val(idx_stock)
+        raw_cat = get_val(idx_cat)
+
+        part_code = clean_cell_str(raw_pc)
+        description = clean_cell_str(raw_desc)
+        hsn_code = clean_cell_str(raw_hsn)
+        gst_rate = clean_cell_float(raw_gst)
+        if gst_rate is not None and 0 < gst_rate <= 1.0:
+            gst_rate = round(gst_rate * 100, 2)
+        dlp = clean_cell_float(raw_dlp)
+        mrp = clean_cell_float(raw_mrp)
+        ex_factory = clean_cell_float(raw_ex)
+        margin_pct = clean_cell_float(raw_margin)
+        if margin_pct is not None and 0 < margin_pct <= 1.0:
+            margin_pct = round(margin_pct * 100, 2)
+        ex_showroom = clean_cell_float(raw_ex_showroom)
+        stock_quantity = clean_cell_optional_int(raw_stock) if idx_stock is not None else None
+        category = clean_cell_str(raw_cat) or "General"
+
+        # Formula deductions for sheets with partial columns:
+        # 1. DLP (Dealer Landing Price = Ex Factory + GST)
+        if dlp is None and ex_factory is not None and gst_rate is not None:
+            dlp = round(ex_factory * (1.0 + (gst_rate / 100.0)), 2)
+
+        # 2. Ex Showroom = Ex Factory + Dealer Margin
+        if ex_showroom is None and ex_factory is not None and margin_pct is not None:
+            ex_showroom = round(ex_factory * (1.0 + (margin_pct / 100.0)), 2)
+
+        # 3. Customer MRP = Ex Showroom + Customer GST
+        if mrp is None and ex_showroom is not None and gst_rate is not None:
+            mrp = round(ex_showroom * (1.0 + (gst_rate / 100.0)), 2)
+
+        model_prices: Dict[str, Optional[float]] = {}
+        for mc in model_price_cols:
+            cname = mc["column_name"]
+            midx = header_to_idx.get(cname)
+            if midx is not None and midx < row_len:
+                mval = clean_cell_float(row[midx])
+                if mval is not None:
+                    model_prices[mc["model_name"]] = mval
+
+        validation_messages: List[str] = []
+        status = "READY"
+
+        if not part_code and not description:
+            continue
+
+        if not part_code:
+            status = "ERROR"
+            validation_messages.append("Missing Part Code")
+        elif not description:
+            status = "ERROR"
+            validation_messages.append("Missing Description")
+
+        if status != "ERROR":
+            if dlp is None and mrp is None and ex_factory is None and not model_prices:
+                status = "WARNING"
+                validation_messages.append("No price specified (DLP, MRP, or Model Price missing)")
+
+        if status == "READY":
+            ready_count += 1
+        elif status == "WARNING":
+            warning_count += 1
+        else:
+            error_count += 1
+
+        if search and search.strip():
+            q = search.strip().lower()
+            in_code = q in (part_code or "").lower()
+            in_desc = q in (description or "").lower()
+            in_hsn = q in (hsn_code or "").lower()
+            if not (in_code or in_desc or in_hsn):
+                continue
+
+        if filter_status and filter_status != "ALL":
+            if status != filter_status:
+                continue
+
+        all_parsed_rows.append(
+            {
+                "row_id": row_index,
+                "part_code": part_code or "",
+                "description": description or "",
+                "category": category,
+                "tracking_mode": "QUANTITY",
+                "hsn_code": hsn_code,
+                "gst_rate": gst_rate,
+                "dlp": dlp,
+                "mrp": mrp,
+                "ex_factory": ex_factory,
+                "ex_showroom": ex_showroom,
+                "dealer_margin_percent": margin_pct,
+                "stock_quantity": stock_quantity,
+                "model_prices": model_prices,
+                "status": status,
+                "validation_messages": validation_messages,
+                "selected": status in ("READY", "WARNING"),
+            }
+        )
+
+    total_filtered = len(all_parsed_rows)
+    start_offset = (page - 1) * limit
+    paginated_rows = all_parsed_rows[start_offset : start_offset + limit]
+
+    return {
+        "sheet_name": sheet_name,
+        "total_rows": total_filtered,
+        "page": page,
+        "limit": limit,
+        "headers": headers,
+        "applied_mapping": effective_map,
+        "model_columns": model_price_cols,
+        "counts": {
+            "total": len(grp["rows"]),
+            "ready": ready_count,
+            "warning": warning_count,
+            "error": error_count,
+            "filtered": total_filtered,
+        },
+        "rows": paginated_rows,
+    }
+
+
 def parse_and_preview_sheet_data(
     file_path: Path,
     sheet_name: str,
@@ -416,6 +902,17 @@ def parse_and_preview_sheet_data(
 
     and returns paginated preview data.
     """
+    if file_path.suffix.lower() == ".pdf":
+        return parse_and_preview_pdf_data(
+            file_path=file_path,
+            sheet_name=sheet_name,
+            field_mapping=field_mapping,
+            page=page,
+            limit=limit,
+            search=search,
+            filter_status=filter_status,
+        )
+
     wb = openpyxl.load_workbook(str(file_path), read_only=True, data_only=True)
     if sheet_name not in wb.sheetnames:
         wb.close()
@@ -443,6 +940,8 @@ def parse_and_preview_sheet_data(
     col_dlp = effective_map.get("dlp")
     col_mrp = effective_map.get("mrp")
     col_ex = effective_map.get("ex_factory")
+    col_margin = effective_map.get("dealer_margin_percent")
+    col_ex_showroom = effective_map.get("ex_showroom")
     col_stock = effective_map.get("stock_quantity")
     col_cat = effective_map.get("category")
 
@@ -453,6 +952,8 @@ def parse_and_preview_sheet_data(
     idx_dlp = header_to_idx.get(col_dlp) if col_dlp else None
     idx_mrp = header_to_idx.get(col_mrp) if col_mrp else None
     idx_ex = header_to_idx.get(col_ex) if col_ex else None
+    idx_margin = header_to_idx.get(col_margin) if col_margin else None
+    idx_ex_showroom = header_to_idx.get(col_ex_showroom) if col_ex_showroom else None
     idx_stock = header_to_idx.get(col_stock) if col_stock else None
     idx_cat = header_to_idx.get(col_cat) if col_cat else None
 
@@ -478,6 +979,8 @@ def parse_and_preview_sheet_data(
         raw_dlp = get_val(idx_dlp)
         raw_mrp = get_val(idx_mrp)
         raw_ex = get_val(idx_ex)
+        raw_margin = get_val(idx_margin)
+        raw_ex_showroom = get_val(idx_ex_showroom)
         raw_stock = get_val(idx_stock)
         raw_cat = get_val(idx_cat)
 
@@ -485,15 +988,32 @@ def parse_and_preview_sheet_data(
         description = clean_cell_str(raw_desc)
         hsn_code = clean_cell_str(raw_hsn)
         gst_rate = clean_cell_float(raw_gst)
-        dlp = clean_cell_float(raw_dlp)
-        mrp = clean_cell_float(raw_mrp)
-        ex_factory = clean_cell_float(raw_ex)
-        stock_quantity = clean_cell_int(raw_stock)
-        category = clean_cell_str(raw_cat) or "General"
-
         # If GST rate is expressed as decimal fraction (e.g. 0.18, 0.28, 0.05), normalize to percent (18, 28, 5)
         if gst_rate is not None and 0 < gst_rate <= 1.0:
             gst_rate = round(gst_rate * 100, 2)
+
+        dlp = clean_cell_float(raw_dlp)
+        mrp = clean_cell_float(raw_mrp)
+        ex_factory = clean_cell_float(raw_ex)
+        margin_pct = clean_cell_float(raw_margin)
+        if margin_pct is not None and 0 < margin_pct <= 1.0:
+            margin_pct = round(margin_pct * 100, 2)
+        ex_showroom = clean_cell_float(raw_ex_showroom)
+        stock_quantity = clean_cell_optional_int(raw_stock) if idx_stock is not None else None
+        category = clean_cell_str(raw_cat) or "General"
+
+        # Formula deductions for sheets with partial columns:
+        # 1. DLP (Dealer Landing Price = Ex Factory + GST)
+        if dlp is None and ex_factory is not None and gst_rate is not None:
+            dlp = round(ex_factory * (1.0 + (gst_rate / 100.0)), 2)
+
+        # 2. Ex Showroom = Ex Factory + Dealer Margin
+        if ex_showroom is None and ex_factory is not None and margin_pct is not None:
+            ex_showroom = round(ex_factory * (1.0 + (margin_pct / 100.0)), 2)
+
+        # 3. Customer MRP = Ex Showroom + Customer GST
+        if mrp is None and ex_showroom is not None and gst_rate is not None:
+            mrp = round(ex_showroom * (1.0 + (gst_rate / 100.0)), 2)
 
         # Extract model-specific prices if available
         model_prices: Dict[str, Optional[float]] = {}
@@ -517,7 +1037,7 @@ def parse_and_preview_sheet_data(
             validation_messages.append("Missing Description")
 
         if status != "ERROR":
-            if mrp is None or mrp <= 0:
+            if dlp is None and mrp is None and ex_factory is None and not model_prices:
                 status = "WARNING"
                 validation_messages.append("Price / MRP unassigned")
             if not hsn_code:
@@ -555,6 +1075,8 @@ def parse_and_preview_sheet_data(
                 "dlp": dlp,
                 "mrp": mrp,
                 "ex_factory": ex_factory,
+                "ex_showroom": ex_showroom,
+                "dealer_margin_percent": margin_pct,
                 "stock_quantity": stock_quantity,
                 "model_prices": model_prices,
                 "status": status,
@@ -679,6 +1201,10 @@ async def execute_batch_import(
     update_stock: bool,
     default_category: Optional[str],
     db: AsyncSession,
+    source_document_name: Optional[str] = None,
+    action_type: str = "IMPORT_EXCEL",
+    staff_id: Optional[int] = None,
+    staff_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Executes atomic batch import of validated rows into the ERP inventory schema."""
     if not rows_to_import:
@@ -757,20 +1283,61 @@ async def execute_batch_import(
 
             category = row.get("category") or default_category or "General"
             hsn_code = row.get("hsn_code")
-            gst_rate = row.get("gst_rate")
-            dlp = row.get("dlp")
-            mrp = row.get("mrp")
-            ex_factory = row.get("ex_factory")
-            stock_qty = row.get("stock_quantity") or 0
+            gst_rate = clean_cell_float(row.get("gst_rate"))
+            if gst_rate is not None and 0 < gst_rate <= 1.0:
+                gst_rate = round(gst_rate * 100, 2)
+
+            dlp = clean_cell_float(row.get("dlp"))
+            mrp = clean_cell_float(row.get("mrp"))
+            ex_factory = clean_cell_float(row.get("ex_factory"))
+            margin_pct = clean_cell_float(row.get("dealer_margin_percent"))
+            if margin_pct is not None and 0 < margin_pct <= 1.0:
+                margin_pct = round(margin_pct * 100, 2)
+            ex_showroom = clean_cell_float(row.get("ex_showroom"))
+
+            stock_qty = clean_cell_optional_int(row.get("stock_quantity"))
             model_prices = row.get("model_prices") or {}
 
             encoded_remarks = encode_spare_remarks(hsn_code, row.get("remarks"))
 
-            cost = float(ex_factory if ex_factory is not None else (dlp or 0))
-            selling = float(ex_factory if ex_factory is not None else (mrp or 0))
-            if mrp is not None:
-                selling = float(mrp)
-            observed_margin = calculate_observed_margin(cost, selling) if (cost > 0 and selling > 0) else None
+            # Pricing formulation according to dealer pricing model:
+            # 1. Purchase Rate (Cost Price to Dealer) = Dealer Landing Price (DLP = Ex Factory + GST Value)
+            if dlp is not None and float(dlp) > 0:
+                purchase_cost = float(dlp)
+            elif ex_factory is not None and float(ex_factory) > 0 and gst_rate is not None and float(gst_rate) > 0:
+                purchase_cost = round(float(ex_factory) * (1.0 + (float(gst_rate) / 100.0)), 2)
+            elif ex_factory is not None and float(ex_factory) > 0:
+                purchase_cost = float(ex_factory)
+            else:
+                purchase_cost = 0.0
+
+            # 2. Ex Showroom Price = Ex Factory + Dealer Margin
+            if ex_showroom is not None and float(ex_showroom) > 0:
+                showroom_price = float(ex_showroom)
+            elif ex_factory is not None and float(ex_factory) > 0 and margin_pct is not None:
+                showroom_price = round(float(ex_factory) * (1.0 + (float(margin_pct) / 100.0)), 2)
+            elif mrp is not None and float(mrp) > 0 and gst_rate is not None and float(gst_rate) > 0:
+                showroom_price = round(float(mrp) / (1.0 + (float(gst_rate) / 100.0)), 2)
+            else:
+                showroom_price = None
+
+            # 3. Customer MRP = Ex Showroom + Customer GST
+            if mrp is not None and float(mrp) > 0:
+                final_mrp = float(mrp)
+            elif showroom_price is not None and showroom_price > 0 and gst_rate is not None and float(gst_rate) > 0:
+                final_mrp = round(showroom_price * (1.0 + (float(gst_rate) / 100.0)), 2)
+            else:
+                final_mrp = None
+
+            # 4. Dealer Margin %
+            if margin_pct is not None:
+                observed_margin = float(margin_pct)
+            elif showroom_price is not None and ex_factory is not None and float(ex_factory) > 0:
+                observed_margin = round(((showroom_price - float(ex_factory)) / float(ex_factory)) * 100.0, 2)
+            elif purchase_cost > 0 and final_mrp is not None and final_mrp > 0:
+                observed_margin = calculate_observed_margin(purchase_cost, final_mrp)
+            else:
+                observed_margin = None
 
             existing_code_obj = existing_codes_map.get(part_code)
 
@@ -782,6 +1349,7 @@ async def execute_batch_import(
                 # Update existing spare
                 spare = existing_code_obj.spare
                 if spare:
+                    before_snap = capture_spare_snapshot(spare, part_code)
                     spare.spare_name = description
                     if category:
                         spare.category = category
@@ -789,10 +1357,10 @@ async def execute_batch_import(
                         spare.remarks = encoded_remarks
                     spare.hsn_code = hsn_code
                     spare.gst_rate = gst_rate or 18.0
-                    spare.base_cost = cost if cost > 0 else None
-                    spare.base_dlp = dlp if dlp is not None else (cost if cost > 0 else None)
-                    spare.base_ex_showroom = selling if selling > 0 else None
-                    spare.base_mrp = mrp if mrp is not None else selling
+                    spare.base_cost = purchase_cost if purchase_cost > 0 else None
+                    spare.base_dlp = purchase_cost if purchase_cost > 0 else None
+                    spare.base_ex_showroom = showroom_price
+                    spare.base_mrp = final_mrp
                     if observed_margin is not None:
                         spare.profit_margin_percent = observed_margin
                     spare.updated_at = utc_now_naive()
@@ -800,10 +1368,10 @@ async def execute_batch_import(
                     # Update price list item from pre-fetched map
                     pli = existing_pli_map.get(part_code)
                     if pli:
-                        if mrp is not None:
-                            pli.mrp = mrp
-                        if dlp is not None:
-                            pli.dlp = dlp
+                        if final_mrp is not None:
+                            pli.mrp = final_mrp
+                        if purchase_cost > 0:
+                            pli.dlp = purchase_cost
                         if gst_rate is not None:
                             pli.gst_rate = gst_rate
                         pli.part_name = description
@@ -812,33 +1380,33 @@ async def execute_batch_import(
                             version_id=version.version_id,
                             part_code=part_code,
                             part_name=description,
-                            mrp=mrp,
-                            dlp=dlp,
+                            mrp=final_mrp,
+                            dlp=purchase_cost if purchase_cost > 0 else None,
                             gst_rate=gst_rate,
                         )
                         db.add(new_pli)
                         existing_pli_map[part_code] = new_pli
 
                     # Selling price history
-                    if mrp is not None:
+                    if final_mrp is not None:
                         db.add(
                             SpareSellingPriceHistory(
                                 spare_id=spare.spare_id,
-                                selling_price=mrp,
+                                selling_price=final_mrp,
                                 effective_from=utc_now_naive(),
                                 reason="Worksheet Batch Update",
                             )
                         )
 
-                    # Cost history
-                    if dlp is not None or ex_factory is not None:
+                    # Cost history (Purchase Rate = Dealer Landing Price)
+                    if purchase_cost > 0:
                         db.add(
                             SpareCostHistory(
                                 spare_id=spare.spare_id,
                                 quantity=0,
-                                billed_unit_price=cost,
-                                landed_cost=float(dlp if dlp is not None else cost),
-                                source_reference="Worksheet Batch Update",
+                                billed_unit_price=purchase_cost,
+                                landed_cost=purchase_cost,
+                                source_reference=source_document_name or "Worksheet Batch Update",
                                 effective_date=utc_now_naive(),
                             )
                         )
@@ -871,20 +1439,21 @@ async def execute_batch_import(
                                 SparePartVehicleCompatibility(
                                     spare_id=spare.spare_id,
                                     vehicle_model_id=target_vm.vehicle_model_id,
-                                    ex_factory_price=cost if cost > 0 else None,
-                                    dlp=dlp,
-                                    ex_showroom_price=selling if selling > 0 else None,
-                                    customer_mrp=mrp,
+                                    ex_factory_price=ex_factory,
+                                    dlp=purchase_cost if purchase_cost > 0 else None,
+                                    ex_showroom_price=showroom_price,
+                                    customer_mrp=final_mrp,
                                     gst_rate=gst_rate or 18.0,
                                     profit_margin_percent=observed_margin,
                                     is_primary=True,
                                 )
                             )
                         else:
-                            existing_compat.ex_factory_price = cost if cost > 0 else None
-                            existing_compat.dlp = dlp
-                            existing_compat.ex_showroom_price = selling if selling > 0 else None
-                            existing_compat.customer_mrp = mrp
+                            existing_compat.ex_factory_price = ex_factory
+                            existing_compat.dlp = purchase_cost if purchase_cost > 0 else None
+                            existing_compat.ex_showroom_price = showroom_price
+                            existing_compat.customer_mrp = final_mrp
+                            existing_compat.gst_rate = gst_rate or 18.0
                             existing_compat.profit_margin_percent = observed_margin
 
                     # Model specific prices
@@ -895,7 +1464,7 @@ async def execute_batch_import(
                                 new_vm = await get_or_create_vehicle_model(mclean, brand.brand_id, db)
                                 vm_map[mclean.lower()] = new_vm
                             mvm = vm_map[mclean.lower()]
-                            m_margin = calculate_observed_margin(cost, mprice) if cost > 0 else None
+                            m_margin = calculate_observed_margin(purchase_cost, mprice) if purchase_cost > 0 else None
 
                             existing_mcompat = next(
                                 (c for c in spare.compatibilities if c.vehicle_model_id == mvm.vehicle_model_id),
@@ -906,8 +1475,8 @@ async def execute_batch_import(
                                     SparePartVehicleCompatibility(
                                         spare_id=spare.spare_id,
                                         vehicle_model_id=mvm.vehicle_model_id,
-                                        ex_factory_price=cost if cost > 0 else None,
-                                        dlp=dlp,
+                                        ex_factory_price=ex_factory,
+                                        dlp=purchase_cost if purchase_cost > 0 else None,
                                         ex_showroom_price=mprice,
                                         customer_mrp=mprice,
                                         gst_rate=gst_rate or 18.0,
@@ -915,8 +1484,11 @@ async def execute_batch_import(
                                     )
                                 )
                             else:
+                                existing_mcompat.ex_factory_price = ex_factory
+                                existing_mcompat.dlp = purchase_cost if purchase_cost > 0 else None
                                 existing_mcompat.ex_showroom_price = mprice
                                 existing_mcompat.customer_mrp = mprice
+                                existing_mcompat.gst_rate = gst_rate or 18.0
                                 existing_mcompat.profit_margin_percent = m_margin
 
                             db.add(
@@ -927,6 +1499,20 @@ async def execute_batch_import(
                                     reason=f"Model: {mclean}",
                                 )
                             )
+
+                    # Record alteration audit trail entry
+                    after_snap = capture_spare_snapshot(spare, part_code)
+                    record_alteration(
+                        db=db,
+                        spare_id=spare.spare_id,
+                        part_code=part_code,
+                        action_type=action_type,
+                        source_reference=source_document_name or "Worksheet Batch Ingestion",
+                        snapshot_before=before_snap,
+                        snapshot_after=after_snap,
+                        altered_by_id=staff_id,
+                        altered_by_name=staff_name or "Worksheet Ingestion",
+                    )
 
                     updated_count += 1
             else:
@@ -940,10 +1526,10 @@ async def execute_batch_import(
                     remarks=encoded_remarks,
                     hsn_code=hsn_code,
                     gst_rate=gst_rate or 18.0,
-                    base_cost=cost if cost > 0 else None,
-                    base_dlp=dlp if dlp is not None else (cost if cost > 0 else None),
-                    base_ex_showroom=selling if selling > 0 else None,
-                    base_mrp=mrp if mrp is not None else selling,
+                    base_cost=purchase_cost if purchase_cost > 0 else None,
+                    base_dlp=purchase_cost if purchase_cost > 0 else None,
+                    base_ex_showroom=showroom_price,
+                    base_mrp=final_mrp,
                     profit_margin_percent=observed_margin,
                 )
                 db.add(new_spare)
@@ -952,10 +1538,10 @@ async def execute_batch_import(
                         "spare": new_spare,
                         "part_code": part_code,
                         "description": description,
-                        "cost": cost,
-                        "dlp": dlp,
-                        "selling": selling,
-                        "mrp": mrp,
+                        "purchase_cost": purchase_cost,
+                        "ex_factory": ex_factory,
+                        "showroom_price": showroom_price,
+                        "final_mrp": final_mrp,
                         "observed_margin": observed_margin,
                         "gst_rate": gst_rate,
                         "stock_qty": stock_qty,
@@ -971,10 +1557,10 @@ async def execute_batch_import(
                 new_spare = item["spare"]
                 part_code = item["part_code"]
                 description = item["description"]
-                cost = item["cost"]
-                dlp = item["dlp"]
-                selling = item["selling"]
-                mrp = item["mrp"]
+                purchase_cost = item["purchase_cost"]
+                ex_factory = item["ex_factory"]
+                showroom_price = item["showroom_price"]
+                final_mrp = item["final_mrp"]
                 observed_margin = item["observed_margin"]
                 gst_rate = item["gst_rate"]
                 stock_qty = item["stock_qty"]
@@ -995,32 +1581,32 @@ async def execute_batch_import(
                     version_id=version.version_id,
                     part_code=part_code,
                     part_name=description,
-                    mrp=mrp,
-                    dlp=dlp,
+                    mrp=final_mrp,
+                    dlp=purchase_cost if purchase_cost > 0 else None,
                     gst_rate=gst_rate,
                 )
                 db.add(new_pli)
                 existing_pli_map[part_code] = new_pli
 
                 # Price histories
-                if mrp is not None:
+                if final_mrp is not None:
                     db.add(
                         SpareSellingPriceHistory(
                             spare_id=new_spare.spare_id,
-                            selling_price=mrp,
+                            selling_price=final_mrp,
                             effective_from=utc_now_naive(),
                             reason="Worksheet Batch Ingestion",
                         )
                     )
 
-                if cost > 0 or dlp is not None:
+                if purchase_cost > 0:
                     db.add(
                         SpareCostHistory(
                             spare_id=new_spare.spare_id,
                             quantity=0,
-                            billed_unit_price=cost,
-                            landed_cost=float(dlp if dlp is not None else cost),
-                            source_reference="Worksheet Batch Ingestion",
+                            billed_unit_price=purchase_cost,
+                            landed_cost=purchase_cost,
+                            source_reference=source_document_name or "Worksheet Batch Ingestion",
                             effective_date=utc_now_naive(),
                         )
                     )
@@ -1051,10 +1637,10 @@ async def execute_batch_import(
                         SparePartVehicleCompatibility(
                             spare_id=new_spare.spare_id,
                             vehicle_model_id=target_vm.vehicle_model_id,
-                            ex_factory_price=cost if cost > 0 else None,
-                            dlp=dlp,
-                            ex_showroom_price=selling if selling > 0 else None,
-                            customer_mrp=mrp,
+                            ex_factory_price=ex_factory,
+                            dlp=purchase_cost if purchase_cost > 0 else None,
+                            ex_showroom_price=showroom_price,
+                            customer_mrp=final_mrp,
                             gst_rate=gst_rate or 18.0,
                             profit_margin_percent=observed_margin,
                             is_primary=True,
@@ -1069,14 +1655,14 @@ async def execute_batch_import(
                             new_vm = await get_or_create_vehicle_model(mclean, brand.brand_id, db)
                             vm_map[mclean.lower()] = new_vm
                         mvm = vm_map[mclean.lower()]
-                        m_margin = calculate_observed_margin(cost, mprice) if cost > 0 else None
+                        m_margin = calculate_observed_margin(purchase_cost, mprice) if purchase_cost > 0 else None
 
                         db.add(
                             SparePartVehicleCompatibility(
                                 spare_id=new_spare.spare_id,
                                 vehicle_model_id=mvm.vehicle_model_id,
-                                ex_factory_price=cost if cost > 0 else None,
-                                dlp=dlp,
+                                ex_factory_price=ex_factory,
+                                dlp=purchase_cost if purchase_cost > 0 else None,
                                 ex_showroom_price=mprice,
                                 customer_mrp=mprice,
                                 gst_rate=gst_rate or 18.0,
@@ -1109,6 +1695,131 @@ async def execute_batch_import(
     }
 
 
+async def execute_entire_pdf_import(
+    file_path: Path,
+    sheet_name: str,
+    field_mapping: Optional[Dict[str, str]] = None,
+    target_model_name: Optional[str] = None,
+    default_category: Optional[str] = "Spare Parts",
+    update_existing: bool = True,
+    update_stock: bool = False,
+    db: AsyncSession = None,
+) -> Dict[str, Any]:
+    """Reads all rows from the specified PDF table group directly and imports them in chunks."""
+    table_groups = extract_pdf_table_groups(file_path)
+    if sheet_name not in table_groups:
+        if table_groups:
+            sheet_name = next(iter(table_groups.keys()))
+        else:
+            raise ValueError(f"Table/Sheet '{sheet_name}' not found in PDF.")
+
+    grp = table_groups[sheet_name]
+    headers = grp["headers"]
+    auto_map = grp["auto_mapping"]
+    effective_map = {**auto_map, **(field_mapping or {})}
+    model_price_cols = grp["model_columns"]
+    header_to_idx = {h: idx for idx, h in enumerate(headers)}
+
+    col_part_code = effective_map.get("part_code")
+    col_desc = effective_map.get("description")
+    col_hsn = effective_map.get("hsn_code")
+    col_gst = effective_map.get("gst_rate")
+    col_dlp = effective_map.get("dlp")
+    col_mrp = effective_map.get("mrp")
+    col_ex = effective_map.get("ex_factory")
+    col_margin = effective_map.get("dealer_margin_percent")
+    col_ex_showroom = effective_map.get("ex_showroom")
+    col_stock = effective_map.get("stock_quantity")
+    col_cat = effective_map.get("category")
+
+    idx_part_code = header_to_idx.get(col_part_code) if col_part_code else None
+    idx_desc = header_to_idx.get(col_desc) if col_desc else None
+    idx_hsn = header_to_idx.get(col_hsn) if col_hsn else None
+    idx_gst = header_to_idx.get(col_gst) if col_gst else None
+    idx_dlp = header_to_idx.get(col_dlp) if col_dlp else None
+    idx_mrp = header_to_idx.get(col_mrp) if col_mrp else None
+    idx_ex = header_to_idx.get(col_ex) if col_ex else None
+    idx_margin = header_to_idx.get(col_margin) if col_margin else None
+    idx_ex_showroom = header_to_idx.get(col_ex_showroom) if col_ex_showroom else None
+    idx_stock = header_to_idx.get(col_stock) if col_stock else None
+    idx_cat = header_to_idx.get(col_cat) if col_cat else None
+
+    all_rows: List[Dict[str, Any]] = []
+
+    for row in grp["rows"]:
+        row_len = len(row)
+
+        def get_val(idx: Optional[int]) -> Any:
+            if idx is not None and idx < row_len:
+                return row[idx]
+            return None
+
+        part_code = clean_cell_str(get_val(idx_part_code))
+        description = clean_cell_str(get_val(idx_desc))
+        if not part_code or not description:
+            continue
+
+        hsn_code = clean_cell_str(get_val(idx_hsn))
+        gst_rate = clean_cell_float(get_val(idx_gst))
+        if gst_rate is not None and 0 < gst_rate <= 1.0:
+            gst_rate = round(gst_rate * 100, 2)
+        dlp = clean_cell_float(get_val(idx_dlp))
+        mrp = clean_cell_float(get_val(idx_mrp))
+        ex_factory = clean_cell_float(get_val(idx_ex))
+        margin_pct = clean_cell_float(get_val(idx_margin))
+        if margin_pct is not None and 0 < margin_pct <= 1.0:
+            margin_pct = round(margin_pct * 100, 2)
+        ex_showroom = clean_cell_float(get_val(idx_ex_showroom))
+        stock_quantity = clean_cell_optional_int(get_val(idx_stock)) if idx_stock is not None else None
+        category = clean_cell_str(get_val(idx_cat)) or default_category or "General"
+
+        # Formula deductions
+        if dlp is None and ex_factory is not None and gst_rate is not None:
+            dlp = round(ex_factory * (1.0 + (gst_rate / 100.0)), 2)
+        if ex_showroom is None and ex_factory is not None and margin_pct is not None:
+            ex_showroom = round(ex_factory * (1.0 + (margin_pct / 100.0)), 2)
+        if mrp is None and ex_showroom is not None and gst_rate is not None:
+            mrp = round(ex_showroom * (1.0 + (gst_rate / 100.0)), 2)
+
+        model_prices: Dict[str, Optional[float]] = {}
+        for mc in model_price_cols:
+            cname = mc["column_name"]
+            midx = header_to_idx.get(cname)
+            if midx is not None and midx < row_len:
+                mval = clean_cell_float(row[midx])
+                if mval is not None:
+                    model_prices[mc["model_name"]] = mval
+
+        all_rows.append(
+            {
+                "part_code": part_code,
+                "description": description,
+                "category": category,
+                "tracking_mode": "QUANTITY",
+                "hsn_code": hsn_code,
+                "gst_rate": gst_rate,
+                "dlp": dlp,
+                "mrp": mrp,
+                "ex_factory": ex_factory,
+                "ex_showroom": ex_showroom,
+                "dealer_margin_percent": margin_pct,
+                "stock_quantity": stock_quantity,
+                "model_prices": model_prices,
+            }
+        )
+
+    return await execute_batch_import(
+        rows_to_import=all_rows,
+        target_model_name=target_model_name,
+        update_existing=update_existing,
+        update_stock=update_stock,
+        default_category=default_category,
+        db=db,
+        source_document_name=file_path.name,
+        action_type="IMPORT_PDF",
+    )
+
+
 async def execute_entire_sheet_import(
     file_path: Path,
     sheet_name: str,
@@ -1116,13 +1827,25 @@ async def execute_entire_sheet_import(
     target_model_name: Optional[str] = None,
     default_category: Optional[str] = "Spare Parts",
     update_existing: bool = True,
-    update_stock: bool = True,
+    update_stock: bool = False,
     db: AsyncSession = None,
 ) -> Dict[str, Any]:
     """Reads all rows from the specified sheet directly and imports them in chunks
 
     into the relational database without limiting to a single paginated view.
     """
+    if file_path.suffix.lower() == ".pdf":
+        return await execute_entire_pdf_import(
+            file_path=file_path,
+            sheet_name=sheet_name,
+            field_mapping=field_mapping,
+            target_model_name=target_model_name,
+            default_category=default_category,
+            update_existing=update_existing,
+            update_stock=update_stock,
+            db=db,
+        )
+
     wb = openpyxl.load_workbook(str(file_path), read_only=True, data_only=True)
     if sheet_name not in wb.sheetnames:
         wb.close()
@@ -1142,6 +1865,8 @@ async def execute_entire_sheet_import(
     col_dlp = effective_map.get("dlp")
     col_mrp = effective_map.get("mrp")
     col_ex = effective_map.get("ex_factory")
+    col_margin = effective_map.get("dealer_margin_percent")
+    col_ex_showroom = effective_map.get("ex_showroom")
     col_stock = effective_map.get("stock_quantity")
     col_cat = effective_map.get("category")
 
@@ -1152,6 +1877,8 @@ async def execute_entire_sheet_import(
     idx_dlp = header_to_idx.get(col_dlp) if col_dlp else None
     idx_mrp = header_to_idx.get(col_mrp) if col_mrp else None
     idx_ex = header_to_idx.get(col_ex) if col_ex else None
+    idx_margin = header_to_idx.get(col_margin) if col_margin else None
+    idx_ex_showroom = header_to_idx.get(col_ex_showroom) if col_ex_showroom else None
     idx_stock = header_to_idx.get(col_stock) if col_stock else None
     idx_cat = header_to_idx.get(col_cat) if col_cat else None
 
@@ -1182,8 +1909,20 @@ async def execute_entire_sheet_import(
         dlp = clean_cell_float(get_val(idx_dlp))
         mrp = clean_cell_float(get_val(idx_mrp))
         ex_factory = clean_cell_float(get_val(idx_ex))
-        stock_quantity = clean_cell_int(get_val(idx_stock))
+        margin_pct = clean_cell_float(get_val(idx_margin))
+        if margin_pct is not None and 0 < margin_pct <= 1.0:
+            margin_pct = round(margin_pct * 100, 2)
+        ex_showroom = clean_cell_float(get_val(idx_ex_showroom))
+        stock_quantity = clean_cell_optional_int(get_val(idx_stock)) if idx_stock is not None else None
         category = clean_cell_str(get_val(idx_cat)) or default_category or "General"
+
+        # Formula deductions
+        if dlp is None and ex_factory is not None and gst_rate is not None:
+            dlp = round(ex_factory * (1.0 + (gst_rate / 100.0)), 2)
+        if ex_showroom is None and ex_factory is not None and margin_pct is not None:
+            ex_showroom = round(ex_factory * (1.0 + (margin_pct / 100.0)), 2)
+        if mrp is None and ex_showroom is not None and gst_rate is not None:
+            mrp = round(ex_showroom * (1.0 + (gst_rate / 100.0)), 2)
 
         model_prices: Dict[str, Optional[float]] = {}
         for mc in model_price_cols:
@@ -1205,6 +1944,8 @@ async def execute_entire_sheet_import(
                 "dlp": dlp,
                 "mrp": mrp,
                 "ex_factory": ex_factory,
+                "ex_showroom": ex_showroom,
+                "dealer_margin_percent": margin_pct,
                 "stock_quantity": stock_quantity,
                 "model_prices": model_prices,
             }
@@ -1220,4 +1961,6 @@ async def execute_entire_sheet_import(
         update_stock=update_stock,
         default_category=default_category,
         db=db,
+        source_document_name=file_path.name,
+        action_type="IMPORT_EXCEL",
     )

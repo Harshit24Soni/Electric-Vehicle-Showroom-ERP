@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import shutil
@@ -84,7 +85,9 @@ class ParsedPreviewRow(BaseModel):
     dlp: Optional[float] = None
     mrp: Optional[float] = None
     ex_factory: Optional[float] = None
-    stock_quantity: int = 0
+    ex_showroom: Optional[float] = None
+    dealer_margin_percent: Optional[float] = None
+    stock_quantity: Optional[int] = None
     model_prices: Dict[str, Optional[float]] = Field(default_factory=dict)
     status: str
     validation_messages: List[str] = Field(default_factory=list)
@@ -112,8 +115,10 @@ class ImportRowPayload(BaseModel):
     gst_rate: Optional[float] = None
     ex_factory: Optional[float] = None
     dlp: Optional[float] = None
+    ex_showroom: Optional[float] = None
+    dealer_margin_percent: Optional[float] = None
     mrp: Optional[float] = None
-    stock_quantity: Optional[int] = 0
+    stock_quantity: Optional[int] = None
     model_prices: Optional[Dict[str, Optional[float]]] = Field(default_factory=dict)
     remarks: Optional[str] = None
 
@@ -122,7 +127,7 @@ class ExecuteImportRequest(BaseModel):
     sheet_name: str
     target_model_name: Optional[str] = None
     update_existing: bool = True
-    update_stock: bool = True
+    update_stock: bool = False
     default_category: Optional[str] = "Spare Parts"
     rows: List[ImportRowPayload]
 
@@ -161,7 +166,7 @@ async def inspect_default_workbook(
         )
 
     try:
-        data = inspect_workbook(default_path, default_path.name, "default")
+        data = await asyncio.to_thread(inspect_workbook, default_path, default_path.name, "default")
         return WorkbookInspectionResponse(**data)
     except Exception as e:
         logger.exception("Failed to inspect default workbook: %s", e)
@@ -182,10 +187,10 @@ async def upload_custom_workbook(
     """
     filename = file.filename or "uploaded_workbook.xlsx"
     ext = os.path.splitext(filename)[1].lower()
-    if ext not in [".xlsx", ".xls", ".xlsm"]:
+    if ext not in [".xlsx", ".xls", ".xlsm", ".pdf"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only Excel spreadsheets (.xlsx, .xls) are supported.",
+            detail="Only Excel spreadsheets (.xlsx, .xls) and PDF price lists (.pdf) are supported.",
         )
 
     file_token = uuid.uuid4().hex
@@ -195,7 +200,7 @@ async def upload_custom_workbook(
         with open(target_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        data = inspect_workbook(target_path, filename, file_token)
+        data = await asyncio.to_thread(inspect_workbook, target_path, filename, file_token)
         return WorkbookInspectionResponse(**data)
     except Exception as e:
         logger.exception("Error processing uploaded file: %s", e)
@@ -203,7 +208,7 @@ async def upload_custom_workbook(
             target_path.unlink(missing_ok=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to parse uploaded workbook: {str(e)}",
+            detail=f"Failed to parse uploaded document: {str(e)}",
         )
 
 
@@ -224,7 +229,8 @@ async def get_sheet_preview(
         )
 
     try:
-        data = parse_and_preview_sheet_data(
+        data = await asyncio.to_thread(
+            parse_and_preview_sheet_data,
             file_path=wb_path,
             sheet_name=req.sheet_name,
             field_mapping=req.field_mapping,
@@ -256,6 +262,8 @@ async def execute_worksheet_import(
     """
     try:
         rows_data = [r.model_dump() for r in req.rows]
+        staff_id = getattr(_staff, "staff_id", None)
+        staff_name = getattr(_staff, "name", None) or getattr(_staff, "username", "Staff")
         result = await execute_batch_import(
             rows_to_import=rows_data,
             target_model_name=req.target_model_name,
@@ -263,6 +271,10 @@ async def execute_worksheet_import(
             update_stock=req.update_stock,
             default_category=req.default_category,
             db=db,
+            source_document_name="Worksheet Batch Review",
+            action_type="IMPORT_EXCEL",
+            staff_id=staff_id,
+            staff_name=staff_name,
         )
         return ExecuteImportResponse(**result)
     except Exception as e:
@@ -281,7 +293,7 @@ class ImportEntireSheetRequest(BaseModel):
     target_model_name: Optional[str] = None
     default_category: Optional[str] = "Spare Parts"
     update_existing: bool = True
-    update_stock: bool = True
+    update_stock: bool = False
 
 
 @router.post("/import-entire-sheet", response_model=ExecuteImportResponse)

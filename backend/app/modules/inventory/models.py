@@ -112,6 +112,9 @@ class SpareMaster(Base, AuditMixin, SoftDeleteMixin):
     balances: Mapped[list["SpareStockBalance"]] = relationship(
         "SpareStockBalance", back_populates="spare", foreign_keys="[SpareStockBalance.spare_id]", lazy="selectin"
     )
+    alterations: Mapped[list["SparePartAlteration"]] = relationship(
+        "SparePartAlteration", back_populates="spare", cascade="all, delete-orphan", lazy="selectin"
+    )
 
     # Synonyms & properties for unified SparePart interface
     id = synonym("spare_id")
@@ -468,3 +471,39 @@ class InventoryImportItem(Base, AuditMixin):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     batch: Mapped["InventoryImportBatch"] = relationship("InventoryImportBatch", back_populates="items")
+
+
+class SparePartAlteration(Base):
+    __tablename__ = "module_spare_part_alteration"
+    __table_args__ = (
+        Index("idx_mod_spare_alt_spare_id", "spare_id"),
+        Index("idx_mod_spare_alt_part_code", "part_code"),
+        Index("idx_mod_spare_alt_timestamp", "timestamp"),
+    )
+
+    alteration_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    spare_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="CASCADE"), nullable=False
+    )
+    part_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    action_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    source_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    altered_by_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("staff.staff_id", ondelete="SET NULL"), nullable=True
+    )
+    altered_by_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    changes: Mapped[dict] = mapped_column(JSON, nullable=False)
+    snapshot_before: Mapped[dict] = mapped_column(JSON, nullable=False)
+    snapshot_after: Mapped[dict] = mapped_column(JSON, nullable=False)
+    is_reverted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    reverted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reverted_by_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("staff.staff_id", ondelete="SET NULL"), nullable=True
+    )
+
+    spare: Mapped["SpareMaster"] = relationship("SpareMaster", back_populates="alterations")
