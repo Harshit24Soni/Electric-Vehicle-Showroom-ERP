@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List, Dict
-from fastapi import UploadFile
+from fastapi import UploadFile, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 
@@ -79,6 +79,22 @@ class OCRService:
             remarks_str = None
             if ocr_result.raw_metadata:
                 remarks_str = json.dumps(ocr_result.raw_metadata, default=str)
+
+            # Check for duplicate vendor invoice number
+            inv_no = str(ocr_result.invoice_number.value).strip() if ocr_result.invoice_number else None
+            if inv_no and inv_no != "INV-UNKNOWN":
+                dup_stmt = select(proc_models.SparePurchase).filter(
+                    proc_models.SparePurchase.vendor_id == vendor_id,
+                    func.lower(proc_models.SparePurchase.vendor_invoice_no) == inv_no.lower(),
+                    proc_models.SparePurchase.is_deleted.is_(False),
+                )
+                dup_res = await db.execute(dup_stmt)
+                existing = dup_res.scalars().first()
+                if existing:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Duplicate Invoice: Invoice #{inv_no} already exists for this vendor (Purchase #{existing.spare_purchase_id}).",
+                    )
 
             # 5. Create Draft Purchase Record
             purchase = proc_models.SparePurchase(

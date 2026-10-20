@@ -20,8 +20,24 @@ _utc_now_naive = utc_now_naive
 
 async def create_spare_purchase(db: AsyncSession, data: procurement_schemas.SparePurchaseCreate):
     """Create a new spare purchase order and items with transactional rollback safety."""
-    events_to_publish: List[SparePurchasedEvent] = []
+    # Check for duplicate vendor invoice number
+    if data.vendor_invoice_no and data.vendor_invoice_no.strip():
+        inv_no = data.vendor_invoice_no.strip()
+        dup_stmt = select(procurement_models.SparePurchase).filter(
+            procurement_models.SparePurchase.vendor_id == data.vendor_id,
+            func.lower(procurement_models.SparePurchase.vendor_invoice_no) == inv_no.lower(),
+            procurement_models.SparePurchase.is_deleted.is_(False),
+        )
+        dup_res = await db.execute(dup_stmt)
+        existing = dup_res.scalars().first()
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Duplicate Invoice: Invoice #{inv_no} already exists for this vendor (Purchase #{existing.spare_purchase_id}).",
+            )
+
     try:
+        events_to_publish: List[SparePurchasedEvent] = []
         # 1. Create Purchase Record
         purchase = procurement_models.SparePurchase(
             vendor_id=data.vendor_id,
@@ -130,6 +146,23 @@ async def verify_spare_purchase(
         allowed_statuses = ["DRAFT", "OCR_PROCESSED", "PENDING_VERIFICATION", "VERIFIED", "APPROVED", "POSTED"]
         if purchase.status not in allowed_statuses:
             raise HTTPException(status_code=400, detail=f"Cannot edit purchase in '{purchase.status}' status")
+
+        # Check for duplicate invoice on other purchases for this vendor
+        if data.vendor_invoice_no and data.vendor_invoice_no.strip():
+            inv_no = data.vendor_invoice_no.strip()
+            dup_stmt = select(procurement_models.SparePurchase).filter(
+                procurement_models.SparePurchase.spare_purchase_id != spare_purchase_id,
+                procurement_models.SparePurchase.vendor_id == data.vendor_id,
+                func.lower(procurement_models.SparePurchase.vendor_invoice_no) == inv_no.lower(),
+                procurement_models.SparePurchase.is_deleted.is_(False),
+            )
+            dup_res = await db.execute(dup_stmt)
+            existing = dup_res.scalars().first()
+            if existing:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Duplicate Invoice: Another purchase with Invoice #{inv_no} already exists for this vendor (Purchase #{existing.spare_purchase_id}).",
+                )
 
         purchase.vendor_id = data.vendor_id
         purchase.vendor_invoice_no = data.vendor_invoice_no
@@ -451,21 +484,43 @@ async def get_vehicle_purchase(db: AsyncSession, vehicle_purchase_id: int):
 async def delete_spare_purchase(
     db: AsyncSession, spare_purchase_id: int, current_user: dict, hard_delete: bool = False
 ) -> bool:
-    """Delete a spare purchase (soft by default, hard if authorized)"""
-    purchase = await get_spare_purchase(db, spare_purchase_id)
+    """Delete a spare purchase (soft by default, hard if authorized) and revert posted inventory for unsold parts."""
+    stmt = (
+        select(procurement_models.SparePurchase)
+        .options(
+            selectinload(procurement_models.SparePurchase.items),
+            selectinload(procurement_models.SparePurchase.vendor),
+        )
+        .filter(
+            procurement_models.SparePurchase.spare_purchase_id == spare_purchase_id,
+            procurement_models.SparePurchase.is_deleted.is_(False),
+        )
+    )
+    result = await db.execute(stmt)
+    purchase = result.scalars().first()
     if not purchase:
         return False
+
+    # If posted to inventory, revert unsold inventory units
+    if purchase.status == "POSTED":
+        await inventory_services.revert_purchase_receipt(db, purchase, current_user["staff_id"])
 
     if hard_delete:
         if current_user["designation"] not in ["Admin", "Dealer"]:
             raise HTTPException(status_code=403, detail="Not authorized to permanently delete")
         await db.delete(purchase)
     else:
+        now = _utc_now_naive()
         purchase.is_deleted = True
-        purchase.deleted_at = _utc_now_naive()
+        purchase.status = "CANCELLED"
+        purchase.deleted_at = now
         purchase.deleted_by = current_user["staff_id"]
+        for item in purchase.items or []:
+            item.is_deleted = True
+            item.deleted_at = now
+            item.deleted_by = current_user["staff_id"]
 
-    await db.flush()
+    await db.commit()
     return True
 
 
