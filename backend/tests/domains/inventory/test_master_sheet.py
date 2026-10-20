@@ -178,31 +178,64 @@ async def test_put_master_sheet_not_found(admin_client: AsyncClient):
     assert "not found" in response.json()["detail"].lower()
 
 
-async def test_delete_master_sheet_item(admin_client: AsyncClient, db_session: AsyncSession):
-    """DELETE /api/v1/inventory/master-sheet/{part_code} safely soft-deletes a part."""
+async def test_delete_and_restore_master_sheet_lifecycle(admin_client: AsyncClient, db_session: AsyncSession):
+    """DELETE and POST restore lifecycle for master-sheet items with alteration history tracking."""
     # 1. Create part
     payload = {
-        "part_code": "SP-DEL-001",
-        "description": "Part to be deleted",
-        "category": "Temporary",
+        "part_code": "SP-SOFTDEL-01",
+        "description": "Part to test strict soft-delete and restore",
+        "category": "AuditTest",
+        "mrp": 999.0,
     }
-    await admin_client.post("/api/v1/inventory/master-sheet", json=payload)
+    create_res = await admin_client.post("/api/v1/inventory/master-sheet", json=payload)
+    assert create_res.status_code == 201
 
-    # 2. Delete part
-    del_res = await admin_client.delete("/api/v1/inventory/master-sheet/SP-DEL-001")
+    # 2. Soft-delete the part
+    del_res = await admin_client.delete("/api/v1/inventory/master-sheet/SP-SOFTDEL-01")
     assert del_res.status_code == 200
     assert del_res.json()["success"] is True
 
-    # 3. Verify it does not appear in active get_master_sheet
-    list_res = await admin_client.get("/api/v1/inventory/master-sheet")
-    active_codes = [item["part_code"] for item in list_res.json()]
-    assert "SP-DEL-001" not in active_codes
+    # 3. Verify it does not appear in active get_master_sheet (default include_inactive=False)
+    active_res = await admin_client.get("/api/v1/inventory/master-sheet")
+    active_codes = [item["part_code"] for item in active_res.json()]
+    assert "SP-SOFTDEL-01" not in active_codes
 
-    # 4. Verify in DB is marked deleted
-    code_stmt = select(SparePartCode).where(SparePartCode.code == "SP-DEL-001")
+    # 4. Verify it DOES appear when include_inactive=True and has is_deleted=True
+    inactive_res = await admin_client.get("/api/v1/inventory/master-sheet?include_inactive=true")
+    assert inactive_res.status_code == 200
+    inactive_items = {item["part_code"]: item for item in inactive_res.json()}
+    assert "SP-SOFTDEL-01" in inactive_items
+    assert inactive_items["SP-SOFTDEL-01"]["is_deleted"] is True
+    assert inactive_items["SP-SOFTDEL-01"]["status"] == "INACTIVE"
+
+    # 5. Verify database record is soft-deleted, NOT permanently deleted
+    code_stmt = select(SparePartCode).where(SparePartCode.code == "SP-SOFTDEL-01")
     code_res = await db_session.execute(code_stmt)
     code_obj = code_res.scalar_one_or_none()
+    assert code_obj is not None
     assert code_obj.is_deleted is True
+
+    # 6. Verify alteration log contains SOFT_DELETE action
+    alt_res = await admin_client.get("/api/v1/inventory/master-sheet/SP-SOFTDEL-01/alterations")
+    assert alt_res.status_code == 200
+    action_types = [a["action_type"] for a in alt_res.json()]
+    assert "SOFT_DELETE" in action_types
+
+    # 7. Restore the part
+    restore_res = await admin_client.post("/api/v1/inventory/master-sheet/SP-SOFTDEL-01/restore")
+    assert restore_res.status_code == 200
+    assert restore_res.json()["success"] is True
+
+    # 8. Verify it is now back in active get_master_sheet
+    restored_active_res = await admin_client.get("/api/v1/inventory/master-sheet")
+    restored_codes = [item["part_code"] for item in restored_active_res.json()]
+    assert "SP-SOFTDEL-01" in restored_codes
+
+    # 9. Verify alteration log now also contains RESTORE action
+    alt_res2 = await admin_client.get("/api/v1/inventory/master-sheet/SP-SOFTDEL-01/alterations")
+    assert alt_res2.status_code == 200
+    action_types2 = [a["action_type"] for a in alt_res2.json()]
+    assert "RESTORE" in action_types2
 
 
 async def test_get_master_sheet_search_and_filters(admin_client: AsyncClient, db_session: AsyncSession):

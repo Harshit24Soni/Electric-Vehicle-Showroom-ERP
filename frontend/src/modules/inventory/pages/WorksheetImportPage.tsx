@@ -49,15 +49,17 @@ interface ErpFieldDef {
 }
 
 const ERP_FIELDS: ErpFieldDef[] = [
-  { key: 'part_code', label: 'Part Code / SKU', description: 'Unique part number', required: true, icon: Hash },
+  { key: 'part_code', label: 'Part Code / SKU', description: 'Unique part identifier', required: true, icon: Hash },
   { key: 'description', label: 'Part Name / Description', description: 'Name of the spare part', required: true, icon: FileText },
-  { key: 'hsn_code', label: 'HSN / SAC Code', description: 'GST billing code', required: false, icon: Tag },
-  { key: 'gst_rate', label: 'GST Rate (%)', description: 'Tax percentage (e.g. 18%)', required: false, icon: Percent },
-  { key: 'dlp', label: 'DLP / Landed Cost (₹)', description: 'Dealer Landing Price', required: false, icon: DollarSign },
-  { key: 'mrp', label: 'Customer Price / MRP (₹)', description: 'Selling price to customer', required: false, icon: DollarSign },
-  { key: 'ex_factory', label: 'Ex-Factory Price (₹)', description: 'Manufacturer cost benchmark', required: false, icon: DollarSign },
-  { key: 'stock_quantity', label: 'Current Inventory', description: 'Initial stock balance', required: false, icon: Package },
-  { key: 'category', label: 'Category', description: 'Part group / category', required: false, icon: Layers },
+  { key: 'hsn_code', label: 'HSN / SAC Code', description: 'GST billing classification code', required: false, icon: Tag },
+  { key: 'gst_rate', label: 'GST Rate (%)', description: 'Tax percentage (e.g. 18%, 28%)', required: false, icon: Percent },
+  { key: 'ex_factory', label: 'Ex-Factory Price (₹)', description: 'Manufacturer base rate before GST', required: false, icon: DollarSign },
+  { key: 'dlp', label: 'Purchase Rate / DLP (₹)', description: 'Dealer Landing Price (Cost Price = Ex Factory + GST)', required: false, icon: DollarSign },
+  { key: 'dealer_margin_percent', label: 'Dealer Margin (%)', description: 'Dealer markup percentage over ex-factory', required: false, icon: Percent },
+  { key: 'ex_showroom', label: 'Ex-Showroom Price (₹)', description: 'Showroom rate before customer GST (Ex Factory + Margin)', required: false, icon: DollarSign },
+  { key: 'mrp', label: 'Customer MRP (₹)', description: 'Final retail price to customer (Ex Showroom + GST)', required: false, icon: DollarSign },
+  { key: 'stock_quantity', label: 'Current Inventory Stock', description: 'Showroom physical balance (Rate sheet packaging Qty is ignored)', required: false, icon: Package },
+  { key: 'category', label: 'Category / Classification', description: 'Part group (Unique Part / Common for Model)', required: false, icon: Layers },
 ]
 
 export default function WorksheetImportPage() {
@@ -74,7 +76,7 @@ export default function WorksheetImportPage() {
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({})
   const [targetModelName, setTargetModelName] = useState<string>('')
   const [updateExisting, setUpdateExisting] = useState<boolean>(true)
-  const [updateStock, setUpdateStock] = useState<boolean>(true)
+  const [updateStock, setUpdateStock] = useState<boolean>(false)
   const [defaultCategory, setDefaultCategory] = useState<string>('Spare Parts')
 
   // Review table pagination & search
@@ -133,6 +135,13 @@ export default function WorksheetImportPage() {
     return workbookData.sheets.find((s) => s.name === selectedSheetName)
   }, [workbookData, selectedSheetName])
 
+  const hasStockColumn = useMemo(() => {
+    return Boolean(
+      fieldMapping['stock_quantity'] ||
+        (currentSheetMeta?.auto_mapping && currentSheetMeta.auto_mapping['stock_quantity'])
+    )
+  }, [fieldMapping, currentSheetMeta])
+
   // 2. Fetch sheet preview data for custom-review mode
   const {
     data: previewData,
@@ -185,11 +194,12 @@ export default function WorksheetImportPage() {
         setSelectedSheetName(data.sheets[0].name)
         setFieldMapping(data.sheets[0].auto_mapping || {})
       }
-      toast.success(`Workbook "${data.file_name}" loaded (${data.sheet_count} sheets found)`)
+      const isPdf = data.file_name.toLowerCase().endsWith('.pdf')
+      toast.success(`${isPdf ? 'PDF Price List' : 'Workbook'} "${data.file_name}" loaded (${data.sheet_count} ${isPdf ? 'table(s)' : 'sheets'} found)`)
     },
      
     onError: (err: any) => {
-      const msg = err.response?.data?.detail || 'Failed to upload workbook.'
+      const msg = err.response?.data?.detail || 'Failed to upload document.'
       toast.error(msg)
     },
   })
@@ -254,7 +264,7 @@ export default function WorksheetImportPage() {
       target_model_name: targetModelName.trim() || undefined,
       default_category: defaultCategory,
       update_existing: updateExisting,
-      update_stock: updateStock,
+      update_stock: hasStockColumn ? updateStock : false,
     })
   }
 
@@ -278,7 +288,7 @@ export default function WorksheetImportPage() {
       sheet_name: selectedSheetName,
       target_model_name: targetModelName.trim() || undefined,
       update_existing: updateExisting,
-      update_stock: updateStock,
+      update_stock: hasStockColumn ? updateStock : false,
       default_category: defaultCategory,
       rows: rowsToCommit.map((r) => ({
         part_code: r.part_code,
@@ -289,8 +299,10 @@ export default function WorksheetImportPage() {
         gst_rate: r.gst_rate,
         ex_factory: r.ex_factory,
         dlp: r.dlp,
+        dealer_margin_percent: r.dealer_margin_percent,
+        ex_showroom: r.ex_showroom,
         mrp: r.mrp,
-        stock_quantity: r.stock_quantity,
+        stock_quantity: hasStockColumn ? r.stock_quantity : null,
         model_prices: r.model_prices,
       })),
     })
@@ -352,7 +364,7 @@ export default function WorksheetImportPage() {
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept=".xlsx,.xls,.xlsm"
+              accept=".xlsx,.xls,.xlsm,.pdf"
               className="hidden"
             />
             <button
@@ -361,7 +373,7 @@ export default function WorksheetImportPage() {
               className="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm"
             >
               <Upload className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-              Upload Different File
+              Upload Excel / PDF
             </button>
             <Link
               to="/inventory/master-sheet"
@@ -381,11 +393,18 @@ export default function WorksheetImportPage() {
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Source:</span>
             <span className="text-sm font-medium text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-950 px-3 py-1 rounded-md border border-slate-200 dark:border-slate-800 flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
-              {workbookData?.file_name || activeFileName || 'No workbook loaded'}
+              {(workbookData?.file_name || activeFileName || '').toLowerCase().endsWith('.pdf') ? (
+                <FileText className="w-4 h-4 text-rose-500" />
+              ) : (
+                <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+              )}
+              {workbookData?.file_name || activeFileName || 'No document loaded'}
+              {(workbookData?.file_name || activeFileName || '').toLowerCase().endsWith('.pdf') && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/20">PDF</span>
+              )}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-              ({workbookData?.sheet_count || 16} sheets)
+              ({workbookData?.sheet_count || 1} {(workbookData?.file_name || activeFileName || '').toLowerCase().endsWith('.pdf') ? 'table(s)' : 'sheets'})
             </span>
           </div>
 
@@ -483,6 +502,59 @@ export default function WorksheetImportPage() {
                 )
               })
             )}
+          </div>
+        </div>
+
+        {/* Dealer Pricing Formulation Architecture Banner */}
+        <div className="bg-gradient-to-r from-blue-900/10 via-indigo-900/10 to-slate-900/10 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-slate-900/40 border border-blue-200 dark:border-blue-800/60 rounded-xl p-4 shadow-sm space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <DollarSign className="w-4 h-4" />
+              </span>
+              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Dealer Rate Architecture & Margin Formula
+              </span>
+            </div>
+            <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+              Purchase Rate = Dealer Landing Price (DLP)
+            </span>
+          </div>
+
+          {/* Stepper Flow */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
+            <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase block">Step 1 • Base Rate</span>
+              <span className="font-bold text-slate-900 dark:text-slate-100 block text-xs">Ex-Factory Price</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Manufacturer rate before GST</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 space-y-1">
+              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold uppercase block">+ GST % ➔ Dealer Landing Price</span>
+              <span className="font-bold text-blue-700 dark:text-blue-300 block text-xs">DLP (Purchase Rate)</span>
+              <span className="text-[11px] text-slate-600 dark:text-slate-400 block">Cost Price to Dealer (Ex + GST)</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold uppercase block">+ Margin % ➔ Showroom Price</span>
+              <span className="font-bold text-slate-900 dark:text-slate-100 block text-xs">Ex-Showroom Price</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Ex-Factory + Dealer Margin %</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 space-y-1">
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase block">+ Customer GST % ➔ Customer MRP</span>
+              <span className="font-bold text-emerald-700 dark:text-emerald-300 block text-xs">Customer MRP</span>
+              <span className="text-[11px] text-slate-600 dark:text-slate-400 block">Ex-Showroom + GST Value</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-800/60">
+            <span>
+              🛡️ <strong>Stock Protection:</strong> Plain <code>Qty</code> columns in catalog sheets (e.g. Qty = 1) denote packaging specification and are safely ignored so showroom stock balances are not altered.
+            </span>
+            <span className="text-blue-600 dark:text-blue-400 font-medium">
+              Zero API Tokens Consumed • Instant Local Heuristic Mapping
+            </span>
           </div>
         </div>
 
@@ -622,14 +694,32 @@ export default function WorksheetImportPage() {
                     <span>Update existing part codes & prices</span>
                   </label>
 
-                  <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <label
+                    className={`flex items-start gap-2.5 text-xs ${
+                      hasStockColumn
+                        ? 'text-slate-700 dark:text-slate-300 cursor-pointer'
+                        : 'text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
                     <input
                       type="checkbox"
-                      checked={updateStock}
+                      disabled={!hasStockColumn}
+                      checked={hasStockColumn && updateStock}
                       onChange={(e) => setUpdateStock(e.target.checked)}
-                      className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-blue-600 focus:ring-0"
+                      className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-blue-600 focus:ring-0 mt-0.5 disabled:opacity-50"
                     />
-                    <span>Sync current inventory to stock balance</span>
+                    <div>
+                      <span className="font-medium block">Sync current inventory to stock balance</span>
+                      {hasStockColumn ? (
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Dedicated stock column mapped ({fieldMapping['stock_quantity'] || currentSheetMeta?.auto_mapping?.['stock_quantity']}).
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                          No stock column mapped. Only prices/catalog data will be updated (stock balances untouched).
+                        </span>
+                      )}
+                    </div>
                   </label>
                 </div>
 
@@ -664,13 +754,15 @@ export default function WorksheetImportPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-                {ERP_FIELDS.slice(0, 6).map((field) => (
+                {ERP_FIELDS.map((field) => (
                   <div key={field.key} className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-slate-700 dark:text-slate-300">{field.label}</span>
-                      {field.required && (
+                      {field.required ? (
                         <span className="text-[10px] text-rose-500 font-semibold">*Required</span>
-                      )}
+                      ) : field.key === 'stock_quantity' ? (
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400">Rate Sheets: Unmapped</span>
+                      ) : null}
                     </div>
                     <select
                       value={fieldMapping[field.key] || ''}
@@ -775,15 +867,21 @@ export default function WorksheetImportPage() {
                       <th className="p-3 font-semibold">Status</th>
                       <th className="p-3 font-semibold">Part Code *</th>
                       <th className="p-3 font-semibold">Description *</th>
-                      <th className="p-3 font-semibold text-right">Cost / DLP (₹)</th>
-                      <th className="p-3 font-semibold text-right">Selling MRP (₹)</th>
-                      <th className="p-3 font-semibold text-right">Stock</th>
+                      <th className="p-3 font-semibold text-right" title="Manufacturer Base Rate Before GST">Ex-Factory (₹)</th>
+                      <th className="p-3 font-semibold text-right" title="Applicable GST Rate">GST %</th>
+                      <th className="p-3 font-semibold text-right text-blue-600 dark:text-blue-400" title="Dealer Landing Price = Ex Factory + GST">Purchase Rate / DLP (₹)</th>
+                      <th className="p-3 font-semibold text-right" title="Dealer Margin Percentage">Margin %</th>
+                      <th className="p-3 font-semibold text-right" title="Ex Factory + Dealer Margin">Ex-Showroom (₹)</th>
+                      <th className="p-3 font-semibold text-right text-emerald-600 dark:text-emerald-400" title="Customer MRP = Ex Showroom + GST">Customer MRP (₹)</th>
+                      <th className="p-3 font-semibold text-right">
+                        {hasStockColumn ? 'Stock Qty' : 'Stock (Rate Only)'}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-xs">
                     {isPreviewLoading || isPreviewFetching ? (
                       <tr>
-                        <td colSpan={7} className="p-12 text-center text-slate-400">
+                        <td colSpan={11} className="p-12 text-center text-slate-400">
                           <RefreshCw className="w-5 h-5 animate-spin mx-auto text-blue-500 mb-2" />
                           Loading preview rows...
                         </td>
@@ -793,7 +891,11 @@ export default function WorksheetImportPage() {
                         const edits = editedRows[row.row_id] || {}
                         const part_code = edits.part_code !== undefined ? edits.part_code : row.part_code
                         const description = edits.description !== undefined ? edits.description : row.description
+                        const ex_factory = edits.ex_factory !== undefined ? edits.ex_factory : row.ex_factory
+                        const gst_rate = edits.gst_rate !== undefined ? edits.gst_rate : row.gst_rate
                         const dlp = edits.dlp !== undefined ? edits.dlp : row.dlp
+                        const dealer_margin_percent = edits.dealer_margin_percent !== undefined ? edits.dealer_margin_percent : row.dealer_margin_percent
+                        const ex_showroom = edits.ex_showroom !== undefined ? edits.ex_showroom : row.ex_showroom
                         const mrp = edits.mrp !== undefined ? edits.mrp : row.mrp
                         const stock_quantity =
                           edits.stock_quantity !== undefined ? edits.stock_quantity : row.stock_quantity
@@ -838,7 +940,7 @@ export default function WorksheetImportPage() {
                                     [row.row_id]: { ...prev[row.row_id], part_code: e.target.value },
                                   }))
                                 }
-                                className="bg-transparent px-2 py-1 rounded text-slate-900 dark:text-white outline-none focus:bg-slate-100 dark:focus:bg-slate-950 focus:ring-1 focus:ring-blue-500"
+                                className="bg-transparent px-2 py-1 rounded text-slate-900 dark:text-white outline-none focus:bg-slate-100 dark:focus:bg-slate-950 focus:ring-1 focus:ring-blue-500 font-mono text-xs w-28"
                               />
                             </td>
                             <td className="p-2">
@@ -851,8 +953,28 @@ export default function WorksheetImportPage() {
                                     [row.row_id]: { ...prev[row.row_id], description: e.target.value },
                                   }))
                                 }
-                                className="w-full bg-transparent px-2 py-1 rounded text-slate-800 dark:text-slate-200 outline-none focus:bg-slate-100 dark:focus:bg-slate-950 focus:ring-1 focus:ring-blue-500 truncate"
+                                className="w-full min-w-[200px] bg-transparent px-2 py-1 rounded text-slate-800 dark:text-slate-200 outline-none focus:bg-slate-100 dark:focus:bg-slate-950 focus:ring-1 focus:ring-blue-500 truncate"
                               />
+                            </td>
+                            <td className="p-2 text-right">
+                              <input
+                                type="number"
+                                value={ex_factory ?? ''}
+                                onChange={(e) =>
+                                  setEditedRows((prev) => ({
+                                    ...prev,
+                                    [row.row_id]: {
+                                      ...prev[row.row_id],
+                                      ex_factory: e.target.value ? Number(e.target.value) : null,
+                                    },
+                                  }))
+                                }
+                                placeholder="—"
+                                className="w-16 bg-transparent px-1 py-1 rounded text-right text-slate-600 dark:text-slate-400 outline-none focus:bg-slate-100 dark:focus:bg-slate-950 font-mono text-xs"
+                              />
+                            </td>
+                            <td className="p-2 text-right text-slate-600 dark:text-slate-400 font-mono text-xs">
+                              {gst_rate ? `${gst_rate}%` : '—'}
                             </td>
                             <td className="p-2 text-right">
                               <input
@@ -868,8 +990,14 @@ export default function WorksheetImportPage() {
                                   }))
                                 }
                                 placeholder="0.00"
-                                className="w-20 bg-transparent px-2 py-1 rounded text-right text-slate-700 dark:text-slate-300 outline-none focus:bg-slate-100 dark:focus:bg-slate-950"
+                                className="w-20 bg-transparent px-1.5 py-1 rounded text-right font-bold text-blue-600 dark:text-blue-400 outline-none focus:bg-slate-100 dark:focus:bg-slate-950 font-mono text-xs ring-1 ring-blue-500/20"
                               />
+                            </td>
+                            <td className="p-2 text-right text-slate-600 dark:text-slate-400 font-mono text-xs">
+                              {dealer_margin_percent ? `${dealer_margin_percent}%` : '—'}
+                            </td>
+                            <td className="p-2 text-right text-slate-700 dark:text-slate-300 font-mono text-xs">
+                              {ex_showroom !== null && ex_showroom !== undefined ? ex_showroom.toFixed(2) : '—'}
                             </td>
                             <td className="p-2 text-right">
                               <input
@@ -885,11 +1013,17 @@ export default function WorksheetImportPage() {
                                   }))
                                 }
                                 placeholder="0.00"
-                                className="w-20 bg-transparent px-2 py-1 rounded text-right text-emerald-600 dark:text-emerald-400 font-semibold outline-none focus:bg-slate-100 dark:focus:bg-slate-950"
+                                className="w-20 bg-transparent px-1.5 py-1 rounded text-right text-emerald-600 dark:text-emerald-400 font-bold outline-none focus:bg-slate-100 dark:focus:bg-slate-950 font-mono text-xs"
                               />
                             </td>
                             <td className="p-2 text-right text-blue-600 dark:text-blue-400 font-semibold pr-4">
-                              {stock_quantity}
+                              {stock_quantity !== null && stock_quantity !== undefined ? (
+                                stock_quantity
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-500 font-normal text-xs italic" title="No showroom stock column in catalog document">
+                                  — (Rate Only)
+                                </span>
+                              )}
                             </td>
                           </tr>
                         )

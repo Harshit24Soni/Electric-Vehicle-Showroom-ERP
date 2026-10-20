@@ -90,6 +90,10 @@ async def apply_new_purchase_cost(
     if not spare:
         raise ValueError(f"Spare {spare_id} not found.")
 
+    from app.modules.inventory.alteration_service import capture_spare_snapshot, record_alteration
+
+    before_snap = capture_spare_snapshot(spare, spare.part_number)
+
     now = utc_now_naive()
 
     # 1. Record cost history
@@ -170,6 +174,18 @@ async def apply_new_purchase_cost(
                 "margin_percent": compat_margin,
             }
         )
+
+    # Record alteration audit trail entry
+    after_snap = capture_spare_snapshot(spare, spare.part_number)
+    record_alteration(
+        db=db,
+        spare_id=spare.spare_id,
+        part_code=spare.part_number or "",
+        action_type="COST_INWARD",
+        source_reference=source_reference,
+        snapshot_before=before_snap,
+        snapshot_after=after_snap,
+    )
 
     await db.commit()
 

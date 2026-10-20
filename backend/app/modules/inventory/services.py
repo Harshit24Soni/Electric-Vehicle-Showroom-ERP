@@ -326,13 +326,48 @@ async def remove_compatibility(db: AsyncSession, spare_id: int, compatibility_id
 
 
 async def deactivate_spare(db: AsyncSession, spare_id: int) -> SpareMaster:
-    spare = await get_spare(db, spare_id)
+    """Soft-deletes a spare part and its associated part codes strictly without purging."""
+    stmt = (
+        select(SpareMaster)
+        .options(selectinload(SpareMaster.codes), selectinload(SpareMaster.compatibilities))
+        .filter(SpareMaster.spare_id == spare_id)
+    )
+    result = await db.execute(stmt)
+    spare = result.scalars().first()
     if not spare:
         raise InventoryError("Spare part not found")
 
     spare.status = "INACTIVE"
+    spare.is_deleted = True
+    spare.deleted_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    for c in spare.codes or []:
+        c.is_deleted = True
+        c.is_current = False
     await db.flush()
-    return await get_spare(db, spare_id)
+    return spare
+
+
+async def restore_spare(db: AsyncSession, spare_id: int) -> SpareMaster:
+    """Restores a soft-deleted spare part and reactivates its codes."""
+    stmt = (
+        select(SpareMaster)
+        .options(selectinload(SpareMaster.codes), selectinload(SpareMaster.compatibilities))
+        .filter(SpareMaster.spare_id == spare_id)
+    )
+    result = await db.execute(stmt)
+    spare = result.scalars().first()
+    if not spare:
+        raise InventoryError("Spare part not found")
+
+    spare.status = "ACTIVE"
+    spare.is_deleted = False
+    spare.deleted_at = None
+    spare.deleted_by = None
+    for c in spare.codes or []:
+        c.is_deleted = False
+        c.is_current = True
+    await db.flush()
+    return spare
 
 
 async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
