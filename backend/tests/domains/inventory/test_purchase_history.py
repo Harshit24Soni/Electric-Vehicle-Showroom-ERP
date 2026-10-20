@@ -345,4 +345,6 @@ async def test_purchase_history_differentiates_import_studio_and_po_bills(db_ses
     assert studio_record.source_label == "Import Studio (Rate Ingestion)"
     assert studio_record.vendor_name == "Worksheet Ingestion Studio"
     assert studio_record.quantity == 0
-    assert studio_record.unit_rate == 2200.0
+    assert studio_record.unit_rate == 2250.0  # DLP is the purchase rate for dealer
+    assert studio_record.landed_cost_unit == 2250.0
+    assert studio_record.ex_factory_unit == 2200.0
