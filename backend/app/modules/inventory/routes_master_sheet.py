@@ -1,4 +1,3 @@
-import json
 import logging
 import math
 import re
@@ -56,7 +55,7 @@ VEHICLE_MODELS_CACHE: Optional[Tuple[float, List[VehicleModel], Dict[int, str]]]
 
 async def invalidate_master_sheet_cache() -> None:
     """Invalidates all master sheet cache entries in Redis and memory upon data modification."""
-    global MASTER_SHEET_MEMORY_CACHE, VEHICLE_MODELS_CACHE
+    global VEHICLE_MODELS_CACHE
     MASTER_SHEET_MEMORY_CACHE.clear()
     VEHICLE_MODELS_CACHE = None
     try:
@@ -209,6 +208,7 @@ async def get_cached_vehicle_models(db: AsyncSession) -> Tuple[List[VehicleModel
     """Returns all active vehicle models with a 5-minute memory cache to prevent redundant queries."""
     global VEHICLE_MODELS_CACHE
     import time
+
     now = time.time()
     if VEHICLE_MODELS_CACHE and (now - VEHICLE_MODELS_CACHE[0]) < 300:
         return VEHICLE_MODELS_CACHE[1], VEHICLE_MODELS_CACHE[2]
@@ -381,9 +381,7 @@ async def get_master_sheet(
     if clean_model:
         filters.append(
             SpareMaster.compatibilities.any(
-                SparePartVehicleCompatibility.vehicle_model.has(
-                    VehicleModel.model_name.ilike(f"%{clean_model}%")
-                )
+                SparePartVehicleCompatibility.vehicle_model.has(VehicleModel.model_name.ilike(f"%{clean_model}%"))
             )
         )
 
@@ -924,9 +922,7 @@ async def delete_master_sheet_item(
 ):
     """Safely soft-deletes a part record from active inventory (strictly preserves database row)."""
     clean_code = part_code.strip()
-    code_stmt = select(SparePartCode).where(
-        SparePartCode.code == clean_code, SparePartCode.is_deleted.is_(False)
-    )
+    code_stmt = select(SparePartCode).where(SparePartCode.code == clean_code, SparePartCode.is_deleted.is_(False))
     code_res = await db.execute(code_stmt)
     part_code_obj = code_res.scalar_one_or_none()
     if not part_code_obj:

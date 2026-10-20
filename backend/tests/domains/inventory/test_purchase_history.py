@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.inventory.models import (
     SpareMaster,
     SparePartCode,
-    SpareStockMovement,
     SpareCostHistory,
 )
 from app.modules.inventory.purchase_history_service import get_part_purchase_history

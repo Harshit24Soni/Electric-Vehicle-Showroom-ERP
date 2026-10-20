@@ -370,7 +370,11 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
 
         # If all or most pages had extractable digital text, return immediately in O(1) time with 0 network latency
         if digital_pages_extracted > 0 and digital_pages_extracted >= total_pages:
-            logger.info("Successfully extracted %d pages from %s via fast-path digital text layer.", len(page_results), file_name)
+            logger.info(
+                "Successfully extracted %d pages from %s via fast-path digital text layer.",
+                len(page_results),
+                file_name,
+            )
             return page_results
 
         # 3. For scanned/image PDFs (or missing pages), utilize Google Cloud Vision in 5-page slices
@@ -405,7 +409,7 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
 
             content_b64 = base64.b64encode(chunk_content).decode("utf-8")
             url = f"https://vision.googleapis.com/v1/files:annotate?key={self.api_key}"
-            
+
             # Send exact 1-based page indices matching the sliced sub-document
             requested_pages = list(range(1, chunk_page_count + 1))
             payload = {
@@ -440,7 +444,9 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
                         actual_page_num = chunk_start + sub_idx + 1
                         if "fullTextAnnotation" in page_resp:
                             page_text = page_resp["fullTextAnnotation"]["text"]
-                            page_results.append(self._parse_extracted_text(page_text, f"{file_name}#page_{actual_page_num}"))
+                            page_results.append(
+                                self._parse_extracted_text(page_text, f"{file_name}#page_{actual_page_num}")
+                            )
             except Exception as exc:
                 logger.error(
                     "Failed to process chunk %d-%d for %s with Vision API: %s",
@@ -577,14 +583,21 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
                 for offset in (1, 2, 3):
                     if i - offset >= 0:
                         cand = lines[i - offset].strip()
-                        if cand.upper() == invoice_number.upper() or cand.upper().startswith("INV-") or "INVOICE" in cand.upper():
+                        if (
+                            cand.upper() == invoice_number.upper()
+                            or cand.upper().startswith("INV-")
+                            or "INVOICE" in cand.upper()
+                        ):
                             continue
                         if re.match(r"^[A-Z0-9-]{4,25}$", cand, re.IGNORECASE) and not cand.isdigit():
                             part_code = cand
                             break
                         tokens = [
-                            t for t in re.findall(r"\b[A-Z0-9-]{4,25}\b", cand)
-                            if t.upper() != invoice_number.upper() and not t.upper().startswith("INV-") and not t.isdigit()
+                            t
+                            for t in re.findall(r"\b[A-Z0-9-]{4,25}\b", cand)
+                            if t.upper() != invoice_number.upper()
+                            and not t.upper().startswith("INV-")
+                            and not t.isdigit()
                         ]
                         if tokens:
                             part_code = tokens[0]
@@ -635,7 +648,9 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
                     if re.match(r"^\d+(?:\.\d+)?$", clean_num):
                         nums.append(Decimal(clean_num))
 
-                has_line_uom = any(tok.upper() in ("EA", "NOS", "PCS", "SET", "UNIT", "KGS", "MTR") for tok in tokens_in_l[1:])
+                has_line_uom = any(
+                    tok.upper() in ("EA", "NOS", "PCS", "SET", "UNIT", "KGS", "MTR") for tok in tokens_in_l[1:]
+                )
                 has_explicit_qty = has_qty_col or (has_line_uom and len(nums) >= 2)
 
                 qty = Decimal("0")
@@ -751,10 +766,7 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
                             continue
                         usable_nums.append(Decimal(t))
 
-                    has_line_uom = any(
-                        uom_kw in forward_text.upper()
-                        for uom_kw in ["EA", "NOS", "PCS", "SET", "UNIT"]
-                    )
+                    has_line_uom = any(uom_kw in forward_text.upper() for uom_kw in ["EA", "NOS", "PCS", "SET", "UNIT"])
                     has_explicit_qty = has_qty_col or (has_line_uom and len(usable_nums) >= 2)
 
                     qty = Decimal("0")
@@ -789,9 +801,11 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
 
         # 10. Financial Reconciliation
         subtotal = sum(
-            (Decimal(str(item.unit_price.value)) * Decimal(str(item.quantity.value)))
-            if Decimal(str(item.quantity.value)) > Decimal("0")
-            else Decimal(str(item.unit_price.value))
+            (
+                (Decimal(str(item.unit_price.value)) * Decimal(str(item.quantity.value)))
+                if Decimal(str(item.quantity.value)) > Decimal("0")
+                else Decimal(str(item.unit_price.value))
+            )
             for item in line_items
         )
         tax_total = sum(Decimal(str(item.tax_amount.value)) if item.tax_amount else Decimal("0") for item in line_items)

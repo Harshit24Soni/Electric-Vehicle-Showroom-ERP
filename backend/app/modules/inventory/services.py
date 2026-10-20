@@ -340,7 +340,7 @@ async def deactivate_spare(db: AsyncSession, spare_id: int) -> SpareMaster:
     spare.status = "INACTIVE"
     spare.is_deleted = True
     spare.deleted_at = datetime.now(timezone.utc).replace(tzinfo=None)
-    for c in (spare.codes or []):
+    for c in spare.codes or []:
         c.is_deleted = True
         c.is_current = False
     await db.flush()
@@ -363,7 +363,7 @@ async def restore_spare(db: AsyncSession, spare_id: int) -> SpareMaster:
     spare.is_deleted = False
     spare.deleted_at = None
     spare.deleted_by = None
-    for c in (spare.codes or []):
+    for c in spare.codes or []:
         c.is_deleted = False
         c.is_current = True
     await db.flush()

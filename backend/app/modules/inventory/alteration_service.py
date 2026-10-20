@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,12 +7,9 @@ from sqlalchemy.orm import selectinload
 from app.db.mixins import utc_now, utc_now_naive
 from app.modules.inventory.models import (
     PriceListItem,
-    PriceListVersion,
     SpareCostHistory,
     SpareMaster,
     SparePartAlteration,
-    SparePartCode,
-    SparePartVehicleCompatibility,
     SpareSellingPriceHistory,
     SpareStockBalance,
 )
@@ -273,7 +269,9 @@ async def revert_alteration(
                 reason=f"Rollback of alteration #{alteration_id}",
             )
         )
-    if ("dlp" in target_fields or "ex_factory" in target_fields) and (spare.base_dlp is not None or spare.base_cost is not None):
+    if ("dlp" in target_fields or "ex_factory" in target_fields) and (
+        spare.base_dlp is not None or spare.base_cost is not None
+    ):
         cval = float(spare.base_dlp if spare.base_dlp is not None else spare.base_cost)
         db.add(
             SpareCostHistory(

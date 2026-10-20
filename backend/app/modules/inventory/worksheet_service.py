@@ -113,7 +113,15 @@ def clean_cell_float(val: Any) -> Optional[float]:
     if not s or s.lower() in ("none", "null", "-", "na", "n/a", "—"):
         return None
     # Strip common currency signs, Indian notation suffixes, and percentages
-    s = s.replace("₹", "").replace("Rs.", "").replace("Rs", "").replace("INR", "").replace("/-", "").replace("%", "").strip()
+    s = (
+        s.replace("₹", "")
+        .replace("Rs.", "")
+        .replace("Rs", "")
+        .replace("INR", "")
+        .replace("/-", "")
+        .replace("%", "")
+        .strip()
+    )
     if not s:
         return None
     # If string contains multiple numbers like '350 / 450', take the second (revised/GST) or first
@@ -296,7 +304,17 @@ def auto_detect_field_mappings(headers: List[str], sheet_name: str) -> Dict[str,
 
     # DLP (Dealer Landing Price = Purchase Rate = Ex Factory + GST)
     dlp = find_best_header(
-        ["dealer landing price", "revised dlp", "old dlp", "dlp", "dealer price", "landed cost", "dealer landing", "landing price", "purchase rate"],
+        [
+            "dealer landing price",
+            "revised dlp",
+            "old dlp",
+            "dlp",
+            "dealer price",
+            "landed cost",
+            "dealer landing",
+            "landing price",
+            "purchase rate",
+        ],
         exclude=["margin", "showroom", "factory", "mrp"],
     )
     if dlp:
@@ -312,7 +330,14 @@ def auto_detect_field_mappings(headers: List[str], sheet_name: str) -> Dict[str,
 
     # Ex Showroom Price (Dealer Selling Price before Customer GST = Ex Factory + Margin)
     ex_showroom = find_best_header(
-        ["final rates - ex showroom price", "ex showroom price", "ex showroom", "ex-showroom price", "ex-showroom", "showroom price"],
+        [
+            "final rates - ex showroom price",
+            "ex showroom price",
+            "ex showroom",
+            "ex-showroom price",
+            "ex-showroom",
+            "showroom price",
+        ],
         exclude=["factory", "dlp", "mrp", "gst"],
     )
     if ex_showroom:
@@ -320,7 +345,16 @@ def auto_detect_field_mappings(headers: List[str], sheet_name: str) -> Dict[str,
 
     # MRP (Customer Selling Price = Ex Showroom + Customer GST)
     mrp = find_best_header(
-        ["final rates - customer price", "revised mrp", "customer price", "old mrp", "mrp", "maximum retail price", "selling price", "retail price"],
+        [
+            "final rates - customer price",
+            "revised mrp",
+            "customer price",
+            "old mrp",
+            "mrp",
+            "maximum retail price",
+            "selling price",
+            "retail price",
+        ],
         exclude=["without gst", "showroom", "dlp", "factory", "cost"],
     )
     if mrp:
@@ -330,14 +364,45 @@ def auto_detect_field_mappings(headers: List[str], sheet_name: str) -> Dict[str,
     # Plain 'qty' or 'quantity' in rate lists indicates packaging/per-unit spec (e.g. 1 unit), NEVER showroom inventory balance
     stock = find_best_header(
         [
-            "current inventory stock", "current inventory", "current stock", "available stock", "stock quantity",
-            "physical stock", "closing stock", "opening stock", "in-stock qty", "in stock qty",
-            "stock qty", "inventory qty", "qty in stock", "quantity in stock", "units in stock",
-            "on hand stock", "stock on hand"
+            "current inventory stock",
+            "current inventory",
+            "current stock",
+            "available stock",
+            "stock quantity",
+            "physical stock",
+            "closing stock",
+            "opening stock",
+            "in-stock qty",
+            "in stock qty",
+            "stock qty",
+            "inventory qty",
+            "qty in stock",
+            "quantity in stock",
+            "units in stock",
+            "on hand stock",
+            "stock on hand",
         ],
         exclude=[
-            "rate", "rates", "price", "prices", "cost", "dlp", "mrp", "value", "amount",
-            "old", "hsn", "code", "desc", "name", "category", "unit price", "unit cost", "tax", "moq", "lot"
+            "rate",
+            "rates",
+            "price",
+            "prices",
+            "cost",
+            "dlp",
+            "mrp",
+            "value",
+            "amount",
+            "old",
+            "hsn",
+            "code",
+            "desc",
+            "name",
+            "category",
+            "unit price",
+            "unit cost",
+            "tax",
+            "moq",
+            "lot",
         ],
     )
     if stock:
@@ -408,8 +473,10 @@ def extract_pdf_table_groups(file_path: Path) -> Dict[str, Dict[str, Any]]:
         for page_idx, page in enumerate(pdf.pages):
             tables = page.extract_tables()
             if not tables:
-                tables = page.extract_tables(table_settings={"vertical_strategy": "text", "horizontal_strategy": "text"})
-            for table in (tables or []):
+                tables = page.extract_tables(
+                    table_settings={"vertical_strategy": "text", "horizontal_strategy": "text"}
+                )
+            for table in tables or []:
                 cleaned_table = []
                 for row in table:
                     cleaned_row = [clean_cell_str(c) for c in row]
@@ -423,9 +490,27 @@ def extract_pdf_table_groups(file_path: Path) -> Dict[str, Dict[str, Any]]:
         return {}
 
     header_keywords = [
-        "part code", "item code", "part no", "part number", "part_code", "sku", "code",
-        "description", "part name", "item name", "hsn", "sac", "gst", "dlp", "mrp",
-        "price", "rate", "cost", "qty", "quantity", "stock"
+        "part code",
+        "item code",
+        "part no",
+        "part number",
+        "part_code",
+        "sku",
+        "code",
+        "description",
+        "part name",
+        "item name",
+        "hsn",
+        "sac",
+        "gst",
+        "dlp",
+        "mrp",
+        "price",
+        "rate",
+        "cost",
+        "qty",
+        "quantity",
+        "stock",
     ]
 
     # Find the dominant price list table across all pages (even across 20+ pages)
@@ -559,7 +644,7 @@ def extract_pdf_table_groups(file_path: Path) -> Dict[str, Dict[str, Any]]:
                 if len(r) < len(headers):
                     r = r + [None] * (len(headers) - len(r))
                 elif len(r) > len(headers):
-                    r = r[:len(headers)]
+                    r = r[: len(headers)]
                 data_rows.append(r)
 
         sheet_type = detect_sheet_type(group_name, headers)

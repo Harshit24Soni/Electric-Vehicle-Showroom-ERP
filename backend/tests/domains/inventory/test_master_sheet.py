@@ -238,7 +238,6 @@ async def test_delete_and_restore_master_sheet_lifecycle(admin_client: AsyncClie
     assert "RESTORE" in action_types2
 
 
-
 async def test_get_master_sheet_search_and_filters(admin_client: AsyncClient, db_session: AsyncSession):
     """GET /api/v1/inventory/master-sheet filters by search query and category."""
     # Create two parts in different categories

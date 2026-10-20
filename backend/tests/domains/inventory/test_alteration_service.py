@@ -5,7 +5,7 @@ from app.modules.inventory.alteration_service import (
     _are_values_equal,
 )
 from app.modules.inventory.worksheet_service import clean_cell_float
-from app.modules.inventory.models import SpareMaster, SparePartCode, SparePartVehicleCompatibility
+from app.modules.inventory.models import SpareMaster, SparePartCode
 
 
 def test_clean_cell_float_currency_and_percent():

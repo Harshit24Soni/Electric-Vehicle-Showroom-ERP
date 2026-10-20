@@ -12,7 +12,13 @@ from app.modules.inventory.worksheet_service import (
     inspect_workbook,
     parse_and_preview_sheet_data,
 )
-from app.modules.inventory.models import SpareMaster, SparePartCode, PriceListItem, SpareStockBalance, SpareStockMovement
+from app.modules.inventory.models import (
+    SpareMaster,
+    SparePartCode,
+    PriceListItem,
+    SpareStockBalance,
+    SpareStockMovement,
+)
 
 
 def test_clean_cell_utilities():
@@ -158,14 +164,20 @@ def test_pdf_inspection_and_preview(tmp_path):
     ]
     # Add 25 rows to force multi-page
     for i in range(3, 26):
-        data.append([f"PDF-{i:03d}", f"Component Spare Part {i}", "87141090", "18%", f"{i * 100:.2f}", f"{i * 150:.2f}"])
+        data.append(
+            [f"PDF-{i:03d}", f"Component Spare Part {i}", "87141090", "18%", f"{i * 100:.2f}", f"{i * 150:.2f}"]
+        )
 
     t = Table(data, repeatRows=1)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e293b")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#94a3b8")),
-    ]))
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e293b")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#94a3b8")),
+            ]
+        )
+    )
     elements.append(t)
     doc.build(elements)
 
@@ -400,9 +412,7 @@ async def test_dealer_landing_price_as_purchase_rate_and_pricing_formulas(
     assert float(ch.landed_cost) == 6740.0
 
     # Verify SparePartVehicleCompatibility retains full pricing breakdown
-    compat_stmt = select(SparePartVehicleCompatibility).where(
-        SparePartVehicleCompatibility.spare_id == spare.spare_id
-    )
+    compat_stmt = select(SparePartVehicleCompatibility).where(SparePartVehicleCompatibility.spare_id == spare.spare_id)
     compat = (await db_session.execute(compat_stmt)).scalars().first()
     assert compat is not None
     assert float(compat.ex_factory_price) == 5265.0
@@ -419,4 +429,3 @@ async def test_dealer_landing_price_as_purchase_rate_and_pricing_formulas(
     assert latest_bill.unit_rate == 6740.0, f"Expected bill unit_rate to be DLP 6740.0, got {latest_bill.unit_rate}"
     assert latest_bill.landed_cost_unit == 6740.0
     assert latest_bill.quantity == 0  # No stock assumed!
-

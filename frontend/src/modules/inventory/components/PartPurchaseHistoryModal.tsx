@@ -117,7 +117,7 @@ export default function PartPurchaseHistoryModal({ item, onClose }: PartPurchase
         matchLabel
       )
     })
-  }, [summary?.bills, activeTab, searchTerm])
+  }, [summary, activeTab, searchTerm])
 
   // Export Bill History to CSV
   const handleExportCSV = () => {

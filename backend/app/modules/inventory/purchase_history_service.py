@@ -14,8 +14,7 @@ for any individual inventory spare part code:
 
 import logging
 from datetime import date, datetime
-from decimal import Decimal
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, List, Optional, Set, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import desc, func, or_, select
@@ -26,7 +25,6 @@ from app.modules.inventory.models import (
     SpareCostHistory,
     SpareMaster,
     SparePartCode,
-    SpareStockBalance,
     SpareStockMovement,
 )
 from app.modules.master.models import Vendor
@@ -132,9 +130,7 @@ def _format_date(val: Any) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-async def resolve_spare_by_identifier(
-    db: AsyncSession, identifier: str
-) -> Optional[Tuple[SpareMaster, List[str]]]:
+async def resolve_spare_by_identifier(db: AsyncSession, identifier: str) -> Optional[Tuple[SpareMaster, List[str]]]:
     """
     Finds a SpareMaster record by part code (current or historical) or by spare_id.
     Returns (spare, list_of_known_part_codes).
@@ -193,9 +189,7 @@ async def resolve_spare_by_identifier(
     return None
 
 
-async def get_part_purchase_history(
-    db: AsyncSession, identifier: str
-) -> PartPurchaseSummaryResponse:
+async def get_part_purchase_history(db: AsyncSession, identifier: str) -> PartPurchaseSummaryResponse:
     """
     Builds the complete purchase rate, quantity, and bill summary for a given part code or spare_id.
     """
@@ -267,16 +261,8 @@ async def get_part_purchase_history(
     for item, purchase, vendor in rows:
         seen_purchase_ids.add(purchase.spare_purchase_id)
 
-        bill_no = (
-            purchase.vendor_invoice_no
-            or purchase.docket_reference
-            or f"PUR-{purchase.spare_purchase_id}"
-        )
-        bill_dt = _format_date(
-            purchase.vendor_invoice_date
-            or purchase.purchase_date
-            or purchase.created_at
-        )
+        bill_no = purchase.vendor_invoice_no or purchase.docket_reference or f"PUR-{purchase.spare_purchase_id}"
+        bill_dt = _format_date(purchase.vendor_invoice_date or purchase.purchase_date or purchase.created_at)
 
         vendor_title = (
             vendor.vendor_name
@@ -337,11 +323,7 @@ async def get_part_purchase_history(
 
         for mov in movements:
             # If movement is linked to a procurement purchase already shown, skip to avoid double-counting
-            if (
-                mov.reference_type == "PROCUREMENT"
-                and mov.reference_id
-                and mov.reference_id in seen_purchase_ids
-            ):
+            if mov.reference_type == "PROCUREMENT" and mov.reference_id and mov.reference_id in seen_purchase_ids:
                 continue
 
             is_po_movement = mov.reference_type == "PROCUREMENT" or mov.movement_type == "PURCHASE"
