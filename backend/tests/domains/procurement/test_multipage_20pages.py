@@ -1,10 +1,9 @@
 import io
-import pytest
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-from app.modules.procurement.ocr_provider import GoogleCloudVisionOCRProvider
+
 import httpx
+import pytest
+
+from app.modules.procurement.ocr_provider import GoogleCloudVisionOCRProvider
 
 
 @pytest.mark.asyncio
@@ -13,6 +12,11 @@ async def test_20_page_pdf_processing():
 
     extracts all 20 pages cleanly with zero failures and sub-second execution.
     """
+    pytest.importorskip("reportlab")
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     styles = getSampleStyleSheet()
