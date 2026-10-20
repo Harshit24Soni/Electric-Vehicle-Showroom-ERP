@@ -11,7 +11,7 @@ from app.modules.procurement.ocr_service import OCRService
 router = APIRouter(prefix="/procurement", tags=["Procurement"])
 
 
-@router.post("/purchases/spares", response_model=schemas.PurchaseResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/purchases/spares", response_model=schemas.SparePurchaseResponse, status_code=status.HTTP_201_CREATED)
 async def create_spare_purchase(
     data: schemas.SparePurchaseCreate,
     db: AsyncSession = Depends(get_db),

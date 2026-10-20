@@ -22,8 +22,11 @@ from app.modules.inventory.contracts import (
     CheckVehicleAvailabilityRequest,
     VehicleAvailabilityResponse,
 )
+from app.db.mixins import utc_now_naive
 
 logger = logging.getLogger(__name__)
+
+_utc_now_naive = utc_now_naive
 
 
 class InventoryError(Exception):
@@ -526,6 +529,82 @@ async def post_purchase_receipt(db: AsyncSession, purchase, payload):
             exc_info=True,
         )
         raise
+
+
+async def revert_purchase_receipt(db: AsyncSession, purchase, staff_id: int):
+    """Revert inventory additions made by a posted purchase receipt when the PO is cancelled/deleted.
+
+    Reverts only unsold inventory units and never drives inventory negative.
+    """
+    stmt = select(SpareStockMovement).filter_by(reference_type="PROCUREMENT", reference_id=purchase.spare_purchase_id)
+    result = await db.execute(stmt)
+    movements = result.scalars().all()
+
+    if not movements:
+        logger.info("No posted procurement movements found for PO #%s to revert.", purchase.spare_purchase_id)
+        return
+
+    now = _utc_now_naive()
+
+    for mov in movements:
+        if not mov.spare_id or mov.quantity <= 0:
+            continue
+
+        loc = mov.to_location or "MAIN_WAREHOUSE"
+
+        bal_stmt = select(SpareStockBalance).filter_by(spare_id=mov.spare_id, location=loc)
+        bal_res = await db.execute(bal_stmt)
+        balance = bal_res.scalars().first()
+
+        current_stock = balance.quantity if balance else 0
+        posted_qty = mov.quantity
+
+        # Only revert what is currently available (unsold). Never drive stock negative.
+        revert_qty = min(current_stock, posted_qty) if current_stock > 0 else 0
+        sold_qty = posted_qty - revert_qty
+
+        if revert_qty > 0 and balance:
+            balance.quantity -= revert_qty
+
+            reversal_mov = SpareStockMovement(
+                spare_id=mov.spare_id,
+                serial_id=mov.serial_id,
+                batch_id=mov.batch_id,
+                quantity=-revert_qty,
+                movement_type="ADJUSTMENT",
+                reference_type="PROCUREMENT_REVERSAL",
+                reference_id=purchase.spare_purchase_id,
+                movement_datetime=now,
+                remarks=(
+                    f"Reversal on PO #{purchase.spare_purchase_id} cancellation/deletion. "
+                    f"Reverted {revert_qty} unsold units. {sold_qty} units already sold/consumed."
+                ),
+                from_location=loc,
+                unit_cost=mov.unit_cost,
+                total_cost=(float(mov.unit_cost) * revert_qty) if mov.unit_cost else 0,
+            )
+            db.add(reversal_mov)
+
+        # If serialized, mark in-stock serial as REVERSED
+        if mov.serial_id:
+            ser_stmt = select(SpareSerial).filter_by(serial_id=mov.serial_id)
+            ser_res = await db.execute(ser_stmt)
+            ser_obj = ser_res.scalars().first()
+            if ser_obj and ser_obj.status == "IN_STOCK":
+                ser_obj.status = "REVERSED"
+
+    # Soft-delete associated cost history entries
+    cost_stmt = select(SpareCostHistory).filter(
+        SpareCostHistory.source_reference == f"PURCHASE-{purchase.spare_purchase_id}",
+        SpareCostHistory.is_deleted.is_(False),
+    )
+    cost_res = await db.execute(cost_stmt)
+    for cost in cost_res.scalars().all():
+        cost.is_deleted = True
+        cost.deleted_at = now
+        cost.deleted_by = staff_id
+
+    await db.flush()
 
 
 # ==================== CROSS-MODULE CONTRACT SERVICES & TEMPORARY SPARES ====================

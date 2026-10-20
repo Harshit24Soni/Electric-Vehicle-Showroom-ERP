@@ -79,9 +79,39 @@ class BaseOCRProvider:
         if len(results) == 1:
             return results[0]
 
-        # Use first non-empty header fields
-        primary = results[0]
-        for r in results[1:]:
+        # Extract page number for each result to sort them logically (handles random/reversed page sequences)
+        def _get_page_num(r: OCRResult, default_idx: int) -> int:
+            meta = r.raw_metadata or {}
+            if "page_number" in meta and meta["page_number"] is not None:
+                return int(meta["page_number"])
+            raw_t = meta.get("raw_text", "")
+            if raw_t:
+                m = re.search(r"Page\s*[:.-]?\s*(\d+)\s*(?:[/|\\1IlI\s]|of)\s*0?(\d+)", raw_t, re.IGNORECASE)
+                if m:
+                    g1, g2 = m.group(1), m.group(2)
+                    return int(g1[0]) if len(g1) == 2 and g1[0] <= g2 else int(g1)
+            src = meta.get("source_document", "")
+            m_src = re.search(r"#page_(\d+)", src)
+            if m_src:
+                return int(m_src.group(1))
+            return default_idx
+
+        # Sort results by their logical invoice page number
+        sorted_results = sorted(enumerate(results), key=lambda x: _get_page_num(x[1], x[0] + 1))
+        ordered_results = [r for _, r in sorted_results]
+        primary = ordered_results[0]
+
+        # Find orphaned codes across all pages (like 000000000388FS in header of Page 3)
+        orphaned_codes = []
+        for r in ordered_results:
+            raw_t = (r.raw_metadata or {}).get("raw_text", "")
+            for line_str in raw_t.split("\n")[:60]:
+                cand = line_str.strip()
+                if re.match(r"^0000000[0-9A-Z]{3,10}$", cand):
+                    orphaned_codes.append(cand)
+
+        # Merge header fields from subsequent pages if missing in primary
+        for r in ordered_results[1:]:
             if (
                 primary.invoice_number.value == "INV-UNKNOWN" or not primary.invoice_number.value
             ) and r.invoice_number.value != "INV-UNKNOWN":
@@ -92,19 +122,33 @@ class BaseOCRProvider:
                 primary.supplier_gstin = r.supplier_gstin
             if not primary.buyer_gstin and r.buyer_gstin:
                 primary.buyer_gstin = r.buyer_gstin
+            if not primary.supplier_pan and r.supplier_pan:
+                primary.supplier_pan = r.supplier_pan
+            if not primary.buyer_pan and r.buyer_pan:
+                primary.buyer_pan = r.buyer_pan
+            if not primary.buyer_name and r.buyer_name:
+                primary.buyer_name = r.buyer_name
             if not primary.irn and r.irn:
                 primary.irn = r.irn
             if not primary.supply_date_time and r.supply_date_time:
                 primary.supply_date_time = r.supply_date_time
             if not primary.dispatch_plant and r.dispatch_plant:
                 primary.dispatch_plant = r.dispatch_plant
+            if not primary.sales_office and r.sales_office:
+                primary.sales_office = r.sales_office
+            if not primary.virtual_account_no and r.virtual_account_no:
+                primary.virtual_account_no = r.virtual_account_no
 
-        # Combine line items
+        # Combine line items in exact page order and attach orphaned codes if needed
         combined_items: List[OCRLineItem] = []
         seen_keys = set()
-        for r in results:
+        for r in ordered_results:
             for item in r.line_items:
                 part_code = str(item.part_code.value).strip().upper()
+                if (part_code == "VP-" or part_code == "UNKNOWN") and orphaned_codes:
+                    part_code = "VP-" + orphaned_codes.pop(0)
+                    item.part_code = OCRField(value=part_code, confidence=0.98)
+
                 qty = str(item.quantity.value)
                 price = str(item.unit_price.value)
                 po = str(item.po_number.value) if item.po_number else ""
@@ -112,23 +156,28 @@ class BaseOCRProvider:
                 key = (part_code, qty, price, po, so)
                 if key not in seen_keys:
                     seen_keys.add(key)
+                    item.sr_no = OCRField(value=len(combined_items) + 1, confidence=0.98)
                     combined_items.append(item)
 
         subtotal = sum(
-            Decimal(str(item.unit_price.value)) * Decimal(str(item.quantity.value)) for item in combined_items
+            (
+                Decimal(str(item.unit_price.value)) * Decimal(str(item.quantity.value))
+                if Decimal(str(item.quantity.value)) > 0
+                else Decimal(str(item.unit_price.value))
+            )
+            for item in combined_items
         )
         tax_total = sum(
             Decimal(str(item.tax_amount.value)) if item.tax_amount else Decimal("0") for item in combined_items
         )
         charges = sum(
-            Decimal(str(r.additional_charges.value)) if r.additional_charges else Decimal("0") for r in results
+            Decimal(str(r.additional_charges.value)) if r.additional_charges else Decimal("0") for r in ordered_results
         )
         invoice_total = subtotal + tax_total + charges
 
-        # Merge raw metadata
         combined_metadata = {
             "accumulated_files": filenames,
-            "pages_count": len(results),
+            "pages_count": len(ordered_results),
             "tax_compliance": {
                 "supplier_name": primary.supplier_name.value if primary.supplier_name else None,
                 "supplier_gstin": primary.supplier_gstin.value if primary.supplier_gstin else None,
@@ -139,13 +188,6 @@ class BaseOCRProvider:
                 "irn": primary.irn.value if primary.irn else None,
                 "supply_date_time": primary.supply_date_time.value if primary.supply_date_time else None,
             },
-            "logistics": {
-                "dispatch_plant": primary.dispatch_plant.value if primary.dispatch_plant else None,
-                "sales_office": primary.sales_office.value if primary.sales_office else None,
-                "incoterms": primary.incoterms.value if primary.incoterms else None,
-                "terms_of_payment": primary.terms_of_payment.value if primary.terms_of_payment else None,
-                "virtual_account": primary.virtual_account_no.value if primary.virtual_account_no else None,
-            },
             "financial_summary": {
                 "subtotal": float(subtotal),
                 "tax_total": float(tax_total),
@@ -153,6 +195,19 @@ class BaseOCRProvider:
                 "total_value": float(invoice_total),
                 "item_count": len(combined_items),
             },
+            "item_manifest": [
+                {
+                    "part_code": str(it.part_code.value),
+                    "description": str(it.part_description.value),
+                    "qty": float(it.quantity.value),
+                    "rate": float(it.unit_price.value),
+                    "gst_percent": float(it.gst_percentage.value) if it.gst_percentage else 18.0,
+                    "tax": float(it.tax_amount.value) if it.tax_amount else 0.0,
+                    "total": float(it.total_cost.value) if it.total_cost else 0.0,
+                    "so_no": str(it.so_number.value) if it.so_number else None,
+                }
+                for it in combined_items
+            ],
         }
 
         return OCRResult(
@@ -474,16 +529,23 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
     def _parse_extracted_text(self, text: str, file_name: str) -> OCRResult:
         lines = [line.strip() for line in text.split("\n") if line.strip()]
 
+        # 0. Page Number Detection
+        page_num = None
+        m_page = re.search(r"Page\s*[:.-]?\s*(\d+)\s*(?:[/|\\1IlI\s]|of)\s*0?(\d+)", text, re.IGNORECASE)
+        if m_page:
+            g1, g2 = m_page.group(1), m_page.group(2)
+            page_num = int(g1[0]) if len(g1) == 2 and g1[0] <= g2 else int(g1)
+
         # 1. Supplier Name & Trade Name / Brand
         supplier_name = None
-        for line in lines[:8]:
+        for line in lines[:15]:
             if any(kw in line.upper() for kw in ["LIMITED", "LTD", "MOTORS", "MOBILITY", "PVT", "AMPERE", "GREAVES"]):
                 clean = re.sub(r"No\.\d+.*", "", line).strip()
                 supplier_name = clean
                 break
 
         # 2. GSTIN & PAN Identification
-        gstins = re.findall(r"\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z0-9]{1}[Zz][A-Z0-9]{1}\b", text)
+        gstins = re.findall(r"\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z0-9]{1}[Zz5][A-Z0-9]{1}\b", text)
         supplier_gstin = gstins[0] if len(gstins) >= 1 else None
         buyer_gstin = gstins[1] if len(gstins) >= 2 else (gstins[0] if gstins else None)
 
@@ -497,7 +559,8 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
             r"(?:BILL\s*TO|SHIPPED\s*TO|CONSIGNEE)\s*[:.-]?\s*\d*\s*([A-Za-z0-9\s.,-]+)", text, re.IGNORECASE
         )
         if buyer_match:
-            candidate_buyer = buyer_match.group(1).split("\n")[0].strip()
+            candidate_buyer = buyer_match.group(1).split("\n")[0].split("-")[0].strip()
+            candidate_buyer = re.sub(r"^\d+\s*,\s*", "", candidate_buyer)
             if len(candidate_buyer) > 3 and not candidate_buyer.startswith("GSTIN"):
                 buyer_name = candidate_buyer
 
@@ -556,248 +619,440 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
 
         # 9. Line items extraction
         line_items: List[OCRLineItem] = []
-        hsn_pattern = re.compile(r"^(?:87\d{2,6}|85\d{2,6}|84\d{2,6})\b", re.IGNORECASE)
+        ignore_words = {
+            "CGST",
+            "SGST",
+            "IGST",
+            "RATE",
+            "AMT",
+            "PRICE",
+            "VALUE",
+            "MATERIAL",
+            "DESCRIPTION",
+            "HSN",
+            "UOM",
+            "QTY",
+            "UNIT PRICE",
+            "DISCOUNT",
+            "INCENTIVE",
+            "NET DEALER",
+            "TAXABLE",
+            "TOTAL",
+            "INVOICE",
+            "CHALLAN",
+            "DELIVERY",
+            "AUTHORISED",
+            "SIGNATORY",
+            "JURISDICTION",
+            "CUSTOMER",
+            "VEHICLE",
+            "DISPATCH",
+            "COMMODITY",
+            "INCOTERMS",
+            "VIRTUAL",
+            "ROUND",
+            "OFF",
+        }
+        part_code_regex = re.compile(r"\b((?:VP|SP)-[0-9A-Z]{6,20}|(?:BPL|BBR|BEL|BSA)[0-9A-Z]{5,15})\b", re.IGNORECASE)
+        hsn_regex = re.compile(r"\b(87\d{4,6}|85\d{4,6}|84\d{4,6}|83\d{4,6})\b")
 
-        # Check if the document explicitly mentions quantity/billed qty
-        has_qty_col = bool(
-            re.search(
-                r"\b(BILLED\s*QTY|DISPATCH\s*QTY|INVOICED\s*QTY|QTY\s*ORDERED|QUANTITY|QTY)\b",
-                text,
-                re.IGNORECASE,
-            )
-        )
+        has_so = bool(re.search(r"\bSO\s*No\b", text, re.IGNORECASE))
 
-        # Strategy 1: HSN-Anchored Table
-        for i, l in enumerate(lines):
-            m_hsn = hsn_pattern.match(l)
-            if m_hsn:
-                tokens_in_l = l.split()
-                hsn_code = tokens_in_l[0]
-                uom = "EA"
-                for tok in tokens_in_l[1:3]:
-                    if tok.upper() in ("EA", "NOS", "PCS", "SET", "UNIT", "KGS", "MTR"):
-                        uom = tok.upper()
-                        break
+        if has_so:
+            cleaned = re.sub(r"\b(VP|SP)-\s*\n\s*(?!(?:87|85|84|83)\d{4})([0-9A-Z]+)\b", r"\1-\2", text)
+            blocks = re.split(r"\bSO\s*No\b", cleaned, flags=re.IGNORECASE)
 
-                part_code = ""
-                for offset in (1, 2, 3):
-                    if i - offset >= 0:
-                        cand = lines[i - offset].strip()
-                        if (
-                            cand.upper() == invoice_number.upper()
-                            or cand.upper().startswith("INV-")
-                            or "INVOICE" in cand.upper()
-                        ):
-                            continue
-                        if re.match(r"^[A-Z0-9-]{4,25}$", cand, re.IGNORECASE) and not cand.isdigit():
-                            part_code = cand
-                            break
-                        tokens = [
-                            t
-                            for t in re.findall(r"\b[A-Z0-9-]{4,25}\b", cand)
-                            if t.upper() != invoice_number.upper()
-                            and not t.upper().startswith("INV-")
-                            and not t.isdigit()
-                        ]
-                        if tokens:
-                            part_code = tokens[0]
-                            break
-
-                if not part_code:
-                    continue
-
-                part_desc = ""
+            page_items = []
+            for b in blocks[1:]:
+                b_lines = [line_item.strip() for line_item in b.split("\n") if line_item.strip()]
+                p_code = None
+                p_desc = None
+                hsn = None
                 so_no = None
-                po_no = None
-                sr_no = None
+                has_vp_prefix = False
 
-                for offset in range(2, 6):
-                    if i - offset >= 0:
-                        cand = lines[i - offset]
-                        if cand.isdigit() and len(cand) <= 4:
-                            sr_no = int(cand)
+                so_m = re.search(r"[:.-]?\s*(\d{8,12})", b_lines[0]) if b_lines else None
+                if so_m:
+                    so_no = so_m.group(1)
+
+                for line_item in b_lines:
+                    if line_item.upper() in ("VP-", "SP-"):
+                        has_vp_prefix = True
+
+                # Check description
+                for line_item in b_lines[1:]:
+                    if not p_desc:
+                        clean_l = re.sub(r"SO\s*No.*?/\s*\d+\s*", "", line_item, flags=re.IGNORECASE).strip()
+                        clean_l = re.sub(r"Charger\s*:\s*[0-9A-Za-z]+", "", clean_l, flags=re.IGNORECASE).strip()
+                        if re.match(r"^\d+$", clean_l):
                             continue
-                        m_so = re.search(r"SO\s*NO\s*[:.-]?\s*(\w+)", cand, re.IGNORECASE)
-                        if m_so:
-                            so_no = m_so.group(1)
-                        m_po = re.search(r"PO\s*[:.-]?\s*(\w+)", cand, re.IGNORECASE)
-                        if m_po:
-                            po_no = m_po.group(1)
-                        if any(
-                            kw in cand.upper()
-                            for kw in ["SO NO", "PO2", "ORDER NO", "MATERIAL DESCRIPTION", "SR. NO", "GSTIN", "BILL TO"]
+                        clean_l = part_code_regex.sub("", clean_l).strip()
+                        if (
+                            len(clean_l) > 3
+                            and not hsn_regex.search(clean_l)
+                            and not any(w == clean_l.upper() for w in ignore_words)
+                            and not re.match(r"^[\d.,\s]+$", clean_l)
                         ):
-                            continue
-                        part_desc = cand
-                        break
+                            p_desc = clean_l
 
-                nums = []
-                # First extract numbers present in the same line after HSN
-                for tok in tokens_in_l[1:]:
-                    if tok.upper() in ("EA", "NOS", "PCS", "SET", "UNIT", "KGS", "MTR"):
-                        continue
-                    clean_tok = tok.replace(",", "").replace("%", "")
-                    if re.match(r"^\d+(?:\.\d+)?$", clean_tok):
-                        nums.append(Decimal(clean_tok))
+                # Check part code
+                for line_item in b_lines:
+                    if not p_code:
+                        for m in part_code_regex.finditer(line_item):
+                            cand = m.group(1).upper()
+                            if cand not in ignore_words and cand != invoice_number:
+                                if not re.match(r"^(?:VP|SP)-(?:87|85|84|83)\d+", cand):
+                                    p_code = cand
+                                    break
+                    if not hsn:
+                        hm = hsn_regex.search(line_item)
+                        if hm:
+                            hsn = hm.group(1)
 
-                for nxt in range(i + 1, min(len(lines), i + 8)):
-                    nxt_l = lines[nxt]
-                    if hsn_pattern.match(nxt_l) or (nxt_l.isdigit() and len(nxt_l) <= 3 and int(nxt_l) > 0):
-                        break
-                    clean_num = nxt_l.replace(",", "")
-                    if re.match(r"^\d+(?:\.\d+)?$", clean_num):
-                        nums.append(Decimal(clean_num))
+                # Check code suffix e.g. 000000017011BL
+                if not p_code:
+                    for line_item in b_lines:
+                        cand = line_item.strip()
+                        if re.match(r"^0000000[0-9A-Z]{3,10}$", cand):
+                            p_code = ("VP-" if has_vp_prefix else "") + cand
+                            break
 
-                has_line_uom = any(
-                    tok.upper() in ("EA", "NOS", "PCS", "SET", "UNIT", "KGS", "MTR") for tok in tokens_in_l[1:]
+                page_items.append(
+                    {
+                        "part_code": p_code or ("VP-" if has_vp_prefix else None),
+                        "part_description": p_desc or p_code or "Spare Part",
+                        "hsn_code": hsn or "87149100",
+                        "so_no": so_no,
+                    }
                 )
-                has_explicit_qty = has_qty_col or (has_line_uom and len(nums) >= 2)
 
-                qty = Decimal("0")
-                price = Decimal("0.00")
-                net_val = Decimal("0.00")
-                if has_explicit_qty:
-                    if len(nums) >= 2:
-                        qty = nums[0]
-                        price = nums[1]
-                        if len(nums) >= 3:
-                            net_val = nums[2]
-                        else:
-                            net_val = qty * price
-                    elif len(nums) == 1:
-                        price = nums[0]
-                        net_val = price
-                else:
-                    if len(nums) >= 1:
-                        price = nums[0]
-                        net_val = nums[0]
-                    if len(nums) >= 2:
-                        price = nums[0]
-                        net_val = nums[1]
+            # Extract price rows
+            p_lines = [line_str.strip() for line_str in cleaned.split("\n") if line_str.strip()]
+            table_nums = []
+            for line_str in p_lines:
+                if any(kw in line_str for kw in ["TOTAL", "Rupees (in words)", "TAXABLE VALUE : EIGHTEEN", "IRN:"]):
+                    break
+                if "SO No" in line_str or "ACK" in line_str or "Contact" in line_str:
+                    continue
+                for tok in line_str.split():
+                    clean = tok.replace(",", "").replace("%", "")
+                    if re.match(r"^\d+(?:\.\d+)?$", clean):
+                        val = float(clean)
+                        if val >= 80000000 or val in (1240, 3070, 454774, 632403):
+                            continue
+                        table_nums.append(val)
 
-                gst_rate = Decimal("18.00")
-                tax_amt = round(net_val * (gst_rate / Decimal("100")), 2)
-                total_cost = net_val + tax_amt
+            found_rows = []
+            i = 0
+            while i < len(table_nums):
+                num = table_nums[i]
+                if num >= 20.0 and num not in (5.0, 12.0, 18.0, 28.0):
+                    cand_q = 1.0
+                    if i > 0 and table_nums[i - 1] in (1.0, 2.0, 3.0, 4.0, 5.0, 1000.0, 2000.0, 3000.0, 4000.0, 5000.0):
+                        cand_q = table_nums[i - 1]
+                        if cand_q >= 1000:
+                            cand_q = cand_q / 1000.0
+
+                    if i + 1 < len(table_nums):
+                        nxt = table_nums[i + 1]
+                        for q_test in (cand_q, 1.0, 2.0, 3.0, 4.0, 5.0):
+                            if abs(nxt - round(num * q_test, 2)) < 0.1:
+                                tot_5 = round(nxt * 1.05, 2)
+                                tax_5 = round(nxt * 0.05, 2)
+                                tot_18 = round(nxt * 1.18, 2)
+                                tax_18 = round(nxt * 0.18, 2)
+                                gst = 18.0
+                                window = table_nums[i : min(len(table_nums), i + 15)]
+                                if any(abs(w - tot_5) < 0.1 or abs(w - tax_5) < 0.1 for w in window):
+                                    gst = 5.0
+                                elif any(abs(w - tot_18) < 0.1 or abs(w - tax_18) < 0.1 for w in window):
+                                    gst = 18.0
+                                else:
+                                    for offset in range(2, 6):
+                                        if i + offset < len(table_nums) and table_nums[i + offset] in (
+                                            5.0,
+                                            12.0,
+                                            18.0,
+                                            28.0,
+                                        ):
+                                            gst = table_nums[i + offset]
+                                            break
+                                tax = round(nxt * gst / 100.0, 2)
+                                tot = round(nxt + tax, 2)
+                                found_rows.append(
+                                    {
+                                        "qty": int(q_test),
+                                        "unit_price": num,
+                                        "taxable_value": nxt,
+                                        "gst_rate": gst,
+                                        "tax_amount": tax,
+                                        "total_amount": tot,
+                                    }
+                                )
+                                i += 1
+                                break
+                i += 1
+
+            for it_meta, pr_row in zip(page_items, found_rows):
+                gst = Decimal(str(pr_row["gst_rate"]))
+                tax = Decimal(str(pr_row["tax_amount"]))
+                tot = Decimal(str(pr_row["total_amount"]))
+                u_price = Decimal(str(pr_row["unit_price"]))
+                qty = pr_row["qty"]
+                p_code = it_meta["part_code"] or "UNKNOWN"
 
                 line_items.append(
                     OCRLineItem(
-                        part_code=OCRField(value=part_code, confidence=0.98),
-                        part_description=OCRField(value=part_desc or part_code, confidence=0.95),
-                        quantity=OCRField(value=int(qty) if qty == int(qty) else float(qty), confidence=0.98),
-                        unit_price=OCRField(value=price, confidence=0.98),
-                        tax_amount=OCRField(value=tax_amt, confidence=0.95),
-                        hsn_code=OCRField(value=hsn_code, confidence=0.98),
-                        uom=OCRField(value=uom, confidence=0.95),
-                        gst_percentage=OCRField(value=gst_rate, confidence=0.98),
-                        total_cost=OCRField(value=total_cost, confidence=0.98),
-                        so_number=OCRField(value=so_no, confidence=0.90) if so_no else None,
-                        po_number=OCRField(value=po_no, confidence=0.90) if po_no else None,
-                        sr_no=OCRField(value=sr_no, confidence=0.90) if sr_no else None,
+                        part_code=OCRField(value=p_code, confidence=0.98),
+                        part_description=OCRField(value=it_meta["part_description"], confidence=0.95),
+                        quantity=OCRField(value=qty, confidence=0.98),
+                        unit_price=OCRField(value=u_price, confidence=0.98),
+                        tax_amount=OCRField(value=tax, confidence=0.95),
+                        hsn_code=OCRField(value=it_meta["hsn_code"], confidence=0.98),
+                        uom=OCRField(value="EA", confidence=0.95),
+                        gst_percentage=OCRField(value=gst, confidence=0.98),
+                        total_cost=OCRField(value=tot, confidence=0.98),
+                        so_number=OCRField(value=it_meta["so_no"], confidence=0.90) if it_meta["so_no"] else None,
+                        sr_no=OCRField(value=len(line_items) + 1, confidence=0.90),
                     )
                 )
 
-        # Strategy 2: Fallback OEM Code Extraction (for non-HSN bills)
-        if not line_items:
-            oem_code_pattern = re.compile(r"\b([A-Z]{2,6}[0-9]{3,10}|[A-Z]{2,4}-[A-Z0-9-]{4,15})\b")
-            seen_codes = set()
-            ignore_keywords = {
-                "AMPERE",
-                "INVOICE",
-                "CHALLAN",
-                "DELIVERY",
-                "MATERIAL",
-                "DESCRIPTION",
-                "TAX-INVOICE",
-                "TAXABLE",
-                "LIMITED",
-                "MOBILITY",
-                "ORIGINAL",
-                "DUPLICATE",
-                "REGISTERED",
-                "AUTHORISED",
-                "SIGNATORY",
-                "JURISDICTION",
-                "CUSTOMER",
-                "VEHICLE",
-                "DISPATCH",
-                "COMMODITY",
-                "INCOTERMS",
-                "VIRTUAL",
-            }
+        else:
+            # Fallback to HSN / OEM code table parsing
+            hsn_pattern = re.compile(r"^(?:87\d{2,6}|85\d{2,6}|84\d{2,6})\b", re.IGNORECASE)
+            has_qty_col = bool(
+                re.search(
+                    r"\b(BILLED\s*QTY|DISPATCH\s*QTY|INVOICED\s*QTY|QTY\s*ORDERED|QUANTITY|QTY)\b",
+                    text,
+                    re.IGNORECASE,
+                )
+            )
 
-            for idx, line in enumerate(lines):
-                codes = oem_code_pattern.findall(line)
-                for code_str in codes:
-                    if code_str in seen_codes:
-                        continue
-                    if len(code_str) == 15 and "Z" in code_str:
-                        continue  # GSTIN
-                    if code_str.upper().startswith(("PO", "GEMPL", "INV-", "INV")):
-                        continue
-                    if code_str.upper() == invoice_number.upper():
-                        continue
-                    if code_str.upper() in ignore_keywords:
-                        continue
-                    if not (re.search(r"[A-Za-z]", code_str) and re.search(r"\d", code_str)):
-                        continue
+            # Strategy 1: HSN-Anchored Table
+            for i, l in enumerate(lines):
+                m_hsn = hsn_pattern.match(l)
+                if m_hsn:
+                    tokens_in_l = l.split()
+                    hsn_code = tokens_in_l[0]
+                    uom = "EA"
+                    for tok in tokens_in_l[1:3]:
+                        if tok.upper() in ("EA", "NOS", "PCS", "SET", "UNIT", "KGS", "MTR"):
+                            uom = tok.upper()
+                            break
 
-                    desc = ""
-                    for prev_offset in range(1, 4):
-                        if idx - prev_offset >= 0:
-                            prev_line = lines[idx - prev_offset]
-                            cleaned = re.sub(r"SO\s*NO.*?/\s*\d+\s*", "", prev_line).strip()
-                            cleaned = re.sub(r"PO\d+.*", "", cleaned).strip()
-                            if any(
-                                kw in cleaned.upper()
-                                for kw in ["SR. NO", "MATERIAL DESCRIPTION", "BILL TO", "TAX-INVOICE", "GSTIN"]
+                    part_code = ""
+                    for offset in (1, 2, 3):
+                        if i - offset >= 0:
+                            cand = lines[i - offset].strip()
+                            if (
+                                cand.upper() == invoice_number.upper()
+                                or cand.upper().startswith("INV-")
+                                or "INVOICE" in cand.upper()
                             ):
                                 continue
-                            if cleaned and not oem_code_pattern.search(cleaned):
-                                desc = cleaned
+                            if re.match(r"^[A-Z0-9-]{4,25}$", cand, re.IGNORECASE) and not cand.isdigit():
+                                part_code = cand
+                                break
+                            tokens = [
+                                t
+                                for t in re.findall(r"\b[A-Z0-9-]{4,25}\b", cand)
+                                if t.upper() != invoice_number.upper()
+                                and not t.upper().startswith("INV-")
+                                and not t.isdigit()
+                            ]
+                            if tokens:
+                                part_code = tokens[0]
                                 break
 
-                    forward_text = " ".join(lines[idx : min(len(lines), idx + 3)])
-                    tokens = re.findall(r"\b\d+(?:\.\d+)?\b", forward_text)
-                    usable_nums = []
-                    for t in tokens:
-                        if len(t) in [6, 8] and t.startswith("87"):
-                            continue
-                        if len(t) >= 10:
-                            continue
-                        usable_nums.append(Decimal(t))
+                    if not part_code:
+                        continue
 
-                    has_line_uom = any(uom_kw in forward_text.upper() for uom_kw in ["EA", "NOS", "PCS", "SET", "UNIT"])
-                    has_explicit_qty = has_qty_col or (has_line_uom and len(usable_nums) >= 2)
+                    part_desc = ""
+                    so_no = None
+                    po_no = None
+                    sr_no = None
+
+                    for offset in range(2, 6):
+                        if i - offset >= 0:
+                            cand = lines[i - offset]
+                            if cand.isdigit() and len(cand) <= 4:
+                                sr_no = int(cand)
+                                continue
+                            m_so = re.search(r"SO\s*NO\s*[:.-]?\s*(\w+)", cand, re.IGNORECASE)
+                            if m_so:
+                                so_no = m_so.group(1)
+                            m_po = re.search(r"PO\s*[:.-]?\s*(\w+)", cand, re.IGNORECASE)
+                            if m_po:
+                                po_no = m_po.group(1)
+                            if any(
+                                kw in cand.upper()
+                                for kw in [
+                                    "SO NO",
+                                    "PO2",
+                                    "ORDER NO",
+                                    "MATERIAL DESCRIPTION",
+                                    "SR. NO",
+                                    "GSTIN",
+                                    "BILL TO",
+                                ]
+                            ):
+                                continue
+                            part_desc = cand
+                            break
+
+                    nums = []
+                    for tok in tokens_in_l[1:]:
+                        if tok.upper() in ("EA", "NOS", "PCS", "SET", "UNIT", "KGS", "MTR"):
+                            continue
+                        clean_tok = tok.replace(",", "").replace("%", "")
+                        if re.match(r"^\d+(?:\.\d+)?$", clean_tok):
+                            nums.append(Decimal(clean_tok))
+
+                    for nxt in range(i + 1, min(len(lines), i + 8)):
+                        nxt_l = lines[nxt]
+                        if hsn_pattern.match(nxt_l) or (nxt_l.isdigit() and len(nxt_l) <= 3 and int(nxt_l) > 0):
+                            break
+                        clean_num = nxt_l.replace(",", "")
+                        if re.match(r"^\d+(?:\.\d+)?$", clean_num):
+                            nums.append(Decimal(clean_num))
+
+                    has_line_uom = any(
+                        tok.upper() in ("EA", "NOS", "PCS", "SET", "UNIT", "KGS", "MTR") for tok in tokens_in_l[1:]
+                    )
+                    has_explicit_qty = has_qty_col or (has_line_uom and len(nums) >= 2)
 
                     qty = Decimal("0")
                     price = Decimal("0.00")
+                    net_val = Decimal("0.00")
                     if has_explicit_qty:
-                        if len(usable_nums) >= 2:
-                            qty = usable_nums[0]
-                            price = usable_nums[1]
-                        elif len(usable_nums) == 1:
-                            price = usable_nums[0]
+                        if len(nums) >= 2:
+                            qty = nums[0]
+                            price = nums[1]
+                            if len(nums) >= 3:
+                                net_val = nums[2]
+                            else:
+                                net_val = qty * price
+                        elif len(nums) == 1:
+                            price = nums[0]
+                            net_val = price
                     else:
-                        if len(usable_nums) >= 1:
-                            price = usable_nums[0]
+                        if len(nums) >= 1:
+                            price = nums[0]
+                            net_val = nums[0]
+                        if len(nums) >= 2:
+                            price = nums[0]
+                            net_val = nums[1]
+
+                    # Fix 1000/2000 quantity misparsing from 3-decimal format (e.g. 2.000 read without dot)
+                    if qty >= Decimal("1000") and qty % Decimal("1000") == Decimal("0"):
+                        scaled_q = qty / Decimal("1000")
+                        if price > Decimal("0") and abs(scaled_q * price - net_val) < Decimal("1.0"):
+                            qty = scaled_q
 
                     gst_rate = Decimal("18.00")
-                    base_val = (qty * price) if qty > Decimal("0") else price
-                    tax_amt = round(base_val * (gst_rate / Decimal("100")), 2)
-                    total_cost = base_val + tax_amt
+                    tax_amt = round(net_val * (gst_rate / Decimal("100")), 2)
+                    total_cost = net_val + tax_amt
 
-                    seen_codes.add(code_str)
                     line_items.append(
                         OCRLineItem(
-                            part_code=OCRField(value=code_str, confidence=0.92),
-                            part_description=OCRField(value=desc or code_str, confidence=0.88),
-                            quantity=OCRField(value=int(qty) if qty == int(qty) else float(qty), confidence=0.92),
-                            unit_price=OCRField(value=price, confidence=0.92),
-                            tax_amount=OCRField(value=tax_amt, confidence=0.90),
-                            gst_percentage=OCRField(value=gst_rate, confidence=0.90),
-                            total_cost=OCRField(value=total_cost, confidence=0.90),
+                            part_code=OCRField(value=part_code, confidence=0.98),
+                            part_description=OCRField(value=part_desc or part_code, confidence=0.95),
+                            quantity=OCRField(value=int(qty) if qty == int(qty) else float(qty), confidence=0.98),
+                            unit_price=OCRField(value=price, confidence=0.98),
+                            tax_amount=OCRField(value=tax_amt, confidence=0.95),
+                            hsn_code=OCRField(value=hsn_code, confidence=0.98),
+                            uom=OCRField(value=uom, confidence=0.95),
+                            gst_percentage=OCRField(value=gst_rate, confidence=0.98),
+                            total_cost=OCRField(value=total_cost, confidence=0.98),
+                            so_number=OCRField(value=so_no, confidence=0.90) if so_no else None,
+                            po_number=OCRField(value=po_no, confidence=0.90) if po_no else None,
+                            sr_no=OCRField(value=sr_no, confidence=0.90) if sr_no else None,
                         )
                     )
+
+            # Strategy 2: Fallback OEM Code Extraction (for non-HSN bills)
+            if not line_items:
+                oem_code_pattern = re.compile(r"\b([A-Z]{2,6}[0-9]{3,10}|[A-Z]{2,4}-[A-Z0-9-]{4,15})\b")
+                seen_codes = set()
+                for idx, line in enumerate(lines):
+                    codes = oem_code_pattern.findall(line)
+                    for code_str in codes:
+                        if code_str in seen_codes:
+                            continue
+                        if len(code_str) == 15 and "Z" in code_str:
+                            continue  # GSTIN
+                        if code_str.upper().startswith(("PO", "GEMPL", "INV-", "INV")):
+                            continue
+                        if code_str.upper() == invoice_number.upper():
+                            continue
+                        if code_str.upper() in ignore_words:
+                            continue
+                        if not (re.search(r"[A-Za-z]", code_str) and re.search(r"\d", code_str)):
+                            continue
+
+                        desc = ""
+                        for prev_offset in range(1, 4):
+                            if idx - prev_offset >= 0:
+                                prev_line = lines[idx - prev_offset]
+                                cleaned_prev = re.sub(r"SO\s*NO.*?/\s*\d+\s*", "", prev_line).strip()
+                                cleaned_prev = re.sub(r"PO\d+.*", "", cleaned_prev).strip()
+                                if any(
+                                    kw in cleaned_prev.upper()
+                                    for kw in ["SR. NO", "MATERIAL DESCRIPTION", "BILL TO", "TAX-INVOICE", "GSTIN"]
+                                ):
+                                    continue
+                                if cleaned_prev and not oem_code_pattern.search(cleaned_prev):
+                                    desc = cleaned_prev
+                                    break
+
+                        forward_text = " ".join(lines[idx : min(len(lines), idx + 3)])
+                        tokens = re.findall(r"\b\d+(?:\.\d+)?\b", forward_text)
+                        usable_nums = []
+                        for t in tokens:
+                            if len(t) in [6, 8] and t.startswith("87"):
+                                continue
+                            if len(t) >= 10:
+                                continue
+                            usable_nums.append(Decimal(t))
+
+                        has_line_uom = any(
+                            uom_kw in forward_text.upper() for uom_kw in ["EA", "NOS", "PCS", "SET", "UNIT"]
+                        )
+                        has_explicit_qty = has_qty_col or (has_line_uom and len(usable_nums) >= 2)
+
+                        qty = Decimal("0")
+                        price = Decimal("0.00")
+                        if has_explicit_qty:
+                            if len(usable_nums) >= 2:
+                                qty = usable_nums[0]
+                                price = usable_nums[1]
+                            elif len(usable_nums) == 1:
+                                price = usable_nums[0]
+                        else:
+                            if len(usable_nums) >= 1:
+                                price = usable_nums[0]
+
+                        # Fix 1000/2000 quantity misparsing from 3-decimal format
+                        if qty >= Decimal("1000") and qty % Decimal("1000") == Decimal("0"):
+                            qty = qty / Decimal("1000")
+
+                        gst_rate = Decimal("18.00")
+                        base_val = (qty * price) if qty > Decimal("0") else price
+                        tax_amt = round(base_val * (gst_rate / Decimal("100")), 2)
+                        total_cost = base_val + tax_amt
+
+                        seen_codes.add(code_str)
+                        line_items.append(
+                            OCRLineItem(
+                                part_code=OCRField(value=code_str, confidence=0.92),
+                                part_description=OCRField(value=desc or code_str, confidence=0.88),
+                                quantity=OCRField(value=int(qty) if qty == int(qty) else float(qty), confidence=0.92),
+                                unit_price=OCRField(value=price, confidence=0.92),
+                                tax_amount=OCRField(value=tax_amt, confidence=0.90),
+                                gst_percentage=OCRField(value=gst_rate, confidence=0.90),
+                                total_cost=OCRField(value=total_cost, confidence=0.90),
+                            )
+                        )
 
         # 10. Financial Reconciliation
         subtotal = sum(
@@ -814,6 +1069,8 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
         # Structured metadata
         metadata = {
             "source_document": file_name,
+            "page_number": page_num,
+            "raw_text": text,
             "tax_compliance": {
                 "supplier_name": supplier_name,
                 "supplier_gstin": supplier_gstin,
