@@ -84,6 +84,7 @@ async def delete_finance(
 # GST LEDGER & RECONCILIATION ENDPOINTS
 # ==============================================================================
 
+
 @router.get("/gst/dashboard")
 @router.get("/gst/summary")
 async def get_gst_summary_api(
@@ -162,7 +163,9 @@ async def offset_tax_with_itc_api(
     if not output_tax_id:
         raise HTTPException(status_code=400, detail="output_tax_id is required")
 
-    staff_id = current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    staff_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
 
     try:
         entry = await gst_service.offset_tax_liability_with_itc(
@@ -197,7 +200,9 @@ async def pay_tax_cash_api(
     if not output_tax_id or not amount:
         raise HTTPException(status_code=400, detail="output_tax_id and amount are required")
 
-    staff_id = current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    staff_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
 
     try:
         rec = await gst_service.record_cash_tax_payment(
@@ -227,7 +232,9 @@ async def close_tax_period_api(
     if not period_code:
         raise HTTPException(status_code=400, detail="period_code is required (e.g. '2026-10')")
 
-    staff_id = current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    staff_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
 
     period = await gst_service.close_reconciliation_period(db=db, period_code=period_code, staff_id=staff_id)
     await db.commit()

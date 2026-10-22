@@ -10,7 +10,6 @@ from app.modules.inventory.models import (
     SpareStockBalance,
     SpareStockMovement,
     SpareCostHistory,
-    SpareSellingPriceHistory,
 )
 from app.modules.master.models import Vendor
 

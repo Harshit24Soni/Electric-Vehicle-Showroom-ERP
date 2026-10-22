@@ -408,6 +408,7 @@ async def get_spare_purchase_history_api(
 # PRICING ALERTS & RISK MANAGEMENT
 # ==============================================================================
 
+
 @router.get("/pricing/alerts")
 @router.get("/pricing-alerts")
 async def list_pricing_alerts_api(
@@ -449,7 +450,9 @@ async def acknowledge_pricing_alert_api(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    staff_id = current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    staff_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
     alert.status = AlertStatus.ACKNOWLEDGED.value
     alert.acknowledged_by = staff_id
     alert.acknowledged_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -474,7 +477,9 @@ async def resolve_pricing_alert_api(
         raise HTTPException(status_code=404, detail="Alert not found")
 
     reason = payload.get("reason", "Manually resolved by staff")
-    staff_id = current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    staff_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
 
     alert.status = AlertStatus.RESOLVED.value
     alert.resolved_by = staff_id
@@ -487,6 +492,7 @@ async def resolve_pricing_alert_api(
 # ==============================================================================
 # LOSS EXCEPTIONS
 # ==============================================================================
+
 
 @router.post("/loss-exceptions")
 async def create_loss_exception_api(
@@ -507,7 +513,9 @@ async def create_loss_exception_api(
     reason = payload.get("reason")
     requested_by = payload.get("requested_by_staff_id")
 
-    authorizer_id = current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    authorizer_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
 
     if not spare_id or not part_code or not reason:
         raise HTTPException(status_code=400, detail="spare_id, part_code, and reason are required.")
@@ -537,6 +545,7 @@ async def create_loss_exception_api(
 # PRICE & COST AUDIT TRAIL
 # ==============================================================================
 
+
 @router.get("/price-audit-events")
 async def list_price_audit_events_api(
     spare_id: Optional[int] = Query(None),
@@ -562,6 +571,7 @@ async def list_price_audit_events_api(
 # ==============================================================================
 # DISCOUNT RULES & EVALUATION
 # ==============================================================================
+
 
 @router.get("/discount-rules")
 async def list_discount_rules_api(
@@ -594,7 +604,9 @@ async def create_discount_rule_api(
     """Create a new supplier or customer discount rule."""
     from app.modules.inventory.models import DiscountRule
 
-    staff_id = current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    staff_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
 
     rule = DiscountRule(
         rule_name=payload.get("rule_name", "Discount Rule"),

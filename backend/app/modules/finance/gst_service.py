@@ -158,7 +158,11 @@ async def offset_tax_liability_with_itc(
     if not out_record:
         raise ValueError(f"Output tax record {output_tax_id} not found.")
 
-    pending_output = _round_currency(out_record.total_tax) - _round_currency(out_record.itc_utilized_amount) - _round_currency(out_record.cash_paid_amount)
+    pending_output = (
+        _round_currency(out_record.total_tax)
+        - _round_currency(out_record.itc_utilized_amount)
+        - _round_currency(out_record.cash_paid_amount)
+    )
     if pending_output <= Decimal("0.00"):
         raise ValueError(f"Output tax record {output_tax_id} is already settled.")
 
@@ -185,7 +189,11 @@ async def offset_tax_liability_with_itc(
         if not itc_record:
             raise ValueError("No available eligible ITC credit records found for offsetting.")
 
-    available_itc = _round_currency(itc_record.claimed_amount) - _round_currency(itc_record.utilized_amount) - _round_currency(itc_record.reversal_amount)
+    available_itc = (
+        _round_currency(itc_record.claimed_amount)
+        - _round_currency(itc_record.utilized_amount)
+        - _round_currency(itc_record.reversal_amount)
+    )
     if available_itc <= Decimal("0.00"):
         raise ValueError(f"ITC record {itc_record.itc_id} has no remaining available credit balance.")
 
@@ -195,7 +203,9 @@ async def offset_tax_liability_with_itc(
         if target_amt > available_itc:
             raise ValueError(f"Requested offset amount INR {target_amt} exceeds available ITC INR {available_itc}.")
         if target_amt > pending_output:
-            raise ValueError(f"Requested offset amount INR {target_amt} exceeds pending liability INR {pending_output}.")
+            raise ValueError(
+                f"Requested offset amount INR {target_amt} exceeds pending liability INR {pending_output}."
+            )
         util_amount = target_amt
     else:
         util_amount = min(available_itc, pending_output)

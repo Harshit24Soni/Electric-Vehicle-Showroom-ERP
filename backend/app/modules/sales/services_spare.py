@@ -281,11 +281,7 @@ async def cancel_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSal
             # Reverse Output GST Liability in the GST Ledger
             from app.modules.finance.models import OutputTaxRecord, OutputTaxStatus
 
-            out_stmt = (
-                select(OutputTaxRecord)
-                .where(OutputTaxRecord.sale_id == sale.sale_id)
-                .with_for_update()
-            )
+            out_stmt = select(OutputTaxRecord).where(OutputTaxRecord.sale_id == sale.sale_id).with_for_update()
             out_rec = (await db.execute(out_stmt)).scalar_one_or_none()
             if out_rec:
                 out_rec.status = OutputTaxStatus.REVERSED.value
@@ -297,4 +293,3 @@ async def cancel_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSal
         await db.rollback()
         logger.error("Failed to cancel spare sale %s: %s", sale_id, exc, exc_info=True)
         raise
-

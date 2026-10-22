@@ -101,9 +101,7 @@ def calculate_profitability(
         "expected_gross_profit": float(gross_profit),
         "gross_margin_percent": float(margin_pct),
         "is_loss": gross_profit < Decimal("0.00"),
-        "is_low_margin": (
-            gross_profit >= Decimal("0.00") and margin_pct < MINIMUM_ACCEPTABLE_MARGIN_PERCENT
-        ),
+        "is_low_margin": (gross_profit >= Decimal("0.00") and margin_pct < MINIMUM_ACCEPTABLE_MARGIN_PERCENT),
     }
 
 

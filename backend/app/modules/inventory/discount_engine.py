@@ -196,9 +196,7 @@ async def evaluate_applicable_discounts(
 
         # In GST, discount given at or before invoice reduces taxable value
         taxable_value = line_gross - line_discount
-        tax_amt = (taxable_value * (gst_rate / Decimal("100.00"))).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
+        tax_amt = (taxable_value * (gst_rate / Decimal("100.00"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         line_total = taxable_value + tax_amt
 
         results.append(
@@ -208,7 +206,9 @@ async def evaluate_applicable_discounts(
                 "unit_price": float(unit_price),
                 "line_gross_amount": float(line_gross),
                 "allocated_discount": float(line_discount),
-                "effective_unit_discount": float((line_discount / qty).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+                "effective_unit_discount": float(
+                    (line_discount / qty).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                ),
                 "taxable_value": float(taxable_value),
                 "gst_rate": float(gst_rate),
                 "gst_amount": float(tax_amt),

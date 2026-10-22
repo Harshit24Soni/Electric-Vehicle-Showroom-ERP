@@ -39,8 +39,7 @@ async def get_inventory_dashboard(db: AsyncSession) -> InventoryDashboardRespons
         select(
             func.coalesce(
                 func.sum(
-                    SpareStockBalance.quantity
-                    * func.coalesce(SpareMaster.accounting_wac, SpareMaster.base_cost, 0.0)
+                    SpareStockBalance.quantity * func.coalesce(SpareMaster.accounting_wac, SpareMaster.base_cost, 0.0)
                 ),
                 0.0,
             )
@@ -97,14 +96,11 @@ async def get_inventory_dashboard(db: AsyncSession) -> InventoryDashboardRespons
     # Check opening parts with on-hand quantity lacking traceable purchase records
     from app.modules.procurement.models import SparePurchaseItem
 
-    unverified_opening_stmt = (
-        select(func.count(SpareStockBalance.spare_id.distinct()))
-        .filter(
-            SpareStockBalance.quantity > 0,
-            ~SpareStockBalance.spare_id.in_(
-                select(SparePurchaseItem.spare_id.distinct()).filter(SparePurchaseItem.spare_id.isnot(None))
-            ),
-        )
+    unverified_opening_stmt = select(func.count(SpareStockBalance.spare_id.distinct())).filter(
+        SpareStockBalance.quantity > 0,
+        ~SpareStockBalance.spare_id.in_(
+            select(SparePurchaseItem.spare_id.distinct()).filter(SparePurchaseItem.spare_id.isnot(None))
+        ),
     )
     unverified_count = (await db.scalar(unverified_opening_stmt)) or 0
     is_estimated = unverified_count > 0
@@ -178,6 +174,7 @@ async def list_stock(db: AsyncSession, spare_id: int = None, location: str = Non
 
         # Identify which spares have verified purchase items
         from app.modules.procurement.models import SparePurchaseItem
+
         purch_stmt = select(SparePurchaseItem.spare_id.distinct()).filter(
             SparePurchaseItem.spare_id.in_(spare_ids),
             SparePurchaseItem.spare_id.isnot(None),

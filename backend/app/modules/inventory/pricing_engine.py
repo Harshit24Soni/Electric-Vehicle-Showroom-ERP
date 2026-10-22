@@ -6,10 +6,8 @@ from sqlalchemy.orm import selectinload
 
 from app.db.mixins import utc_now_naive
 from app.modules.inventory.models import (
-    PriceListItem,
     SpareCostHistory,
     SpareMaster,
-    SpareSellingPriceHistory,
 )
 from app.modules.master.models import VehicleModel
 
@@ -188,10 +186,10 @@ async def apply_new_purchase_cost(
 
     return {
         "spare_id": spare.spare_id,
-        "part_code": part_code,
+        "part_code": spare.part_number or str(spare.spare_id),
         "spare_name": spare.spare_name,
         "new_cost": new_cost,
-        "profit_margin_percent": base_margin,
+        "profit_margin_percent": computed["profit_margin_percent"],
         "new_ex_showroom": computed["ex_showroom"],
         "new_customer_mrp": computed["customer_mrp"],
         "updated_models": updated_models,

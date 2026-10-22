@@ -77,9 +77,7 @@ class ITCCreditRecord(Base, AuditMixin, SoftDeleteMixin):
     eligibility_status: Mapped[str] = mapped_column(
         String(30), default=ITCEligibilityStatus.ELIGIBLE.value, nullable=False
     )
-    claim_status: Mapped[str] = mapped_column(
-        String(30), default=ITCClaimStatus.AVAILABLE.value, nullable=False
-    )
+    claim_status: Mapped[str] = mapped_column(String(30), default=ITCClaimStatus.AVAILABLE.value, nullable=False)
 
     claimed_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0.00, nullable=False)
     utilized_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0.00, nullable=False)
@@ -129,9 +127,7 @@ class OutputTaxRecord(Base, AuditMixin, SoftDeleteMixin):
     total_invoice_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
 
     tax_period: Mapped[str] = mapped_column(String(10), nullable=False)  # e.g. "2026-10"
-    status: Mapped[str] = mapped_column(
-        String(30), default=OutputTaxStatus.PENDING.value, nullable=False
-    )
+    status: Mapped[str] = mapped_column(String(30), default=OutputTaxStatus.PENDING.value, nullable=False)
 
     itc_utilized_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0.00, nullable=False)
     cash_paid_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0.00, nullable=False)
@@ -139,7 +135,9 @@ class OutputTaxRecord(Base, AuditMixin, SoftDeleteMixin):
 
     @property
     def remaining_liability(self) -> float:
-        rem = Decimal(str(self.total_tax)) - Decimal(str(self.itc_utilized_amount)) - Decimal(str(self.cash_paid_amount))
+        rem = (
+            Decimal(str(self.total_tax)) - Decimal(str(self.itc_utilized_amount)) - Decimal(str(self.cash_paid_amount))
+        )
         return float(max(Decimal("0.00"), rem))
 
 
@@ -180,9 +178,7 @@ class PeriodClosingStatus(str, enum.Enum):
 
 class GSTReconciliationPeriod(Base, AuditMixin):
     __tablename__ = "gst_reconciliation_period"
-    __table_args__ = (
-        Index("idx_gst_period_code", "period_code", unique=True),
-    )
+    __table_args__ = (Index("idx_gst_period_code", "period_code", unique=True),)
 
     period_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     period_code: Mapped[str] = mapped_column(String(10), unique=True, nullable=False)  # "2026-10"

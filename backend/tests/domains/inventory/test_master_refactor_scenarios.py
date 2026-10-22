@@ -412,9 +412,7 @@ async def test_discount_engine_basket_threshold_and_stacking(db_session, setup_m
     await db_session.commit()
 
     # Basket of 5 units @ 461.00 = 2305.00 gross
-    lines = [
-        {"spare_id": spare.spare_id, "quantity": 5, "unit_price": Decimal("461.00"), "gst_rate": Decimal("18.00")}
-    ]
+    lines = [{"spare_id": spare.spare_id, "quantity": 5, "unit_price": Decimal("461.00"), "gst_rate": Decimal("18.00")}]
     results = await evaluate_applicable_discounts(
         db=db_session,
         target_type="CUSTOMER",

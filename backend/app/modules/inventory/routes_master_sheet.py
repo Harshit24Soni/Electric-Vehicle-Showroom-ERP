@@ -26,7 +26,6 @@ from app.modules.inventory.models import (
 from app.modules.master.models import VehicleModel
 from app.modules.inventory.pricing_engine import (
     calculate_observed_margin,
-    compute_prices_from_cost_and_margin,
     apply_new_purchase_cost,
 )
 from app.modules.inventory.alteration_service import (

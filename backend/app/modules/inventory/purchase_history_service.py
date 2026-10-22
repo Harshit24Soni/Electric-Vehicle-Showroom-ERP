@@ -524,21 +524,22 @@ async def get_part_purchase_history(db: AsyncSession, identifier: str) -> PartPu
     if spare and spare.accounting_wac is not None and float(spare.accounting_wac) > 0:
         wac = round(float(spare.accounting_wac), 2)
     else:
-        latest_ch_wac = None
-        for ch in cost_records:
-            if ch.wac_cost is not None and float(ch.wac_cost) > 0:
-                latest_ch_wac = float(ch.wac_cost)
-                break
-        if latest_ch_wac is not None:
-            wac = round(latest_ch_wac, 2)
-        elif base_cost is not None and base_cost > 0:
-            wac = round(base_cost, 2)
-        elif total_qty > 0 and total_spend > 0:
+        if total_qty > 0 and total_spend > 0:
             wac = round(total_spend / total_qty, 2)
-        elif base_dlp is not None:
-            wac = round(base_dlp, 2)
         else:
-            wac = last_rate
+            latest_ch_wac = None
+            for ch in cost_records:
+                if ch.wac_cost is not None and float(ch.wac_cost) > 0:
+                    latest_ch_wac = float(ch.wac_cost)
+                    break
+            if latest_ch_wac is not None:
+                wac = round(latest_ch_wac, 2)
+            elif base_dlp is not None and base_dlp > 0:
+                wac = round(base_dlp, 2)
+            elif base_cost is not None and base_cost > 0:
+                wac = round(base_cost, 2)
+            else:
+                wac = last_rate
 
     # Manufacturer Reference Prices (never derived via universal margin on WAC)
     ref_dlp = float(spare.manufacturer_dlp) if spare and spare.manufacturer_dlp is not None else (base_dlp or wac)

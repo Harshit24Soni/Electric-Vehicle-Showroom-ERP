@@ -184,9 +184,7 @@ async def test_exclusive_vs_stackable_discount_rules(db_session, setup_lifecycle
     db_session.add_all([r_stackable, r_exclusive])
     await db_session.commit()
 
-    lines = [
-        {"spare_id": spare.spare_id, "quantity": 1, "unit_price": Decimal("350.00"), "gst_rate": Decimal("18.00")}
-    ]
+    lines = [{"spare_id": spare.spare_id, "quantity": 1, "unit_price": Decimal("350.00"), "gst_rate": Decimal("18.00")}]
     applicable = await evaluate_applicable_discounts(db_session, "CUSTOMER", lines)
     assert len(applicable) == 1
     applied = applicable[0]["applied_rule_ids"]
@@ -238,10 +236,14 @@ async def test_transaction_rollback_preserves_stock_and_gst_integrity(db_session
 
     # Balance and movements must be completely unchanged
     bal_after = (
-        await db_session.execute(
-            select(SpareStockBalance).filter_by(spare_id=target_spare_id, location="MAIN_WAREHOUSE")
+        (
+            await db_session.execute(
+                select(SpareStockBalance).filter_by(spare_id=target_spare_id, location="MAIN_WAREHOUSE")
+            )
         )
-    ).scalar_one().quantity
+        .scalar_one()
+        .quantity
+    )
     movement_count_after = (
         await db_session.execute(
             select(func.count(SpareStockMovement.movement_id)).where(SpareStockMovement.spare_id == target_spare_id)
@@ -275,11 +277,14 @@ async def test_rbac_security_on_cost_profit_and_loss_authorization(admin_client:
         assert resp_gst.status_code in (401, 403)
 
         # Unauthenticated request to authorize loss sale must be rejected
-        resp_loss = await admin_client.post("/inventory/loss-exceptions", json={
-            "spare_id": 1,
-            "part_code": "TEST",
-            "reason": "Test unauthenticated loss authorization",
-        })
+        resp_loss = await admin_client.post(
+            "/inventory/loss-exceptions",
+            json={
+                "spare_id": 1,
+                "part_code": "TEST",
+                "reason": "Test unauthenticated loss authorization",
+            },
+        )
         assert resp_loss.status_code in (401, 403)
     finally:
         if override:
