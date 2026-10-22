@@ -1,5 +1,6 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -46,7 +47,7 @@ async def list_spares(
 async def create_spare(
     data: SpareMasterCreate,
     db: AsyncSession = Depends(get_db),
-    _staff=Depends(require_roles("ADMIN", "MANAGER")),
+    _staff=Depends(require_roles("ADMIN", "MANAGER", "DEALER")),
 ):
     try:
         return await services.create_spare(
@@ -401,6 +402,257 @@ async def get_spare_purchase_history_api(
 ):
     """Retrieve full purchase bill and rate summary for a spare by ID."""
     return await purchase_history_service.get_part_purchase_history(db, str(spare_id))
+
+
+# ==============================================================================
+# PRICING ALERTS & RISK MANAGEMENT
+# ==============================================================================
+
+
+@router.get("/pricing/alerts")
+@router.get("/pricing-alerts")
+async def list_pricing_alerts_api(
+    severity: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    spare_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """List pricing and profit risk alerts with optional filtering."""
+    from sqlalchemy import select
+    from app.modules.inventory.models import PricingAlert
+
+    stmt = select(PricingAlert).where(PricingAlert.is_deleted.is_(False))
+    if severity:
+        stmt = stmt.where(PricingAlert.severity == severity)
+    if status:
+        stmt = stmt.where(PricingAlert.status == status)
+    if spare_id:
+        stmt = stmt.where(PricingAlert.spare_id == spare_id)
+    stmt = stmt.order_by(PricingAlert.updated_at.desc())
+
+    alerts = (await db.execute(stmt)).scalars().all()
+    return alerts
+
+
+@router.post("/pricing-alerts/{alert_id}/acknowledge")
+async def acknowledge_pricing_alert_api(
+    alert_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff),
+):
+    """Acknowledge an open pricing risk alert."""
+    from datetime import datetime, timezone
+    from app.modules.inventory.models import PricingAlert, AlertStatus
+
+    stmt = select(PricingAlert).where(PricingAlert.alert_id == alert_id).with_for_update()
+    alert = (await db.execute(stmt)).scalar_one_or_none()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    staff_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
+    alert.status = AlertStatus.ACKNOWLEDGED.value
+    alert.acknowledged_by = staff_id
+    alert.acknowledged_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    await db.commit()
+    return {"message": "Alert acknowledged", "alert_id": alert_id}
+
+
+@router.post("/pricing-alerts/{alert_id}/resolve")
+async def resolve_pricing_alert_api(
+    alert_id: int,
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(get_current_staff),
+):
+    """Resolve an open or acknowledged pricing risk alert with an explanation."""
+    from datetime import datetime, timezone
+    from app.modules.inventory.models import PricingAlert, AlertStatus
+
+    stmt = select(PricingAlert).where(PricingAlert.alert_id == alert_id).with_for_update()
+    alert = (await db.execute(stmt)).scalar_one_or_none()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    reason = payload.get("reason", "Manually resolved by staff")
+    staff_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
+
+    alert.status = AlertStatus.RESOLVED.value
+    alert.resolved_by = staff_id
+    alert.resolved_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    alert.resolution_reason = reason
+    await db.commit()
+    return {"message": "Alert resolved", "alert_id": alert_id}
+
+
+# ==============================================================================
+# LOSS EXCEPTIONS
+# ==============================================================================
+
+
+@router.post("/loss-exceptions")
+async def create_loss_exception_api(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("ADMIN", "MANAGER")),
+):
+    """Authorize an explicit, auditable exception allowing a negative-profit transaction."""
+    from app.modules.inventory.models import LossSaleException
+
+    spare_id = payload.get("spare_id")
+    part_code = payload.get("part_code")
+    quantity = payload.get("quantity", 1)
+    expected_revenue = payload.get("expected_revenue", 0.0)
+    expected_cost = payload.get("expected_cost", 0.0)
+    expected_loss = payload.get("expected_loss", 0.0)
+    expected_margin = payload.get("expected_margin", 0.0)
+    reason = payload.get("reason")
+    requested_by = payload.get("requested_by_staff_id")
+
+    authorizer_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
+
+    if not spare_id or not part_code or not reason:
+        raise HTTPException(status_code=400, detail="spare_id, part_code, and reason are required.")
+
+    if requested_by and authorizer_id == requested_by:
+        raise HTTPException(status_code=403, detail="Staff cannot authorize their own loss exception.")
+
+    exc = LossSaleException(
+        spare_id=spare_id,
+        part_code=part_code,
+        quantity=quantity,
+        requested_by_staff_id=requested_by or authorizer_id,
+        authorized_by_staff_id=authorizer_id,
+        expected_revenue=expected_revenue,
+        expected_cost=expected_cost,
+        expected_loss=expected_loss,
+        expected_margin=expected_margin,
+        reason=reason,
+    )
+    db.add(exc)
+    await db.commit()
+    await db.refresh(exc)
+    return {"message": "Loss exception authorized", "exception_id": exc.exception_id}
+
+
+# ==============================================================================
+# PRICE & COST AUDIT TRAIL
+# ==============================================================================
+
+
+@router.get("/price-audit-events")
+async def list_price_audit_events_api(
+    spare_id: Optional[int] = Query(None),
+    change_type: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """List immutable timestamped price and cost change audit events."""
+    from sqlalchemy import select
+    from app.modules.inventory.models import PriceChangeAuditEvent
+
+    stmt = select(PriceChangeAuditEvent)
+    if spare_id:
+        stmt = stmt.where(PriceChangeAuditEvent.spare_id == spare_id)
+    if change_type:
+        stmt = stmt.where(PriceChangeAuditEvent.change_type == change_type)
+    stmt = stmt.order_by(PriceChangeAuditEvent.effective_timestamp.desc(), PriceChangeAuditEvent.event_id.desc())
+
+    events = (await db.execute(stmt)).scalars().all()
+    return events
+
+
+# ==============================================================================
+# DISCOUNT RULES & EVALUATION
+# ==============================================================================
+
+
+@router.get("/discount-rules")
+async def list_discount_rules_api(
+    target_type: Optional[str] = Query(None),
+    is_active: Optional[bool] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """List supplier or customer discount rules."""
+    from sqlalchemy import select
+    from app.modules.inventory.models import DiscountRule
+
+    stmt = select(DiscountRule).where(DiscountRule.is_deleted.is_(False))
+    if target_type:
+        stmt = stmt.where(DiscountRule.target_type == target_type)
+    if is_active is not None:
+        stmt = stmt.where(DiscountRule.is_active == is_active)
+    stmt = stmt.order_by(DiscountRule.priority.desc(), DiscountRule.rule_id.asc())
+
+    rules = (await db.execute(stmt)).scalars().all()
+    return rules
+
+
+@router.post("/discount-rules")
+async def create_discount_rule_api(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_staff=Depends(require_roles("ADMIN", "MANAGER")),
+):
+    """Create a new supplier or customer discount rule."""
+    from app.modules.inventory.models import DiscountRule
+
+    staff_id = (
+        current_staff.get("staff_id") if isinstance(current_staff, dict) else getattr(current_staff, "staff_id", None)
+    )
+
+    rule = DiscountRule(
+        rule_name=payload.get("rule_name", "Discount Rule"),
+        target_type=payload.get("target_type", "CUSTOMER"),
+        discount_type=payload.get("discount_type", "PERCENTAGE"),
+        discount_value=payload.get("discount_value", 0.0),
+        applicable_entity_id=payload.get("applicable_entity_id"),
+        spare_id=payload.get("spare_id"),
+        vehicle_model_id=payload.get("vehicle_model_id"),
+        min_quantity=payload.get("min_quantity", 0),
+        min_basket_value=payload.get("min_basket_value", 0.0),
+        threshold_is_pre_tax=payload.get("threshold_is_pre_tax", True),
+        stacking_mode=payload.get("stacking_mode", "STACKABLE"),
+        priority=payload.get("priority", 0),
+        max_discount_amount=payload.get("max_discount_amount"),
+        start_date=payload.get("start_date"),
+        expiry_date=payload.get("expiry_date"),
+        is_active=payload.get("is_active", True),
+        created_by_staff_id=staff_id,
+    )
+    db.add(rule)
+    await db.commit()
+    await db.refresh(rule)
+    return {"message": "Discount rule created", "rule_id": rule.rule_id}
+
+
+@router.post("/evaluate-discounts")
+async def evaluate_discounts_api(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    _staff=Depends(get_current_staff),
+):
+    """Preview discount application and tax breakdown for invoice lines."""
+    from app.modules.inventory import discount_engine
+
+    target_type = payload.get("target_type", "CUSTOMER")
+    lines = payload.get("lines", [])
+    entity_id = payload.get("entity_id")
+
+    results = await discount_engine.evaluate_applicable_discounts(
+        db=db,
+        target_type=target_type,
+        lines=lines,
+        entity_id=entity_id,
+    )
+    return {"evaluated_lines": results}
 
 
 router.include_router(tags_router)

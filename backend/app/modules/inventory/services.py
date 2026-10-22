@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
@@ -114,12 +114,20 @@ async def add_vehicle_movement(
 
 
 async def get_spare_stock(db: AsyncSession, spare_id: int) -> int:
+    bal_stmt = select(func.coalesce(func.sum(SpareStockBalance.quantity), 0)).filter(
+        SpareStockBalance.spare_id == spare_id
+    )
+    bal_res = await db.execute(bal_stmt)
+    bal_qty = bal_res.scalar()
+    if bal_qty is not None and int(bal_qty) > 0:
+        return int(bal_qty)
+
     stmt = select(func.coalesce(func.sum(SpareStockMovement.quantity), 0)).filter(
         SpareStockMovement.spare_id == spare_id
     )
     result = await db.execute(stmt)
     qty = result.scalar()
-    return int(qty)
+    return int(qty or 0)
 
 
 def _validate_spare_movement(
@@ -144,6 +152,10 @@ async def add_spare_movement(
     quantity: int,
     movement_type: str,
     serial_id: int | None = None,
+    from_location: str | None = None,
+    to_location: str | None = None,
+    unit_cost: float | None = None,
+    total_cost: float | None = None,
     reference_type: str | None = None,
     reference_id: int | None = None,
     remarks: str | None = None,
@@ -169,6 +181,10 @@ async def add_spare_movement(
         serial_id=serial_id,
         quantity=quantity,
         movement_type=movement_type,
+        from_location=from_location,
+        to_location=to_location,
+        unit_cost=unit_cost,
+        total_cost=total_cost,
         reference_type=reference_type,
         reference_id=reference_id,
         movement_datetime=datetime.now(timezone.utc).replace(tzinfo=None),
@@ -438,6 +454,16 @@ async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
                 await db.flush()
                 serial_ids.append(new_ser.serial_id)
 
+        qty = int(p_item.quantity or 0)
+        unit_rate = float(p_item.unit_cost or 0.0)  # Eligible taxable purchase unit rate
+        tax_amt = float(p_item.tax_amount or 0.0)
+        gst_pct = float(p_item.gst_percentage or 0.0)
+        if not tax_amt and gst_pct > 0 and qty > 0 and unit_rate > 0:
+            tax_amt = round(qty * unit_rate * (gst_pct / 100.0), 2)
+
+        # Inventory Carrying Cost excludes recoverable input GST
+        eligible_inventory_cost = round(qty * unit_rate, 2)
+
         # For non-serialized, or individually for serialized
         if spare.tracking_mode == "SERIALIZED":
             for s_id in serial_ids:
@@ -452,10 +478,8 @@ async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
                     movement_datetime=datetime.now(timezone.utc).replace(tzinfo=None),
                     remarks="Posted from Procurement",
                     to_location=target_location,
-                    unit_cost=p_item.unit_cost,
-                    total_cost=(
-                        (float(p_item.total_cost) / p_item.quantity) if p_item.quantity and p_item.total_cost else 0
-                    ),
+                    unit_cost=unit_rate,
+                    total_cost=unit_rate,
                 )
                 db.add(mov)
         else:
@@ -470,10 +494,21 @@ async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
                 movement_datetime=datetime.now(timezone.utc).replace(tzinfo=None),
                 remarks="Posted from Procurement",
                 to_location=target_location,
-                unit_cost=p_item.unit_cost,
-                total_cost=float(p_item.total_cost) if p_item.total_cost else 0,
+                unit_cost=unit_rate,
+                total_cost=eligible_inventory_cost,
             )
             db.add(mov)
+
+        # Determine prior stock on hand company-wide across all locations BEFORE this inward
+        prior_bal_stmt = select(func.coalesce(func.sum(SpareStockBalance.quantity), 0)).filter(
+            SpareStockBalance.spare_id == spare.spare_id
+        )
+        prior_stock = int((await db.execute(prior_bal_stmt)).scalar() or 0)
+        if prior_stock == 0:
+            mov_stmt = select(func.coalesce(func.sum(SpareStockMovement.quantity), 0)).filter(
+                SpareStockMovement.spare_id == spare.spare_id
+            )
+            prior_stock = int((await db.execute(mov_stmt)).scalar() or 0)
 
         # Update Stock Balance
         bal_res = await db.execute(
@@ -486,32 +521,95 @@ async def _process_purchase_receipt_items(db: AsyncSession, purchase, payload):
         else:
             balance.quantity += p_item.quantity
 
-        # Update WAC
-        current_stock = await get_spare_stock(db, spare.spare_id)  # Stock BEFORE this posting
-
+        # Perpetual WAC calculation (Company-wide, excluding recoverable ITC)
         cost_res = await db.execute(
-            select(SpareCostHistory).filter_by(spare_id=spare.spare_id).order_by(SpareCostHistory.effective_date.desc())
+            select(SpareCostHistory)
+            .filter_by(spare_id=spare.spare_id, is_deleted=False)
+            .order_by(SpareCostHistory.effective_date.desc(), SpareCostHistory.cost_id.desc())
         )
         last_cost = cost_res.scalars().first()
-        old_wac = float(last_cost.wac_cost) if last_cost and last_cost.wac_cost is not None else 0.0
 
-        new_quantity = current_stock + p_item.quantity
-        p_total_cost = float(p_item.total_cost) if p_item.total_cost else 0.0
-        if new_quantity > 0:
-            new_wac = ((current_stock * old_wac) + p_total_cost) / new_quantity
+        # Prior WAC for existing on-hand inventory
+        if spare.accounting_wac is not None and float(spare.accounting_wac) > 0:
+            old_wac = float(spare.accounting_wac)
+        elif last_cost and last_cost.wac_cost is not None and float(last_cost.wac_cost) > 0:
+            old_wac = float(last_cost.wac_cost)
+        elif spare.base_cost is not None and float(spare.base_cost) > 0:
+            old_wac = float(spare.base_cost)
+        elif spare.base_dlp is not None and float(spare.base_dlp) > 0:
+            old_wac = float(spare.base_dlp)
         else:
-            new_wac = float(p_item.unit_cost)
+            old_wac = unit_rate
 
+        new_quantity = prior_stock + qty
+        if new_quantity > 0:
+            if prior_stock <= 0:
+                new_wac = unit_rate
+            else:
+                new_wac = round(((prior_stock * old_wac) + eligible_inventory_cost) / new_quantity, 2)
+        else:
+            new_wac = unit_rate
+
+        # Record in SpareCostHistory
         new_cost = SpareCostHistory(
             spare_id=spare.spare_id,
             quantity=p_item.quantity,
-            billed_unit_price=p_item.unit_cost,
+            billed_unit_price=unit_rate,
             additional_costs=0,
-            landed_cost=(p_total_cost / p_item.quantity) if p_item.quantity else 0,
+            landed_cost=unit_rate,
             wac_cost=new_wac,
             source_reference=f"PURCHASE-{purchase.spare_purchase_id}",
         )
         db.add(new_cost)
+
+        # Update Master canonical accounting WAC (Manufacturer DLP & MRP remain independent)
+        spare.accounting_wac = new_wac
+        spare.base_cost = new_wac
+
+        # Record purchase input GST in GST Ledger (recoverable ITC tracked separately)
+        if tax_amt > 0:
+            from app.modules.finance.gst_service import record_purchase_itc
+
+            inv_num = getattr(purchase, "invoice_number", None) or f"PO-{purchase.spare_purchase_id}"
+            inv_date = getattr(purchase, "purchase_date", None) or date.today()
+            v_id = getattr(purchase, "vendor_id", None)
+
+            # Half CGST + SGST or full IGST
+            cgst_part = round(tax_amt / 2.0, 2)
+            sgst_part = round(tax_amt - cgst_part, 2)
+
+            await record_purchase_itc(
+                db=db,
+                purchase_id=purchase.spare_purchase_id,
+                invoice_number=inv_num,
+                invoice_date=inv_date,
+                taxable_value=eligible_inventory_cost,
+                cgst_amount=cgst_part,
+                sgst_amount=sgst_part,
+                igst_amount=0.0,
+                vendor_id=v_id,
+                vendor_name=getattr(purchase, "vendor_name", None),
+                vendor_gstin=getattr(purchase, "vendor_gstin", None),
+                eligibility_status="ELIGIBLE",
+            )
+
+        # Audit price/cost change and re-evaluate pricing risks
+        from app.modules.inventory.profitability_service import (
+            evaluate_part_pricing_risk,
+            record_price_change_audit,
+        )
+
+        await record_price_change_audit(
+            db=db,
+            spare_id=spare.spare_id,
+            part_code=spare.part_number or str(spare.spare_id),
+            change_type="WAC_CHANGE",
+            old_value=old_wac,
+            new_value=new_wac,
+            source_document=f"PURCHASE-{purchase.spare_purchase_id}",
+            reason="Inward purchase receipt posted into inventory",
+        )
+        await evaluate_part_pricing_risk(db, spare.spare_id)
 
     await db.flush()
 

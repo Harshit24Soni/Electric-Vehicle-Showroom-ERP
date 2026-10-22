@@ -1442,10 +1442,23 @@ async def execute_batch_import(
                         spare.remarks = encoded_remarks
                     spare.hsn_code = hsn_code
                     spare.gst_rate = gst_rate or 18.0
-                    spare.base_cost = purchase_cost if purchase_cost > 0 else None
-                    spare.base_dlp = purchase_cost if purchase_cost > 0 else None
+
+                    # Set canonical Manufacturer reference prices
+                    old_mrp = spare.manufacturer_mrp or spare.base_mrp
+                    old_dlp = spare.manufacturer_dlp or spare.base_dlp
+                    if purchase_cost > 0:
+                        spare.manufacturer_dlp = purchase_cost
+                        spare.base_dlp = purchase_cost
+                    if final_mrp is not None:
+                        spare.manufacturer_mrp = final_mrp
+                        spare.base_mrp = final_mrp
                     spare.base_ex_showroom = showroom_price
-                    spare.base_mrp = final_mrp
+
+                    # Preserve actual accounting inventory WAC if it already exists!
+                    if not spare.accounting_wac and not spare.base_cost and purchase_cost > 0:
+                        spare.accounting_wac = purchase_cost
+                        spare.base_cost = purchase_cost
+
                     if observed_margin is not None:
                         spare.profit_margin_percent = observed_margin
                     spare.updated_at = utc_now_naive()
@@ -1479,22 +1492,41 @@ async def execute_batch_import(
                                 spare_id=spare.spare_id,
                                 selling_price=final_mrp,
                                 effective_from=utc_now_naive(),
-                                reason="Worksheet Batch Update",
+                                reason="Manufacturer Price List Import",
                             )
                         )
 
-                    # Cost history (Purchase Rate = Dealer Landing Price)
-                    if purchase_cost > 0:
-                        db.add(
-                            SpareCostHistory(
-                                spare_id=spare.spare_id,
-                                quantity=0,
-                                billed_unit_price=purchase_cost,
-                                landed_cost=purchase_cost,
-                                source_reference=source_document_name or "Worksheet Batch Update",
-                                effective_date=utc_now_naive(),
-                            )
+                    # Price Change Audit Trail
+                    from app.modules.inventory.profitability_service import (
+                        record_price_change_audit,
+                        evaluate_part_pricing_risk,
+                    )
+
+                    if final_mrp is not None and old_mrp != final_mrp:
+                        await record_price_change_audit(
+                            db=db,
+                            spare_id=spare.spare_id,
+                            part_code=part_code,
+                            change_type="MANUFACTURER_MRP",
+                            old_value=old_mrp,
+                            new_value=final_mrp,
+                            source_document=source_document_name or "Worksheet Batch Update",
+                            reason="Revised MRP from Manufacturer Price List",
                         )
+                    if purchase_cost > 0 and old_dlp != purchase_cost:
+                        await record_price_change_audit(
+                            db=db,
+                            spare_id=spare.spare_id,
+                            part_code=part_code,
+                            change_type="MANUFACTURER_DLP",
+                            old_value=old_dlp,
+                            new_value=purchase_cost,
+                            source_document=source_document_name or "Worksheet Batch Update",
+                            reason="Revised DLP from Manufacturer Price List",
+                        )
+
+                    # Re-evaluate pricing risks under the new price list
+                    await evaluate_part_pricing_risk(db, spare.spare_id)
 
                     # Stock balance update if requested
                     if update_stock and stock_qty is not None:
@@ -1613,6 +1645,9 @@ async def execute_batch_import(
                     gst_rate=gst_rate or 18.0,
                     base_cost=purchase_cost if purchase_cost > 0 else None,
                     base_dlp=purchase_cost if purchase_cost > 0 else None,
+                    accounting_wac=purchase_cost if purchase_cost > 0 else None,
+                    manufacturer_dlp=purchase_cost if purchase_cost > 0 else None,
+                    manufacturer_mrp=final_mrp,
                     base_ex_showroom=showroom_price,
                     base_mrp=final_mrp,
                     profit_margin_percent=observed_margin,

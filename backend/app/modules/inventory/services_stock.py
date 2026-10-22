@@ -9,6 +9,7 @@ from app.modules.inventory.models import (
     SpareBatch,
     SpareSerial,
     SpareStockMovement,
+    SpareCostHistory,
 )
 from app.modules.inventory.schemas_stock import (
     InventoryDashboardResponse,
@@ -33,18 +34,37 @@ async def get_inventory_dashboard(db: AsyncSession) -> InventoryDashboardRespons
         )
     )
 
-    # Compute total stock value efficiently in 1 SQL query using database aggregation (eliminating N+1 loops)
-    stock_value_stmt = (
+    # 1. Accounting stock value (WAC * Qty, excluding recoverable ITC)
+    acct_stock_value_stmt = (
         select(
             func.coalesce(
-                func.sum(SpareStockBalance.quantity * func.coalesce(SpareMaster.base_dlp, SpareMaster.base_cost, 0.0)),
+                func.sum(
+                    SpareStockBalance.quantity * func.coalesce(SpareMaster.accounting_wac, SpareMaster.base_cost, 0.0)
+                ),
                 0.0,
             )
         )
         .join(SpareMaster, SpareStockBalance.spare_id == SpareMaster.spare_id)
         .filter(SpareMaster.status == "ACTIVE", SpareMaster.is_deleted.is_(False))
     )
-    total_val = float(await db.scalar(stock_value_stmt) or 0.0)
+    total_acct_val = float(await db.scalar(acct_stock_value_stmt) or 0.0)
+
+    # 2. Operational GST-inclusive acquisition view
+    gst_incl_stmt = (
+        select(
+            func.coalesce(
+                func.sum(
+                    SpareStockBalance.quantity
+                    * func.coalesce(SpareMaster.accounting_wac, SpareMaster.base_cost, 0.0)
+                    * (1.0 + (func.coalesce(SpareMaster.gst_rate, 18.0) / 100.0))
+                ),
+                0.0,
+            )
+        )
+        .join(SpareMaster, SpareStockBalance.spare_id == SpareMaster.spare_id)
+        .filter(SpareMaster.status == "ACTIVE", SpareMaster.is_deleted.is_(False))
+    )
+    total_gst_incl_val = float(await db.scalar(gst_incl_stmt) or 0.0)
 
     # movements last 30 days
     last_30d = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
@@ -52,10 +72,53 @@ async def get_inventory_dashboard(db: AsyncSession) -> InventoryDashboardRespons
         select(func.count(SpareStockMovement.movement_id)).filter(SpareStockMovement.movement_datetime >= last_30d)
     )
 
+    # Open Alerts count
+    from app.modules.inventory.models import PricingAlert, AlertSeverity, AlertStatus
+
+    crit_count = (
+        await db.scalar(
+            select(func.count(PricingAlert.alert_id)).filter(
+                PricingAlert.severity == AlertSeverity.CRITICAL.value,
+                PricingAlert.status.in_([AlertStatus.OPEN.value, AlertStatus.ESCALATED.value]),
+            )
+        )
+        or 0
+    )
+    high_count = (
+        await db.scalar(
+            select(func.count(PricingAlert.alert_id)).filter(
+                PricingAlert.severity == AlertSeverity.HIGH.value,
+                PricingAlert.status.in_([AlertStatus.OPEN.value, AlertStatus.ESCALATED.value]),
+            )
+        )
+        or 0
+    )
+    # Check opening parts with on-hand quantity lacking traceable purchase records
+    from app.modules.procurement.models import SparePurchaseItem
+
+    unverified_opening_stmt = select(func.count(SpareStockBalance.spare_id.distinct())).filter(
+        SpareStockBalance.quantity > 0,
+        ~SpareStockBalance.spare_id.in_(
+            select(SparePurchaseItem.spare_id.distinct()).filter(SparePurchaseItem.spare_id.isnot(None))
+        ),
+    )
+    unverified_count = (await db.scalar(unverified_opening_stmt)) or 0
+    is_estimated = unverified_count > 0
+
     return InventoryDashboardResponse(
         total_active_spares=active_spares or 0,
-        total_stock_value=round(total_val, 2),
+        total_stock_value=round(total_acct_val, 2),
+        total_gst_inclusive_value=round(total_gst_incl_val, 2),
+        gst_inclusive_valuation_label=(
+            "Operational Acquisition View (Partially Estimated Opening Stock)"
+            if is_estimated
+            else "Operational Acquisition View (Invoice-Backed)"
+        ),
+        is_gst_inclusive_estimated=is_estimated,
+        unverified_opening_stock_count=unverified_count,
         total_movements_last_30d=movements_30d or 0,
+        critical_alerts_count=crit_count,
+        high_alerts_count=high_count,
     )
 
 
@@ -89,10 +152,72 @@ async def list_stock(db: AsyncSession, spare_id: int = None, location: str = Non
     result = await db.execute(query)
     balances = result.scalars().all()
 
+    spare_ids = list({bal.spare_id for bal in balances})
+    wac_map: dict[int, float] = {}
+    if spare_ids:
+        cost_stmt = (
+            select(SpareCostHistory)
+            .filter(
+                SpareCostHistory.spare_id.in_(spare_ids),
+                SpareCostHistory.is_deleted.is_(False),
+            )
+            .order_by(SpareCostHistory.spare_id, desc(SpareCostHistory.effective_date))
+        )
+        cost_res = await db.execute(cost_stmt)
+        cost_records = cost_res.scalars().all()
+        for ch in cost_records:
+            if ch.spare_id not in wac_map:
+                if ch.wac_cost is not None and float(ch.wac_cost) > 0:
+                    wac_map[ch.spare_id] = float(ch.wac_cost)
+                elif ch.landed_cost is not None and float(ch.landed_cost) > 0:
+                    wac_map[ch.spare_id] = float(ch.landed_cost)
+
+        # Identify which spares have verified purchase items
+        from app.modules.procurement.models import SparePurchaseItem
+
+        purch_stmt = select(SparePurchaseItem.spare_id.distinct()).filter(
+            SparePurchaseItem.spare_id.in_(spare_ids),
+            SparePurchaseItem.spare_id.isnot(None),
+        )
+        purch_res = await db.execute(purch_stmt)
+        purchased_spare_ids = set(purch_res.scalars().all())
+
     items = []
     for bal in balances:
         spare = bal.spare
-        wac = float(spare.base_dlp if spare.base_dlp is not None else (spare.base_cost or 0.0))
+        has_invoice = bal.spare_id in purchased_spare_ids if spare_ids else False
+        cost_classification = "INVOICE_VERIFIED" if has_invoice else "ESTIMATED_OPENING"
+        acquisition_tax_status = "TRACEABLE_INVOICE" if has_invoice else "CATALOG_ESTIMATE"
+        has_unverified_tax = not has_invoice
+
+        if spare.accounting_wac is not None and float(spare.accounting_wac) > 0:
+            wac = float(spare.accounting_wac)
+        elif bal.spare_id in wac_map:
+            wac = wac_map[bal.spare_id]
+        elif spare.base_cost is not None and float(spare.base_cost) > 0:
+            wac = float(spare.base_cost)
+        elif spare.base_dlp is not None and float(spare.base_dlp) > 0:
+            wac = float(spare.base_dlp)
+        else:
+            wac = 0.0
+
+        gst_rate = float(spare.gst_rate or 18.0)
+        gst_factor = 1.0 + (gst_rate / 100.0)
+
+        tot_val = round(wac * bal.quantity, 2)
+        tot_gst_incl = round(tot_val * gst_factor, 2)
+
+        mrp = float(spare.manufacturer_mrp or spare.base_mrp or 0.0)
+        dlp = float(spare.manufacturer_dlp or spare.base_dlp or 0.0)
+
+        if mrp > 0 and wac > 0:
+            taxable_mrp = round(mrp / gst_factor, 2)
+            exp_profit = round(taxable_mrp - wac, 2)
+            margin_pct = round((exp_profit / taxable_mrp) * 100.0, 2) if taxable_mrp > 0 else 0.0
+        else:
+            exp_profit = None
+            margin_pct = None
+
         part_code_str = spare.part_number
 
         items.append(
@@ -104,7 +229,15 @@ async def list_stock(db: AsyncSession, spare_id: int = None, location: str = Non
                 location=bal.location,
                 quantity=bal.quantity,
                 unit_cost=wac,
-                total_value=round(wac * bal.quantity, 2),
+                total_value=tot_val,
+                gst_inclusive_value=tot_gst_incl,
+                cost_classification=cost_classification,
+                acquisition_tax_status=acquisition_tax_status,
+                has_unverified_historical_tax=has_unverified_tax,
+                manufacturer_mrp=mrp if mrp > 0 else None,
+                manufacturer_dlp=dlp if dlp > 0 else None,
+                expected_gross_profit=exp_profit,
+                gross_margin_percent=margin_pct,
             )
         )
     return StockListResponse(items=items)

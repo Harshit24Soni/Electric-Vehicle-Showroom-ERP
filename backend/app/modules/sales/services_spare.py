@@ -1,5 +1,6 @@
 import logging
-from decimal import Decimal
+from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -7,7 +8,7 @@ from sqlalchemy.orm import joinedload
 
 from app.modules.sales.models import SpareSale, SpareSaleItem
 from app.modules.sales.schemas_spare import SpareSaleCreate
-from app.modules.inventory.models import SpareStockBalance, SpareBatch, SpareSerial
+from app.modules.inventory.models import SpareStockBalance, SpareBatch, SpareSerial, SpareMaster
 from app.modules.inventory.services import add_spare_movement
 
 logger = logging.getLogger(__name__)
@@ -85,8 +86,13 @@ async def create_draft_sale(db: AsyncSession, payload: SpareSaleCreate, staff_id
         raise
 
 
-async def confirm_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSale:
-    """Confirm a draft spare sale, atomically deducting stock across balances, batches, and serials."""
+async def confirm_sale(
+    db: AsyncSession,
+    sale_id: int,
+    staff_id: int,
+    exception_id: Optional[int] = None,
+) -> SpareSale:
+    """Confirm a draft spare sale, atomically validating stock, profitability, and deducting inventory."""
     try:
         sale = await get_spare_sale(db, sale_id)
         if not sale:
@@ -94,18 +100,56 @@ async def confirm_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSa
         if sale.status != "DRAFT":
             raise SpareSaleError(f"Sale is in {sale.status} state, cannot confirm.")
 
-        # Atomic validation and stock movement
+        total_taxable_rev = Decimal("0.00")
+        total_output_gst = Decimal("0.00")
+
+        # Atomic validation, COGS snapshotting, and stock movement
         for item in sale.items:
+            # Query SpareMaster for canonical cost and pricing
+            stmt_spare = select(SpareMaster).where(SpareMaster.spare_id == item.spare_id).with_for_update()
+            spare = (await db.execute(stmt_spare)).scalar_one_or_none()
+            wac_cost = Decimal(str(spare.accounting_wac or spare.base_cost or 0.0)) if spare else Decimal("0.00")
+            gst_rate = Decimal(str(spare.gst_rate or 18.0)) if spare else Decimal("18.00")
+
             # Check stock balance
             stmt = select(SpareStockBalance).where(SpareStockBalance.spare_id == item.spare_id).with_for_update()
             balance = (await db.execute(stmt)).scalar_one_or_none()
             if not balance or balance.quantity < item.quantity:
                 raise SpareSaleError(f"Insufficient stock for spare_id {item.spare_id}")
 
-            balance.quantity -= item.quantity
+            # Enforce Profitability Guardrails & Legal Revised MRP Ceiling
+            from app.modules.inventory.profitability_service import (
+                validate_sale_profitability,
+                ProfitabilityValidationError,
+            )
 
-            unit_cost = Decimal("0.0")
-            item.unit_cost = unit_cost
+            unit_discount = (
+                (Decimal(str(item.discount)) / Decimal(str(item.quantity))).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+                if item.quantity and item.discount
+                else Decimal("0.00")
+            )
+
+            try:
+                profit_info = await validate_sale_profitability(
+                    db=db,
+                    spare_id=item.spare_id,
+                    proposed_unit_price=item.unit_selling_price,
+                    quantity=item.quantity,
+                    unit_discount=unit_discount,
+                    gst_rate=gst_rate,
+                    exception_id=exception_id,
+                    requesting_staff_id=staff_id,
+                )
+            except ProfitabilityValidationError as val_err:
+                raise SpareSaleError(str(val_err)) from val_err
+
+            # Snapshot true perpetual WAC cost
+            item.unit_cost = wac_cost
+
+            # Deduct standard quantity balance
+            balance.quantity -= item.quantity
 
             if item.tracking_mode == "BATCH":
                 if not item.batch_id:
@@ -119,8 +163,8 @@ async def confirm_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSa
                 if not batch or batch.available_quantity < item.quantity:
                     raise SpareSaleError(f"Insufficient quantity in batch {item.batch_id}")
                 batch.available_quantity -= item.quantity
-                unit_cost = batch.unit_cost
-                item.unit_cost = unit_cost
+                if batch.unit_cost:
+                    item.unit_cost = batch.unit_cost
 
             elif item.tracking_mode == "SERIALIZED":
                 if not item.serial_id:
@@ -136,8 +180,8 @@ async def confirm_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSa
                 if not serial:
                     raise SpareSaleError(f"Serial {item.serial_id} is not in stock or does not exist.")
                 serial.status = "SOLD"
-                unit_cost = serial.unit_cost
-                item.unit_cost = unit_cost
+                if serial.unit_cost:
+                    item.unit_cost = serial.unit_cost
 
             await add_spare_movement(
                 db=db,
@@ -150,8 +194,30 @@ async def confirm_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSa
                 remarks=f"Sale #{sale.sale_id} Confirmation",
             )
 
+            total_taxable_rev += Decimal(str(profit_info["net_sales_revenue"]))
+            total_output_gst += Decimal(str(profit_info["output_gst_per_unit"])) * item.quantity
+
         sale.status = "CONFIRMED"
         sale.invoice_number = f"INV-SP-{sale.sale_id:06d}"
+
+        # Record Output GST liability in the GST Ledger
+        from app.modules.finance.gst_service import record_sale_output_tax
+
+        cgst_part = (total_output_gst / Decimal("2.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        sgst_part = total_output_gst - cgst_part
+
+        await record_sale_output_tax(
+            db=db,
+            sale_id=sale.sale_id,
+            invoice_number=sale.invoice_number,
+            invoice_date=sale.sale_date or date.today(),
+            taxable_value=total_taxable_rev,
+            cgst_amount=cgst_part,
+            sgst_amount=sgst_part,
+            igst_amount=Decimal("0.00"),
+            customer_name=None,
+        )
+
         await db.commit()
         return await get_spare_sale(db, sale.sale_id)
     except Exception as exc:
@@ -161,7 +227,7 @@ async def confirm_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSa
 
 
 async def cancel_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSale:
-    """Cancel a sale, rolling back inventory balances, batches, and serials if previously confirmed."""
+    """Cancel a sale, rolling back inventory balances, batches, serials, and reversing output tax if previously confirmed."""
     try:
         sale = await get_spare_sale(db, sale_id)
         if not sale:
@@ -211,6 +277,14 @@ async def cancel_sale(db: AsyncSession, sale_id: int, staff_id: int) -> SpareSal
                     serial_id=item.serial_id,
                     remarks=f"Sale #{sale.sale_id} Cancellation",
                 )
+
+            # Reverse Output GST Liability in the GST Ledger
+            from app.modules.finance.models import OutputTaxRecord, OutputTaxStatus
+
+            out_stmt = select(OutputTaxRecord).where(OutputTaxRecord.sale_id == sale.sale_id).with_for_update()
+            out_rec = (await db.execute(out_stmt)).scalar_one_or_none()
+            if out_rec:
+                out_rec.status = OutputTaxStatus.REVERSED.value
 
             sale.status = "CANCELLED"
             await db.commit()

@@ -6,10 +6,8 @@ from sqlalchemy.orm import selectinload
 
 from app.db.mixins import utc_now_naive
 from app.modules.inventory.models import (
-    PriceListItem,
     SpareCostHistory,
     SpareMaster,
-    SpareSellingPriceHistory,
 )
 from app.modules.master.models import VehicleModel
 
@@ -107,40 +105,49 @@ async def apply_new_purchase_cost(
     )
     db.add(cost_hist)
 
-    # 2. Update SpareMaster base pricing
+    # 2. Update SpareMaster accounting WAC (Manufacturer DLP & MRP remain independent)
+    old_wac = float(spare.accounting_wac or spare.base_cost or 0.0)
+    spare.accounting_wac = new_cost
     spare.base_cost = new_cost
-    spare.base_dlp = new_cost
 
     gst_rate = float(spare.gst_rate or 18.0)
-    base_margin = float(spare.profit_margin_percent or 0.0)
+    current_mrp = float(spare.manufacturer_mrp or spare.base_mrp or 0.0)
 
-    computed = compute_prices_from_cost_and_margin(new_cost, base_margin, gst_rate)
-    spare.base_ex_showroom = computed["ex_showroom"]
-    spare.base_mrp = computed["customer_mrp"]
-
-    # Record selling price history for base price
-    db.add(
-        SpareSellingPriceHistory(
-            spare_id=spare.spare_id,
-            selling_price=computed["customer_mrp"],
-            effective_from=now,
-            reason=f"Auto Recomputed (Base Margin: {base_margin}% on Cost INR {new_cost})",
-        )
+    # 3. Evaluate profitability & record audit trail
+    from app.modules.inventory.profitability_service import (
+        calculate_profitability,
+        evaluate_part_pricing_risk,
+        record_price_change_audit,
     )
 
-    # 3. Update PriceListItem for default version
-    part_code = spare.part_number
-    if part_code:
-        pli_stmt = (
-            select(PriceListItem)
-            .where(PriceListItem.part_code == part_code, PriceListItem.is_deleted.is_(False))
-            .order_by(PriceListItem.item_id.desc())
-        )
-        pli_res = await db.execute(pli_stmt)
-        pli = pli_res.scalars().first()
-        if pli:
-            pli.mrp = computed["customer_mrp"]
-            pli.dlp = new_cost
+    profit_info = calculate_profitability(
+        unit_selling_price=current_mrp,
+        wac_cost=new_cost,
+        quantity=1,
+        gst_rate=gst_rate,
+    )
+
+    await record_price_change_audit(
+        db=db,
+        spare_id=spare.spare_id,
+        part_code=spare.part_number or str(spare.spare_id),
+        change_type="PURCHASE_COST",
+        old_value=old_wac,
+        new_value=new_cost,
+        source_document=source_reference,
+        reason="Purchase cost update",
+    )
+    await evaluate_part_pricing_risk(db, spare.spare_id)
+
+    computed = {
+        "new_cost": new_cost,
+        "ex_showroom": float(spare.base_ex_showroom or 0.0),
+        "gst_rate": gst_rate,
+        "gst_amount": profit_info["output_gst_per_unit"],
+        "customer_mrp": current_mrp,
+        "profit_margin_percent": profit_info["gross_margin_percent"],
+        "profit_per_unit": profit_info["expected_gross_profit"],
+    }
 
     # 4. Update each compatible vehicle model pricing if model-specific margin exists
     vm_stmt = select(VehicleModel).where(VehicleModel.is_deleted.is_(False))
@@ -149,29 +156,17 @@ async def apply_new_purchase_cost(
 
     updated_models = []
     for compat in spare.compatibilities:
-        compat_margin = float(compat.profit_margin_percent or base_margin)
-        compat_gst = float(compat.gst_rate or gst_rate)
-        model_computed = compute_prices_from_cost_and_margin(new_cost, compat_margin, compat_gst)
-
         compat.ex_factory_price = new_cost
         compat.dlp = new_cost
-        compat.ex_showroom_price = model_computed["ex_showroom"]
-        compat.customer_mrp = model_computed["customer_mrp"]
 
+        # Under canonical policy, manufacturer MRP is preserved from catalog and not recalculated from WAC
         model_name = vm_map.get(compat.vehicle_model_id, f"Model #{compat.vehicle_model_id}")
-        db.add(
-            SpareSellingPriceHistory(
-                spare_id=spare.spare_id,
-                selling_price=model_computed["customer_mrp"],
-                effective_from=now,
-                reason=f"Model: {model_name} (Auto Margin: {compat_margin}%)",
-            )
-        )
         updated_models.append(
             {
+                "vehicle_model_id": compat.vehicle_model_id,
                 "model_name": model_name,
-                "new_price": model_computed["customer_mrp"],
-                "margin_percent": compat_margin,
+                "ex_factory": new_cost,
+                "customer_mrp": float(compat.customer_mrp or current_mrp),
             }
         )
 
@@ -191,10 +186,10 @@ async def apply_new_purchase_cost(
 
     return {
         "spare_id": spare.spare_id,
-        "part_code": part_code,
+        "part_code": spare.part_number or str(spare.spare_id),
         "spare_name": spare.spare_name,
         "new_cost": new_cost,
-        "profit_margin_percent": base_margin,
+        "profit_margin_percent": computed["profit_margin_percent"],
         "new_ex_showroom": computed["ex_showroom"],
         "new_customer_mrp": computed["customer_mrp"],
         "updated_models": updated_models,

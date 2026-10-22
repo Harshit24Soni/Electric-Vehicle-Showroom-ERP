@@ -50,6 +50,8 @@ async def ocr_upload_invoice(
     try:
         purchase = await ocr_service.process_invoices(db, vendor_id, uploaded_files)
         return purchase
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
 

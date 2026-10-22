@@ -26,7 +26,6 @@ from app.modules.inventory.models import (
 from app.modules.master.models import VehicleModel
 from app.modules.inventory.pricing_engine import (
     calculate_observed_margin,
-    compute_prices_from_cost_and_margin,
     apply_new_purchase_cost,
 )
 from app.modules.inventory.alteration_service import (
@@ -703,58 +702,25 @@ async def update_master_sheet_item(
             spare.base_mrp = round(payload.ex_showroom + gst_amount, 2)
     elif payload.mrp is not None:
         spare.base_mrp = payload.mrp
+        spare.manufacturer_mrp = payload.mrp
         if spare.base_ex_showroom is None:
             spare.base_ex_showroom = payload.mrp
-    elif payload.ex_factory is not None:
-        # User updated new purchase cost without explicit selling price:
-        # Auto-compute new ex_showroom and customer MRP maintaining individual observed profit margin!
-        current_margin = float(spare.profit_margin_percent or 0.0)
-        if current_margin > 0:
-            computed = compute_prices_from_cost_and_margin(
-                float(payload.ex_factory),
-                current_margin,
-                float(spare.gst_rate or 18.0),
-            )
-            spare.base_ex_showroom = computed["ex_showroom"]
-            spare.base_mrp = computed["customer_mrp"]
 
-    # Compute or update observed profit margin
-    cost = float(spare.base_cost or (spare.base_dlp or 0))
-    selling = float(spare.base_ex_showroom or (spare.base_mrp or 0))
+    # Compute or update observed target profit margin without mutating manufacturer MRP
+    cost = float(spare.accounting_wac or spare.base_cost or (spare.base_dlp or 0))
+    selling = float(spare.manufacturer_mrp or spare.base_mrp or (spare.base_ex_showroom or 0))
     if payload.profit_margin_percent is not None:
         spare.profit_margin_percent = payload.profit_margin_percent
-        # If profit margin was explicitly set, update selling prices to match new margin
-        if cost > 0:
-            computed = compute_prices_from_cost_and_margin(
-                cost,
-                payload.profit_margin_percent,
-                float(spare.gst_rate or 18.0),
-            )
-            spare.base_ex_showroom = computed["ex_showroom"]
-            spare.base_mrp = computed["customer_mrp"]
     elif payload.ex_showroom is not None and cost > 0 and selling > 0:
         spare.profit_margin_percent = calculate_observed_margin(cost, selling)
     elif spare.profit_margin_percent is None and cost > 0 and selling > 0:
         spare.profit_margin_percent = calculate_observed_margin(cost, selling)
 
-    # Sync compatible models pricing if purchase cost changed
+    # Sync compatible models inward reference cost without overwriting published model MRP
     if payload.ex_factory is not None and spare.compatibilities:
         for compat in spare.compatibilities:
             compat.ex_factory_price = payload.ex_factory
             compat.dlp = payload.ex_factory
-            m_margin = float(
-                compat.profit_margin_percent
-                if compat.profit_margin_percent is not None
-                else (spare.profit_margin_percent or 0.0)
-            )
-            if m_margin > 0:
-                m_comp = compute_prices_from_cost_and_margin(
-                    float(payload.ex_factory),
-                    m_margin,
-                    float(compat.gst_rate or spare.gst_rate or 18.0),
-                )
-                compat.ex_showroom_price = m_comp["ex_showroom"]
-                compat.customer_mrp = m_comp["customer_mrp"]
 
     if payload.hsn_code is not None or payload.remarks is not None:
         current_hsn = spare.hsn_code

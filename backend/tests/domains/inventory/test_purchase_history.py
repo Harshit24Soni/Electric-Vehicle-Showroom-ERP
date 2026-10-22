@@ -348,3 +348,87 @@ async def test_purchase_history_differentiates_import_studio_and_po_bills(db_ses
     assert studio_record.unit_rate == 2250.0  # DLP is the purchase rate for dealer
     assert studio_record.landed_cost_unit == 2250.0
     assert studio_record.ex_factory_unit == 2200.0
+
+    # WAC Rate must be strictly based on the Landed price (27140 / 10 = 2714.00), NOT purchase rate (2300.00)
+    assert summary.last_purchase_rate == 2300.0
+    assert summary.weighted_average_cost == 2714.0
+
+
+async def test_wac_rate_strictly_uses_landed_price_over_purchase_rate(db_session: AsyncSession):
+    """
+    Validates that WAC is strictly calculated from Landed price (inclusive of GST/landing charges)
+    and not on the ex-factory / base purchase rate, matching the reference screenshot:
+    - Purchase Rate: 319.00
+    - GST: 18% (57.42 tax) -> Landed: 376.42
+    - WAC Rate must be 376.42 (Landed price), NOT 319.00 (Purchase rate).
+    """
+    spare = SpareMaster(
+        spare_name="NXG Foot Mat - Blue",
+        category="Spare Parts",
+        hsn_code="87141090",
+        tracking_mode="QUANTITY",
+        status="ACTIVE",
+        base_cost=Decimal("319.00"),
+        base_dlp=Decimal("376.42"),
+    )
+    db_session.add(spare)
+    await db_session.flush()
+
+    code = SparePartCode(
+        spare_id=spare.spare_id,
+        code="VP-TEST-WAC-LANDED-01",
+        is_current=True,
+    )
+    db_session.add(code)
+    await db_session.flush()
+
+    vendor = Vendor(
+        vendor_name="Ampere OEM Landed Test",
+        vendor_type="OEM",
+        gstin="22AAABB0000A1Z5",
+    )
+    db_session.add(vendor)
+    await db_session.flush()
+
+    # Case 1: Unbought part with catalog baseline -> WAC falls back to Landed DLP (376.42), NOT base_cost (319.00)
+    summary_catalog = await get_part_purchase_history(db_session, "VP-TEST-WAC-LANDED-01")
+    assert summary_catalog.last_purchase_rate == 319.0
+    assert summary_catalog.weighted_average_cost == 376.42
+
+    # Case 2: Inwarded PO bill with purchase rate 319.00 and 18% GST -> total 376.42 for 1 unit
+    purchase = SparePurchase(
+        vendor_id=vendor.vendor_id,
+        vendor_invoice_no="98088035-TEST",
+        purchase_date=date(2026, 8, 14),
+        status="POSTED",
+        subtotal=Decimal("319.00"),
+        tax_total=Decimal("57.42"),
+        landed_cost_total=Decimal("376.42"),
+    )
+    db_session.add(purchase)
+    await db_session.flush()
+
+    item = SparePurchaseItem(
+        spare_purchase_id=purchase.spare_purchase_id,
+        spare_id=spare.spare_id,
+        part_code="VP-TEST-WAC-LANDED-01",
+        quantity=1,
+        unit_cost=Decimal("319.00"),
+        gst_percentage=Decimal("18.00"),
+        tax_amount=Decimal("57.42"),
+        total_cost=Decimal("376.42"),
+        verification_status="CONFIRMED",
+    )
+    db_session.add(item)
+    await db_session.flush()
+
+    summary_po = await get_part_purchase_history(db_session, "VP-TEST-WAC-LANDED-01")
+    assert summary_po.total_bills_count == 1
+    assert summary_po.total_quantity_bought == 1
+    assert summary_po.total_spend == 376.42
+
+    # The WAC rate must be 376.42 (Landed price), NOT 319.00 (Purchase rate)
+    assert summary_po.last_purchase_rate == 319.0
+    assert summary_po.weighted_average_cost == 376.42
+    assert summary_po.bills[0].unit_rate == 319.0
+    assert summary_po.bills[0].landed_cost_unit == 376.42

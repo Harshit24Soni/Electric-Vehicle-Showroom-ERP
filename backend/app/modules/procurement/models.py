@@ -20,12 +20,12 @@ class SparePurchase(Base, AuditMixin, SoftDeleteMixin):
 
     # Phase 3 Fields
     status: Mapped[str] = mapped_column(String(50), default="DRAFT", nullable=False)
-    docket_reference: Mapped[Optional[str]] = mapped_column(String(100))
+    docket_reference: Mapped[Optional[str]] = mapped_column(Text)
     subtotal: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
     tax_total: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
     additional_charges: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
     landed_cost_total: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
-    invoice_document_id: Mapped[Optional[str]] = mapped_column(String(100))
+    invoice_document_id: Mapped[Optional[str]] = mapped_column(Text)
     verification_status: Mapped[Optional[str]] = mapped_column(String(50))
 
     # Relationships

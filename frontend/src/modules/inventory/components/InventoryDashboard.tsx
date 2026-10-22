@@ -42,30 +42,73 @@ export default function InventoryDashboard({ onNavigateTab, onOpenRecordMovement
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Primary KPI Metrics Grid */}
+      {/* Pricing Alerts Banner if any critical or high risks exist */}
+      {canViewCost && ((stats?.critical_alerts_count ?? 0) > 0 || (stats?.high_alerts_count ?? 0) > 0) && (
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 flex items-center justify-between text-rose-800 dark:text-rose-200 animate-pulse">
+          <div className="flex items-center gap-3">
+            <span className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400">
+              <Activity className="w-5 h-5" />
+            </span>
+            <div>
+              <p className="text-sm font-bold">
+                Profit Protection Alerts Detected ({stats?.critical_alerts_count ?? 0} Critical, {stats?.high_alerts_count ?? 0} High)
+              </p>
+              <p className="text-xs text-rose-600 dark:text-rose-300">
+                Some active spare parts produce negative margins or have rising supplier WAC threatening profitability.
+              </p>
+            </div>
+          </div>
+          {onNavigateTab && (
+            <button
+              onClick={() => onNavigateTab('stock')}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors"
+            >
+              Review Stock Risks
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Primary KPI Metrics Grid with Dual Valuation */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Active Spares Catalog"
           value={stats?.total_active_spares ?? 0}
           icon={Package}
-          subtitle="Registered active spare parts"
+          subtitle={`${totalStockQuantity} total physical units in stock`}
           iconBg="bg-blue-50 dark:bg-blue-950/50 border border-blue-200/50 dark:border-blue-800/40"
           iconColor="text-blue-600 dark:text-blue-400"
           isLoading={isLoadingStats}
         />
 
         {canViewCost ? (
-          <MetricCard
-            title="Total Stock Value"
-            value={`₹${Number(stats?.total_stock_value || 0).toLocaleString('en-IN', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`}
-            icon={Coins}
-            subtitle="Valuation at weighted average cost"
-            iconBg="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/50 dark:border-emerald-800/40"
-            iconColor="text-emerald-600 dark:text-emerald-400"
-            isLoading={isLoadingStats}
-          />
+          <>
+            <MetricCard
+              title="Accounting Inventory Value"
+              value={`₹${Number(stats?.total_stock_value || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
+              icon={Coins}
+              subtitle="Recoverable ITC excluded (Carrying Value)"
+              iconBg="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/50 dark:border-emerald-800/40"
+              iconColor="text-emerald-600 dark:text-emerald-400"
+              isLoading={isLoadingStats}
+            />
+
+            <MetricCard
+              title="GST-Inclusive Acquisition View"
+              value={`₹${Number(stats?.total_gst_inclusive_value || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
+              icon={TrendingUp}
+              subtitle="Operational gross cash expenditure reference"
+              iconBg="bg-cyan-50 dark:bg-cyan-950/50 border border-cyan-200/50 dark:border-cyan-800/40"
+              iconColor="text-cyan-600 dark:text-cyan-400"
+              isLoading={isLoadingStats}
+            />
+          </>
         ) : (
           <MetricCard
             title="Total Units in Stock"
@@ -79,20 +122,10 @@ export default function InventoryDashboard({ onNavigateTab, onOpenRecordMovement
         )}
 
         <MetricCard
-          title="Stock Movements (30d)"
-          value={stats?.total_movements_last_30d ?? 0}
-          icon={Activity}
-          subtitle="Inward, outward & adjustment cycles"
-          iconBg="bg-purple-50 dark:bg-purple-950/50 border border-purple-200/50 dark:border-purple-800/40"
-          iconColor="text-purple-600 dark:text-purple-400"
-          isLoading={isLoadingStats}
-        />
-
-        <MetricCard
           title="Warehouse Locations"
           value={locations.length}
           icon={MapPin}
-          subtitle="Storage zones & showroom bays"
+          subtitle={`${stats?.total_movements_last_30d ?? 0} stock movements (30d)`}
           iconBg="bg-amber-50 dark:bg-amber-950/50 border border-amber-200/50 dark:border-amber-800/40"
           iconColor="text-amber-600 dark:text-amber-400"
           isLoading={isLoadingLocations}

@@ -103,6 +103,11 @@ class SpareMaster(Base, AuditMixin, SoftDeleteMixin):
     base_mrp: Mapped[float | None] = mapped_column(Numeric(12, 2))
     profit_margin_percent: Mapped[float | None] = mapped_column(Numeric(6, 2))
 
+    # Canonical Pricing & Inventory Valuation Fields (ERP V2 Refactor)
+    accounting_wac: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    manufacturer_dlp: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    manufacturer_mrp: Mapped[float | None] = mapped_column(Numeric(12, 2))
+
     codes: Mapped[list["SparePartCode"]] = relationship(
         "SparePartCode", back_populates="spare", cascade="all, delete-orphan", lazy="selectin"
     )
@@ -136,6 +141,33 @@ class SpareMaster(Base, AuditMixin, SoftDeleteMixin):
         if balances:
             return sum(b.quantity for b in balances)
         return 0
+
+    @property
+    def current_wac(self) -> float:
+        """Accounting WAC excluding recoverable ITC."""
+        if self.accounting_wac is not None:
+            return float(self.accounting_wac)
+        if self.base_cost is not None:
+            return float(self.base_cost)
+        return 0.0
+
+    @property
+    def current_mrp(self) -> float:
+        """Current valid manufacturer retail MRP."""
+        if self.manufacturer_mrp is not None:
+            return float(self.manufacturer_mrp)
+        if self.base_mrp is not None:
+            return float(self.base_mrp)
+        return 0.0
+
+    @property
+    def current_dlp(self) -> float:
+        """Manufacturer reference DLP."""
+        if self.manufacturer_dlp is not None:
+            return float(self.manufacturer_dlp)
+        if self.base_dlp is not None:
+            return float(self.base_dlp)
+        return 0.0
 
 
 class SparePartCode(Base, AuditMixin, SoftDeleteMixin):
@@ -507,3 +539,168 @@ class SparePartAlteration(Base):
     )
 
     spare: Mapped["SpareMaster"] = relationship("SpareMaster", back_populates="alterations")
+
+
+class DiscountTargetType(str, enum.Enum):
+    SUPPLIER = "SUPPLIER"
+    CUSTOMER = "CUSTOMER"
+
+
+class DiscountType(str, enum.Enum):
+    PERCENTAGE = "PERCENTAGE"
+    FIXED_AMOUNT = "FIXED_AMOUNT"
+    QUANTITY_SLAB = "QUANTITY_SLAB"
+    THRESHOLD_BASKET = "THRESHOLD_BASKET"
+
+
+class DiscountStackingMode(str, enum.Enum):
+    STACKABLE = "STACKABLE"
+    EXCLUSIVE = "EXCLUSIVE"
+    PRIORITY = "PRIORITY"
+
+
+class DiscountRule(Base, AuditMixin, SoftDeleteMixin):
+    __tablename__ = "module_discount_rule"
+    __table_args__ = (
+        Index("idx_mod_discount_target", "target_type"),
+        Index("idx_mod_discount_spare", "spare_id"),
+        Index("idx_mod_discount_active", "is_active"),
+    )
+
+    rule_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    rule_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(20), default=DiscountTargetType.CUSTOMER.value, nullable=False)
+    discount_type: Mapped[str] = mapped_column(String(30), default=DiscountType.PERCENTAGE.value, nullable=False)
+    discount_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+
+    applicable_entity_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)  # supplier_id or customer_id
+    spare_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="CASCADE"), nullable=True
+    )
+    vehicle_model_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    min_quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    min_basket_value: Mapped[float] = mapped_column(Numeric(12, 2), default=0.00, nullable=False)
+    threshold_is_pre_tax: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    stacking_mode: Mapped[str] = mapped_column(String(20), default=DiscountStackingMode.STACKABLE.value, nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    max_discount_amount: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+
+    start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
+    expiry_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_by_staff_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+
+class AlertSeverity(str, enum.Enum):
+    CRITICAL = "CRITICAL"
+    HIGH = "HIGH"
+    WARNING = "WARNING"
+    INFO = "INFO"
+
+
+class AlertStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    RESOLVED = "RESOLVED"
+    ESCALATED = "ESCALATED"
+
+
+class PricingAlert(Base, AuditMixin, SoftDeleteMixin):
+    __tablename__ = "module_pricing_alert"
+    __table_args__ = (
+        Index("idx_mod_pricing_alert_spare", "spare_id"),
+        Index("idx_mod_pricing_alert_status", "status"),
+        Index("idx_mod_pricing_alert_severity", "severity"),
+        Index("idx_mod_pricing_alert_fingerprint", "risk_fingerprint"),
+    )
+
+    alert_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    spare_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="CASCADE"), nullable=False
+    )
+    part_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    alert_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), default=AlertSeverity.WARNING.value, nullable=False)
+
+    current_wac: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    current_mrp: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    expected_margin_percent: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
+
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    calculation_details: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+
+    status: Mapped[str] = mapped_column(String(20), default=AlertStatus.OPEN.value, nullable=False)
+    acknowledged_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
+    resolved_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
+    resolution_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    risk_fingerprint: Mapped[str] = mapped_column(String(100), nullable=False)
+    spare: Mapped["SpareMaster"] = relationship("SpareMaster")
+
+
+class LossSaleException(Base, AuditMixin):
+    __tablename__ = "module_loss_sale_exception"
+    __table_args__ = (
+        Index("idx_mod_loss_exc_sale", "sale_id"),
+        Index("idx_mod_loss_exc_spare", "spare_id"),
+    )
+
+    exception_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    sale_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    spare_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="RESTRICT"), nullable=False
+    )
+    part_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    requested_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    authorized_by_staff_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+    expected_revenue: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    expected_cost: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    expected_loss: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    expected_margin: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    policy_version: Mapped[str] = mapped_column(String(50), default="v2.0", nullable=False)
+
+    spare: Mapped["SpareMaster"] = relationship("SpareMaster")
+
+
+class PriceChangeAuditEvent(Base, AuditMixin):
+    __tablename__ = "module_price_change_audit_event"
+    __table_args__ = (
+        Index("idx_mod_price_audit_spare", "spare_id"),
+        Index("idx_mod_price_audit_type", "change_type"),
+        Index("idx_mod_price_audit_effective", "effective_timestamp"),
+    )
+
+    event_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    spare_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("module_spare_master.spare_id", ondelete="CASCADE"), nullable=False
+    )
+    part_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    change_type: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    old_value: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    new_value: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    difference_amount: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    difference_percent: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
+
+    source_document: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_staff_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    actor_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    effective_timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False
+    )
+    recorded_timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False
+    )
+    profit_impact_margin: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
+
+    spare: Mapped["SpareMaster"] = relationship("SpareMaster")

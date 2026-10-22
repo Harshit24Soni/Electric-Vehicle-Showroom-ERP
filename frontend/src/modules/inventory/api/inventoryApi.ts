@@ -62,7 +62,10 @@ export interface VehicleMovementCreate {
 export interface InventoryDashboardStats {
   total_active_spares: number
   total_stock_value: number
+  total_gst_inclusive_value?: number
   total_movements_last_30d: number
+  critical_alerts_count?: number
+  high_alerts_count?: number
 }
 
 export interface StockLocationStat {
@@ -80,6 +83,11 @@ export interface StockItem {
   quantity: number
   unit_cost: number
   total_value: number
+  gst_inclusive_value?: number
+  manufacturer_mrp?: number
+  manufacturer_dlp?: number
+  expected_gross_profit?: number
+  gross_margin_percent?: number
 }
 
 export interface StockListResponse {
@@ -511,6 +519,8 @@ export interface PartPurchaseSummary {
   current_dlp?: number | null
   current_mrp?: number | null
   current_margin_percent?: number | null
+  averaged_dlp?: number | null
+  averaged_mrp?: number | null
   total_bills_count: number
   direct_entries_count: number
   total_records_count: number

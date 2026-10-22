@@ -269,7 +269,7 @@ export default function PartPurchaseHistoryModal({ item, onClose }: PartPurchase
           ) : (
             <>
               {/* Aggregated KPI Summary Ribbon */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
                 {/* 1. Total Quantity Bought via PO */}
                 <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
                   <div className="flex items-center justify-between text-indigo-600 dark:text-indigo-400 mb-1">
@@ -346,19 +346,41 @@ export default function PartPurchaseHistoryModal({ item, onClose }: PartPurchase
                   </p>
                 </div>
 
-                {/* 5. Weighted Average Cost */}
-                <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 col-span-2 sm:col-span-1">
+                {/* 5. Accounting WAC (Perpetual Cost Basis - Recoverable ITC Excluded) */}
+                <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
                   <div className="flex items-center justify-between text-violet-600 dark:text-violet-400 mb-1">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      WAC Rate
+                      Accounting WAC
                     </span>
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <p className="text-xl font-bold text-slate-900 dark:text-white">
-                    {formatCurrency(summary?.weighted_average_cost)}
+                    {formatCurrency(summary?.weighted_average_cost ?? summary?.current_cost)}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Weighted Avg Valuation
+                  <p
+                    className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate"
+                    title="Perpetual Weighted Average Cost excluding recoverable ITC across all stock receipts"
+                  >
+                    ITC Excluded (Cost Basis)
+                  </p>
+                </div>
+
+                {/* 6. Manufacturer MRP (Revised Retail Ceiling) */}
+                <div className="bg-emerald-50/70 dark:bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
+                  <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 mb-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                      Manufacturer MRP
+                    </span>
+                    <Tag className="w-4 h-4" />
+                  </div>
+                  <p className="text-xl font-bold text-emerald-950 dark:text-emerald-100">
+                    {formatCurrency(summary?.current_mrp ?? summary?.averaged_mrp)}
+                  </p>
+                  <p
+                    className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 truncate"
+                    title="Authoritative revised Manufacturer MRP from published price-list catalog (Retail Price Ceiling)"
+                  >
+                    Revised Retail Ceiling
                   </p>
                 </div>
               </div>
@@ -676,7 +698,10 @@ export default function PartPurchaseHistoryModal({ item, onClose }: PartPurchase
             <span className="font-bold text-slate-800 dark:text-slate-200">
               {filteredBills.length}
             </span>{' '}
-            of {summary?.total_bills_count ?? 0} recorded bills
+            of{' '}
+            {activeTab === 'PO_BILLS'
+              ? `${summary?.total_bills_count ?? 0} PO bills`
+              : `${summary?.total_records_count ?? 0} recorded entries`}
           </div>
 
           <button
