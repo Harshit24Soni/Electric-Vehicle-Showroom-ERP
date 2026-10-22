@@ -80,6 +80,8 @@ class PartPurchaseSummaryResponse(BaseModel):
     current_dlp: Optional[float] = None
     current_mrp: Optional[float] = None
     current_margin_percent: Optional[float] = None
+    averaged_dlp: Optional[float] = None
+    averaged_mrp: Optional[float] = None
 
     # Aggregated Purchase KPIs across authentic bills
     total_bills_count: int = 0  # Count of authentic PO / vendor bills only
@@ -275,10 +277,13 @@ async def get_part_purchase_history(db: AsyncSession, identifier: str) -> PartPu
         gst_pct = _safe_float(item.gst_percentage) or 0.0
         tax_amt = _safe_float(item.tax_amount) or 0.0
 
+        if (tax_amt is None or tax_amt == 0.0) and gst_pct > 0 and rate > 0 and qty > 0:
+            tax_amt = round(qty * rate * (gst_pct / 100.0), 2)
+
         if item.total_cost is not None and float(item.total_cost) > 0:
             total_amt = round(float(item.total_cost), 2)
         else:
-            total_amt = round(qty * rate + tax_amt, 2)
+            total_amt = round(qty * rate + (tax_amt or 0.0), 2)
 
         landed_rate = round(total_amt / qty, 2) if qty > 0 else rate
 
@@ -306,6 +311,8 @@ async def get_part_purchase_history(db: AsyncSession, identifier: str) -> PartPu
                 remarks=purchase.remarks,
             )
         )
+
+    cost_records: List[SpareCostHistory] = []
 
     # 2. Query Inward Stock Movements (if spare_id > 0)
     if spare_id > 0:
@@ -358,6 +365,8 @@ async def get_part_purchase_history(db: AsyncSession, identifier: str) -> PartPu
             else:
                 total_amt = round(qty * rate, 2)
 
+            landed_rate = round(total_amt / qty, 2) if qty > 0 else rate
+
             bills.append(
                 PartPurchaseBillRecord(
                     purchase_item_id=None,
@@ -372,7 +381,7 @@ async def get_part_purchase_history(db: AsyncSession, identifier: str) -> PartPu
                     gst_percentage=0.0,
                     tax_amount=0.0,
                     total_amount=total_amt,
-                    landed_cost_unit=rate,
+                    landed_cost_unit=landed_rate,
                     status="POSTED",
                     verification_status="CONFIRMED",
                     source_type=source_type,
@@ -510,11 +519,30 @@ async def get_part_purchase_history(db: AsyncSession, identifier: str) -> PartPu
     lowest_rate = min(rates_pool) if rates_pool else base_cost
     highest_rate = max(rates_pool) if rates_pool else base_cost
 
-    # Weighted Average Cost (WAC)
-    if total_qty > 0 and total_spend > 0:
-        wac = round(total_spend / total_qty, 2)
+    # Perpetual Weighted Average Cost (WAC) (excluding recoverable ITC)
+    # Reference Manufacturer DLP and Revised MRP are independent legal/reference prices.
+    if spare and spare.accounting_wac is not None and float(spare.accounting_wac) > 0:
+        wac = round(float(spare.accounting_wac), 2)
     else:
-        wac = last_rate or base_cost
+        latest_ch_wac = None
+        for ch in cost_records:
+            if ch.wac_cost is not None and float(ch.wac_cost) > 0:
+                latest_ch_wac = float(ch.wac_cost)
+                break
+        if latest_ch_wac is not None:
+            wac = round(latest_ch_wac, 2)
+        elif base_cost is not None and base_cost > 0:
+            wac = round(base_cost, 2)
+        elif total_qty > 0 and total_spend > 0:
+            wac = round(total_spend / total_qty, 2)
+        elif base_dlp is not None:
+            wac = round(base_dlp, 2)
+        else:
+            wac = last_rate
+
+    # Manufacturer Reference Prices (never derived via universal margin on WAC)
+    ref_dlp = float(spare.manufacturer_dlp) if spare and spare.manufacturer_dlp is not None else (base_dlp or wac)
+    ref_mrp = float(spare.manufacturer_mrp) if spare and spare.manufacturer_mrp is not None else (base_mrp or ref_dlp)
 
     return PartPurchaseSummaryResponse(
         spare_id=spare_id,
@@ -524,10 +552,12 @@ async def get_part_purchase_history(db: AsyncSession, identifier: str) -> PartPu
         hsn_code=hsn_code,
         tracking_mode=tracking_mode,
         current_stock=current_stock,
-        current_cost=base_cost,
-        current_dlp=base_dlp,
-        current_mrp=base_mrp,
+        current_cost=wac,
+        current_dlp=ref_dlp,
+        current_mrp=ref_mrp,
         current_margin_percent=margin_percent,
+        averaged_dlp=ref_dlp,
+        averaged_mrp=ref_mrp,
         total_bills_count=total_bills,
         direct_entries_count=direct_entries_count,
         total_records_count=total_records,

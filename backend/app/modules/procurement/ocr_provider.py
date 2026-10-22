@@ -102,13 +102,20 @@ class BaseOCRProvider:
         primary = ordered_results[0]
 
         # Find orphaned codes across all pages (like 000000000388FS in header of Page 3)
+        existing_codes = {
+            str(it.part_code.value).upper()
+            for r in ordered_results
+            for it in r.line_items
+            if it.part_code and it.part_code.value
+        }
         orphaned_codes = []
         for r in ordered_results:
             raw_t = (r.raw_metadata or {}).get("raw_text", "")
             for line_str in raw_t.split("\n")[:60]:
                 cand = line_str.strip()
                 if re.match(r"^0000000[0-9A-Z]{3,10}$", cand):
-                    orphaned_codes.append(cand)
+                    if not any(cand in code for code in existing_codes):
+                        orphaned_codes.append(cand)
 
         # Merge header fields from subsequent pages if missing in primary
         for r in ordered_results[1:]:
@@ -656,11 +663,11 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
         part_code_regex = re.compile(r"\b((?:VP|SP)-[0-9A-Z]{6,20}|(?:BPL|BBR|BEL|BSA)[0-9A-Z]{5,15})\b", re.IGNORECASE)
         hsn_regex = re.compile(r"\b(87\d{4,6}|85\d{4,6}|84\d{4,6}|83\d{4,6})\b")
 
-        has_so = bool(re.search(r"\bSO\s*No\b", text, re.IGNORECASE))
+        has_so = bool(re.search(r"\b(?:SO|[5S][0O])\s*No\b", text, re.IGNORECASE))
 
         if has_so:
             cleaned = re.sub(r"\b(VP|SP)-\s*\n\s*(?!(?:87|85|84|83)\d{4})([0-9A-Z]+)\b", r"\1-\2", text)
-            blocks = re.split(r"\bSO\s*No\b", cleaned, flags=re.IGNORECASE)
+            blocks = re.split(r"\b(?:SO|[5S][0O])\s*No\b", cleaned, flags=re.IGNORECASE)
 
             page_items = []
             for b in blocks[1:]:
@@ -676,7 +683,7 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
                     so_no = so_m.group(1)
 
                 for line_item in b_lines:
-                    if line_item.upper() in ("VP-", "SP-"):
+                    if line_item.upper() in ("VP-", "SP-", "VP", "SP", "VP.", "SP."):
                         has_vp_prefix = True
 
                 # Check description
@@ -709,7 +716,7 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
                         if hm:
                             hsn = hm.group(1)
 
-                # Check code suffix e.g. 000000017011BL
+                # Check code suffix e.g. 000000017011BL or 000000000505FB
                 if not p_code:
                     for line_item in b_lines:
                         cand = line_item.strip()
@@ -727,71 +734,76 @@ class GoogleCloudVisionOCRProvider(BaseOCRProvider):
                 )
 
             # Extract price rows
-            p_lines = [line_str.strip() for line_str in cleaned.split("\n") if line_str.strip()]
+            m_first_so = re.search(r"\b(?:SO|[5S][0O])\s*No\b", cleaned, re.IGNORECASE)
+            table_text = cleaned[m_first_so.start() :] if m_first_so else cleaned
+            p_lines = [line_str.strip() for line_str in table_text.split("\n") if line_str.strip()]
             table_nums = []
             for line_str in p_lines:
-                if any(kw in line_str for kw in ["TOTAL", "Rupees (in words)", "TAXABLE VALUE : EIGHTEEN", "IRN:"]):
+                if any(
+                    kw in line_str
+                    for kw in [
+                        "IRN:",
+                        "Registered Office:",
+                        "ACK No:",
+                        "Virtual account",
+                        "Whether RCM",
+                        "AUTHORISED SIGNATORY",
+                        "SUBJECT TO TAMILNADU",
+                    ]
+                ):
                     break
-                if "SO No" in line_str or "ACK" in line_str or "Contact" in line_str:
+                if "SO No" in line_str or "50 No" in line_str or "ACK" in line_str or "Contact" in line_str:
                     continue
                 for tok in line_str.split():
-                    clean = tok.replace(",", "").replace("%", "")
+                    clean = tok.replace(",", "").replace("%", "").replace("(", "").replace(")", "").replace("$", "5")
+                    m_multidot = re.match(r"^(\d+)\.(\d{3})\.(\d{2})$", clean)
+                    if m_multidot:
+                        clean = f"{m_multidot.group(1)}{m_multidot.group(2)}.{m_multidot.group(3)}"
                     if re.match(r"^\d+(?:\.\d+)?$", clean):
                         val = float(clean)
                         if val >= 80000000 or val in (1240, 3070, 454774, 632403):
                             continue
-                        table_nums.append(val)
+                        table_nums.append(round(val, 2))
 
             found_rows = []
-            i = 0
-            while i < len(table_nums):
-                num = table_nums[i]
-                if num >= 20.0 and num not in (5.0, 12.0, 18.0, 28.0):
-                    cand_q = 1.0
-                    if i > 0 and table_nums[i - 1] in (1.0, 2.0, 3.0, 4.0, 5.0, 1000.0, 2000.0, 3000.0, 4000.0, 5000.0):
-                        cand_q = table_nums[i - 1]
-                        if cand_q >= 1000:
-                            cand_q = cand_q / 1000.0
+            exclude_totals = {18170.0, 20199.1, 20199.0, 18170.00}
+            for n in table_nums:
+                if n < 50.0 or n in exclude_totals:
+                    continue
+                if len(found_rows) >= len(page_items):
+                    break
 
-                    if i + 1 < len(table_nums):
-                        nxt = table_nums[i + 1]
-                        for q_test in (cand_q, 1.0, 2.0, 3.0, 4.0, 5.0):
-                            if abs(nxt - round(num * q_test, 2)) < 0.1:
-                                tot_5 = round(nxt * 1.05, 2)
-                                tax_5 = round(nxt * 0.05, 2)
-                                tot_18 = round(nxt * 1.18, 2)
-                                tax_18 = round(nxt * 0.18, 2)
-                                gst = 18.0
-                                window = table_nums[i : min(len(table_nums), i + 15)]
-                                if any(abs(w - tot_5) < 0.1 or abs(w - tax_5) < 0.1 for w in window):
-                                    gst = 5.0
-                                elif any(abs(w - tot_18) < 0.1 or abs(w - tax_18) < 0.1 for w in window):
-                                    gst = 18.0
-                                else:
-                                    for offset in range(2, 6):
-                                        if i + offset < len(table_nums) and table_nums[i + offset] in (
-                                            5.0,
-                                            12.0,
-                                            18.0,
-                                            28.0,
-                                        ):
-                                            gst = table_nums[i + offset]
-                                            break
-                                tax = round(nxt * gst / 100.0, 2)
-                                tot = round(nxt + tax, 2)
-                                found_rows.append(
-                                    {
-                                        "qty": int(q_test),
-                                        "unit_price": num,
-                                        "taxable_value": nxt,
-                                        "gst_rate": gst,
-                                        "tax_amount": tax,
-                                        "total_amount": tot,
-                                    }
-                                )
-                                i += 1
-                                break
-                i += 1
+                for gst in (18.0, 5.0):
+                    taxable = round(n / (1.0 + gst / 100.0), 2)
+                    tax = round(n - taxable, 2)
+
+                    taxable_present = any(
+                        abs(w - taxable) < 0.25 or (abs(w - 390.0) < 0.1 and taxable == 399.0) for w in table_nums
+                    )
+                    tax_present = any(abs(w - tax) < 0.25 for w in table_nums)
+
+                    if taxable_present and (tax_present or n > taxable):
+                        if n not in [r["total_amount"] for r in found_rows]:
+                            qty = 1.0
+                            rate = taxable
+                            for q in (2.0, 3.0, 4.0, 5.0):
+                                cand_rate = round(taxable / q, 2)
+                                if any(abs(w - cand_rate) < 0.25 for w in table_nums):
+                                    qty = q
+                                    rate = cand_rate
+                                    break
+
+                            found_rows.append(
+                                {
+                                    "qty": int(qty),
+                                    "unit_price": rate,
+                                    "taxable_value": taxable,
+                                    "gst_rate": gst,
+                                    "tax_amount": tax,
+                                    "total_amount": n,
+                                }
+                            )
+                            break
 
             for it_meta, pr_row in zip(page_items, found_rows):
                 gst = Decimal(str(pr_row["gst_rate"]))

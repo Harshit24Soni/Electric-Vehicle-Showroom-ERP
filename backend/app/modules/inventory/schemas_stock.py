@@ -7,8 +7,14 @@ from decimal import Decimal
 # Dashboard
 class InventoryDashboardResponse(BaseModel):
     total_active_spares: int
-    total_stock_value: Decimal
+    total_stock_value: Decimal  # Accounting inventory value (excluding recoverable ITC)
+    total_gst_inclusive_value: Optional[Decimal] = None  # Operational GST-inclusive acquisition view
+    gst_inclusive_valuation_label: Optional[str] = "Operational Acquisition View (Invoice-Backed & Labelled Estimates)"
+    is_gst_inclusive_estimated: Optional[bool] = False
+    unverified_opening_stock_count: Optional[int] = 0
     total_movements_last_30d: int
+    critical_alerts_count: Optional[int] = 0
+    high_alerts_count: Optional[int] = 0
 
 
 class StockByLocationResponse(BaseModel):
@@ -25,8 +31,16 @@ class StockItemResponse(BaseModel):
     tracking_mode: str
     location: str
     quantity: int
-    unit_cost: Decimal
-    total_value: Decimal
+    unit_cost: Decimal  # Accounting WAC
+    total_value: Decimal  # Accounting carrying value (WAC * quantity)
+    gst_inclusive_value: Optional[Decimal] = None  # Operational GST-inclusive acquisition value
+    cost_classification: Optional[str] = "INVOICE_VERIFIED"  # "INVOICE_VERIFIED" or "ESTIMATED_OPENING"
+    acquisition_tax_status: Optional[str] = "TRACEABLE_INVOICE"  # "TRACEABLE_INVOICE" or "CATALOG_ESTIMATE"
+    has_unverified_historical_tax: Optional[bool] = False
+    manufacturer_mrp: Optional[Decimal] = None
+    manufacturer_dlp: Optional[Decimal] = None
+    expected_gross_profit: Optional[Decimal] = None
+    gross_margin_percent: Optional[Decimal] = None
 
 
 class StockListResponse(BaseModel):
